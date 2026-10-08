@@ -574,8 +574,10 @@ function App() {
 
   const guardar = () => {
     const esParlay = form.tipo==="Parlay/Combinada";
-    const deporteOpcional = esParlay||form.tipo==="Especial por jugador"||form.tipo==="PlayBoost"||form.tipo==="Freebet";
-    const desc = esParlay
+    const esFreebet = form.tipo==="Freebet";
+    const usaPatas = esParlay||esFreebet;
+    const deporteOpcional = usaPatas||form.tipo==="Especial por jugador"||form.tipo==="PlayBoost";
+    const desc = usaPatas
       ? form.patas.filter(p=>p.desc && p.desc.trim()).map(p=>(p.deporte?`[${p.deporte}] `:"")+p.desc).join(" | ")
       : form.descripcion;
     const deporteOk = deporteOpcional||!!form.deporte;
@@ -590,7 +592,7 @@ function App() {
     if(!cuotaOk) { setFormError("Agrega un momio válido (ej: -110 o +150)"); return; }
     if(!form.fecha) { setFormError("Selecciona la fecha"); return; }
     setFormError("");
-    const deporte = !form.deporte ? (esParlay?"Combinación":form.tipo) : form.deporte;
+    const deporte = !form.deporte ? (usaPatas?"Combinación":form.tipo) : form.deporte;
     const nueva = {deporte,descripcion:desc,monto:Number(form.monto),cuota:Number(form.cuota),resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
     if(editId){
       const docId=apuestas.find(a=>a.id===editId)?._docId;
@@ -842,13 +844,13 @@ function App() {
           <button onClick=${()=>setModal(false)} style=${S.closeBtn}>✕</button>
         </div>
         <div style=${S.formGrid}>
-          <div style=${S.fg}>
+          ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet") && html`<div style=${S.fg}>
             <label style=${S.label}>Deporte</label>
             <select style=${S.select} value=${form.deporte} onChange=${e=>setForm(f=>({...f,deporte:e.target.value}))}>
               <option value="">Seleccionar...</option>
               ${DEPORTES.map(d=>html`<option key=${d} value=${d}>${iconDeporte[d]} ${d}</option>`)}
             </select>
-          </div>
+          </div>`}
           <div style=${S.fg}>
             <label style=${S.label}>Tipo</label>
             <select style=${S.select} value=${form.tipo} onChange=${e=>setForm(f=>({...f,tipo:e.target.value}))}>
@@ -856,14 +858,14 @@ function App() {
               ${TIPOS.map(t=>html`<option key=${t} value=${t}>${t}</option>`)}
             </select>
           </div>
-          ${form.tipo!=="Parlay/Combinada"
+          ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet")
             ? html`<div style=${{...S.fg,gridColumn:"1/-1"}}>
                 <label style=${S.label}>Descripción</label>
                 <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder=${form.tipo==="Especial por jugador"?"Ej: LeBron James +25.5 puntos":form.tipo==="PlayBoost"?"Ej: Boost Chiefs gana +180":"Ej: Real Madrid vs Barcelona"}/>
               </div>`
             : html`<div style=${{gridColumn:"1/-1"}}>
                 <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <label style=${S.label}>Patas del Parlay (${form.patas.length})</label>
+                  <label style=${S.label}>${form.tipo==="Freebet"?"Selecciones de la Freebet":"Patas del Parlay"} (${form.patas.length})</label>
                   <button onClick=${()=>setForm(f=>({...f,patas:[...f.patas,{deporte:"",desc:""}]}))} style=${S.addPataBtn}>+ Agregar</button>
                 </div>
                 <div style=${{display:"flex",flexDirection:"column",gap:10}}>
