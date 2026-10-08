@@ -471,6 +471,7 @@ function App() {
   const [bankrolls,setBankrolls] = useState({});
   const [editingBank,setEditingBank] = useState(false);
   const [bankInput,setBankInput] = useState("");
+  const [formError,setFormError] = useState("");
 
   useEffect(()=>{
     const unsub = db.collection("apuestas").orderBy("fecha","asc").onSnapshot(snap=>{
@@ -567,6 +568,7 @@ function App() {
       setForm({...ap,monto:String(ap.monto),cuota:String(ap.cuota),patas});
       setEditId(ap.id);
     } else {setForm(initialForm);setEditId(null);}
+    setFormError("");
     setModal(true);
   };
 
@@ -581,7 +583,13 @@ function App() {
     const cuotaOk = cuotaVal!==""&&cuotaVal!=="0"&&!isNaN(Number(cuotaVal));
     const montoOk = String(form.monto).trim()!==""&&Number(form.monto)>0;
     const descOk = desc && desc.trim().length>0;
-    if(!deporteOk||!form.tipo||!descOk||!montoOk||!cuotaOk||!form.fecha) return;
+    if(!form.tipo) { setFormError("Selecciona el tipo de apuesta"); return; }
+    if(!deporteOk) { setFormError("Selecciona el deporte"); return; }
+    if(!descOk) { setFormError("Agrega una descripción"); return; }
+    if(!montoOk) { setFormError("Agrega un monto mayor a 0"); return; }
+    if(!cuotaOk) { setFormError("Agrega un momio válido (ej: -110 o +150)"); return; }
+    if(!form.fecha) { setFormError("Selecciona la fecha"); return; }
+    setFormError("");
     const deporte = !form.deporte ? (esParlay?"Combinación":form.tipo) : form.deporte;
     const nueva = {deporte,descripcion:desc,monto:Number(form.monto),cuota:Number(form.cuota),resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
     if(editId){
@@ -902,6 +910,7 @@ function App() {
           <span style=${{color:"#00e5a0",fontWeight:700}}>${fmt(form.monto*momioToDec(form.cuota)-form.monto)}</span>
           <span style=${{color:"#666",marginLeft:12}}>Retorno: ${fmt(form.monto*momioToDec(form.cuota))}</span>
         </div>`}
+        ${formError && html`<div style=${{color:"#ff4e6a",fontSize:13,marginBottom:12,padding:"8px 12px",background:"#ff4e6a15",borderRadius:8,border:"1px solid #ff4e6a30"}}>⚠️ ${formError}</div>`}
         <div style=${S.modalFooter}>
           <button onClick=${()=>setModal(false)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${guardar} style=${S.btnPrimary}>Guardar</button>
