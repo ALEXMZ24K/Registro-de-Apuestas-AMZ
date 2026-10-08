@@ -681,7 +681,7 @@ function App() {
 
       <!-- MENSUAL DASHBOARD -->
       ${periodoVista==="mensual" && vistaActual==="dashboard" && html`<div>
-        <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:32,maxWidth:780,margin:"0 auto 32px auto"}}>
+        <div style=${{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:32,maxWidth:780,margin:"0 auto 32px auto"}}>
           <div style=${{...S.card,cursor:"pointer",borderColor:editingBank?"#00e5a060":"#1e2130"}}
             onClick=${()=>{setEditingBank(true);setBankInput(bankrollMes?String(bankrollMes):"");}}>
             <div style=${S.cardLabel}>Bank del mes</div>
