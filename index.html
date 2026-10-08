@@ -891,7 +891,7 @@ function App() {
           </div>
           <div style=${S.fg}>
             <label style=${S.label}>Momio (americano)</label>
-            <input style=${S.input} type="text" inputMode="numeric" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} placeholder="-110 o +150"/>
+            <input style=${S.input} type="text" inputMode="numeric" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} onBlur=${e=>{const v=e.target.value.trim();if(v&&!v.startsWith("-")&&!v.startsWith("+"))setForm(f=>({...f,cuota:"+"+v}));}} placeholder="-110 o +150"/>
           </div>
           <div style=${S.fg}>
             <label style=${S.label}>Fecha</label>
