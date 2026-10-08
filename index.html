@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>Registro de Apuestas</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/htm@3/dist/htm.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0d0f14;color:#e8e8f0;font-family:'DM Sans',sans-serif}
+    input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{opacity:1}
+    select option{background:#13162a;color:#e8e8f0}
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:#0d0f14}
+    ::-webkit-scrollbar-thumb{background:#2a2e42;border-radius:3px}
+    input,select,button{font-family:'DM Sans',sans-serif}
+    /* Safe area for iPhone notch/home bar */
+    body { padding-top: env(safe-area-inset-top); }
+    .sticky-header { top: env(safe-area-inset-top) !important; }
+
+    /* ── Mobile responsive ── */
+    @media(max-width:600px){
+      .period-bar-inner{justify-content:center !important;flex-direction:column !important;align-items:center !important}
+      .period-spacer{display:none !important}
+      .header-inner{padding:10px 14px !important;gap:8px !important}
+      .logo-title{font-size:16px !important}
+      .logo-sub{display:none}
+      .nav-btn{padding:6px 12px !important;font-size:13px !important}
+      .btn-primary{padding:8px 14px !important;font-size:13px !important}
+      .btn-secondary{padding:8px 10px !important;font-size:12px !important}
+      .period-bar{padding:10px 14px !important}
+      .month-label{min-width:130px !important;font-size:15px !important}
+      .main-content{padding:16px 12px !important}
+      .stats-grid{grid-template-columns:repeat(2,1fr) !important;gap:10px !important}
+      .stat-card{padding:14px 12px !important}
+      .stat-value{font-size:18px !important}
+      .ap-desc{font-size:14px !important}
+      .ap-meta{font-size:11px !important}
+      .detail-grid{grid-template-columns:repeat(2,1fr) !important}
+      .modal-inner{padding:20px 16px !important;margin:8px !important}
+      .form-grid{grid-template-columns:1fr !important}
+      .form-grid-full{grid-column:1 !important}
+      .table-head,.table-row{grid-template-columns:2fr 1fr 1fr 2fr !important}
+      .table-col-hide{display:none !important}
+      .deporte-card{min-width:80px !important;padding:10px 12px !important}
+      .cal-day{min-height:46px !important;padding:5px 2px !important}
+      .cal-day-num{font-size:11px !important}
+      .cal-day-val{font-size:9px !important}
+      .action-btns{flex-direction:column !important;gap:6px !important}
+    }
+    @media(max-width:380px){
+      .stats-grid{grid-template-columns:repeat(2,1fr) !important}
+      .stat-value{font-size:16px !important}
+    }
+  </style>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-512.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AlexPicks">
+  <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");</script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// Firebase setup
+const firebaseConfig = {
+  apiKey: "AIzaSyC50jJFVDbRCjxGQsm-ioTt-xlDQU1-YUo",
+  authDomain: "registro-de-apuestas-amz.firebaseapp.com",
+  projectId: "registro-de-apuestas-amz",
+  storageBucket: "registro-de-apuestas-amz.firebasestorage.app",
+  messagingSenderId: "472356636148",
+  appId: "1:472356636148:web:5b467de76f50b58afee5a1"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+// ── ntfy.sh notifications ──
+const NTFY_TOPIC = "alexpicks-apuestas-amz-2026";
+
+async function enviarNotificacion(titulo, cuerpo) {
+  try {
+    const url = "https://ntfy.sh/" + NTFY_TOPIC;
+    await fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Title": encodeURIComponent(titulo),
+        "Priority": "high",
+        "Tags": "sports,moneybag",
+      },
+      body: cuerpo
+    });
+  } catch(e) { console.log("Notif error:", e); }
+}
+
+// htm + React setup (no build step needed)
+const { useState, useMemo, useEffect } = React;
+const html = htm.bind(React.createElement);
+
+// ── Auth ──
+const ADMIN_PASS = "Camboya135$";
+
+// ── Constants ──
+const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Americano Colegial","Basquetbol Colegial","Combinación"];
+const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada"];
+const RESULTADOS = ["Ganada","Perdida","Pendiente","Nula"];
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const iconDeporte = {Fútbol:"⚽",Béisbol:"⚾",Basquetbol:"🏀",Americano:"🏈",Tenis:"🎾","Americano Colegial":"🏟️","Basquetbol Colegial":"🎓","Combinación":"🎯"};
+const colorRes = {Ganada:"#00e5a0",Perdida:"#ff4e6a",Pendiente:"#888",Nula:"#f5c842"};
+const bgRes = {Ganada:"#00e5a020",Perdida:"#ff4e6a20",Pendiente:"#88888820",Nula:"#f5c84220"};
+
+const fmt = n => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
+const fmtMomio = m => { const n=Number(m); if(!n) return ""; return n>0?`+${n}`:`${n}`; };
+const momioToDec = m => { const n=Number(m); if(!n) return 0; return n>0?(n/100)+1:(100/Math.abs(n))+1; };
+const parseFecha = f => { const [y,m,d]=f.split("-").map(Number); return {y,m:m-1,d}; };
+
+const calcStats = lista => {
+  const gan = lista.filter(a=>a.resultado==="Ganada");
+  const per = lista.filter(a=>a.resultado==="Perdida");
+  const pen = lista.filter(a=>a.resultado==="Pendiente");
+  const nul = lista.filter(a=>a.resultado==="Nula");
+  const invertido = lista.reduce((s,a)=>s+Number(a.monto),0);
+  const ganancia = gan.reduce((s,a)=>s+(Number(a.monto)*momioToDec(a.cuota)-Number(a.monto)),0);
+  const perdido = per.reduce((s,a)=>s+Number(a.monto),0);
+  const neto = ganancia-perdido;
+  const tot = gan.length+per.length;
+  return {ganadas:gan.length,perdidas:per.length,pendientes:pen.length,nulas:nul.length,invertido,ganancia,perdido,neto,efectividad:tot>0?Math.round(gan.length/tot*100):0,total:lista.length};
+};
+
+const initialForm = {deporte:"",tipo:"",descripcion:"",patas:[{deporte:"",desc:""},{deporte:"",desc:""}],monto:"",cuota:"",resultado:"Pendiente",fecha:new Date().toISOString().slice(0,10)};
+
+const S = {
+  root:{minHeight:"100vh",background:"#0d0f14",color:"#e8e8f0",fontFamily:"'DM Sans',sans-serif",position:"relative",paddingBottom:"env(safe-area-inset-bottom)"},
+  glow1:{position:"fixed",top:-200,left:-200,width:600,height:600,background:"radial-gradient(circle,#00e5a015 0%,transparent 70%)",pointerEvents:"none"},
+  glow2:{position:"fixed",bottom:-200,right:-200,width:500,height:500,background:"radial-gradient(circle,#ff4e6a10 0%,transparent 70%)",pointerEvents:"none"},
+  header:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"clamp(10px,2vw,18px) clamp(12px,3vw,28px)",borderBottom:"1px solid #1e2130",position:"sticky",top:0,background:"#0d0f14ee",backdropFilter:"blur(12px)",zIndex:100,flexWrap:"wrap",gap:12,className:"header-inner"},
+  logo:{display:"flex",alignItems:"center",gap:12},
+  logoIcon:{fontSize:28,color:"#00e5a0"},
+  logoTitle:{fontSize:"clamp(15px,4vw,20px)",fontWeight:800,letterSpacing:-0.5,color:"#fff"},
+  logoSub:{fontSize:11,color:"#555",letterSpacing:1,textTransform:"uppercase"},
+  nav:{display:"flex",gap:6},
+  navBtn:{background:"transparent",border:"1px solid #1e2130",borderRadius:8,color:"#666",padding:"7px clamp(10px,2vw,18px)",cursor:"pointer",fontSize:"clamp(12px,3vw,14px)",fontWeight:500},
+  navBtnActive:{background:"#1a1e2e",borderColor:"#00e5a040",color:"#00e5a0"},
+  btnPrimary:{background:"#00e5a0",color:"#0d0f14",border:"none",borderRadius:10,padding:"8px clamp(12px,2vw,20px)",fontWeight:800,fontSize:"clamp(12px,3vw,14px)",cursor:"pointer"},
+  btnSecondary:{background:"transparent",color:"#aaa",border:"1px solid #2a2e42",borderRadius:10,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"},
+  periodBar:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px clamp(12px,3vw,28px)",borderBottom:"1px solid #1a1d28",flexWrap:"wrap",gap:12,rowGap:8},
+  togglePeriodo:{display:"flex",background:"#10131a",border:"1px solid #1e2130",borderRadius:10,padding:3,gap:3},
+  tpBtn:{background:"transparent",border:"none",borderRadius:7,padding:"7px 20px",color:"#666",fontWeight:600,fontSize:13,cursor:"pointer"},
+  tpBtnActive:{background:"#1a1e2e",color:"#00e5a0"},
+  navFecha:{display:"flex",alignItems:"center",gap:16},
+  monthNav:{background:"transparent",border:"none",color:"#666",fontSize:22,cursor:"pointer",padding:"0 8px"},
+  monthLabel:{fontSize:"clamp(14px,4vw,17px)",fontWeight:700,color:"#fff",minWidth:"clamp(120px,40vw,180px)",textAlign:"center"},
+  main:{maxWidth:900,margin:"0 auto",padding:"clamp(12px,3vw,28px) clamp(10px,3vw,20px)"},
+  statsGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:28},
+  card:{background:"transparent",border:"1px solid #1e2130",borderRadius:14,padding:"clamp(12px,3vw,18px) clamp(10px,2vw,16px)"},
+  cardLabel:{fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:1,marginBottom:8},
+  cardValue:{fontSize:"clamp(16px,4vw,22px)",fontWeight:800,color:"#fff",marginBottom:4},
+  cardSub:{fontSize:12,color:"#555"},
+  section:{marginBottom:32},
+  secTitle:{fontSize:12,fontWeight:700,color:"#555",marginBottom:16,textTransform:"uppercase",letterSpacing:1.2},
+  deportesGrid:{display:"flex",gap:12,flexWrap:"wrap"},
+  deporteCard:{background:"transparent",border:"1px solid #1e2130",borderRadius:12,padding:"14px 20px",textAlign:"center",minWidth:100},
+  chartCard:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,padding:"20px 16px"},
+  chartBars:{display:"flex",alignItems:"flex-end",gap:5,height:110},
+  chartCol:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},
+  barWrap:{width:"100%",display:"flex",alignItems:"flex-end",justifyContent:"center",height:88},
+  tableWrap:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,overflow:"hidden"},
+  tableHead:{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 2fr 2fr",gap:8,padding:"12px 18px",borderBottom:"1px solid #1e2130",fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:0.8},
+  tableRow:{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 2fr 2fr",gap:8,padding:"13px 18px",borderBottom:"1px solid #13162020",fontSize:14,cursor:"pointer"},
+  apCard:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,marginBottom:10,overflow:"hidden"},
+  apMain:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",gap:12,cursor:"pointer"},
+  apLeft:{display:"flex",alignItems:"center",gap:14,flex:1,minWidth:0},
+  apDesc:{fontSize:15,fontWeight:600,color:"#e8e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
+  apMeta:{fontSize:12,color:"#555",marginTop:3},
+  apRight:{display:"flex",alignItems:"center",gap:14,flexShrink:0},
+  resTag:{fontSize:11,fontWeight:700,padding:"4px 10px",borderRadius:6,textTransform:"uppercase",letterSpacing:0.5},
+  apDetail:{borderTop:"1px solid #1a1d28",padding:"14px 18px"},
+  detailGrid:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:14},
+  actBtn:{background:"transparent",border:"1px solid #1e2130",borderRadius:8,color:"#888",padding:"6px 14px",cursor:"pointer",fontSize:13},
+  overlay:{position:"fixed",inset:0,background:"#000a",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
+  modal:{background:"#13162a",border:"1px solid #2a2e42",borderRadius:18,padding:"clamp(16px,4vw,28px)",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",margin:"0 8px"},
+  modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24},
+  modalTitle:{fontSize:20,fontWeight:800,color:"#fff"},
+  closeBtn:{background:"transparent",border:"none",color:"#666",fontSize:18,cursor:"pointer"},
+  formGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14,marginBottom:16},
+  fg:{display:"flex",flexDirection:"column",gap:6},
+  label:{fontSize:12,color:"#666",fontWeight:600,textTransform:"uppercase",letterSpacing:0.8},
+  input:{background:"#0d0f14",border:"1px solid #2a2e42",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
+  select:{background:"#0d0f14",border:"1px solid #2a2e42",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
+  preview:{background:"#00e5a010",border:"1px solid #00e5a030",borderRadius:9,padding:"10px 14px",fontSize:13,color:"#aaa",marginBottom:20},
+  modalFooter:{display:"flex",justifyContent:"flex-end",gap:10},
+  empty:{textAlign:"center",color:"#444",padding:"48px 0",fontSize:15,lineHeight:1.8},
+  badge:{background:"#1a1e2e",color:"#00e5a0",border:"1px solid #00e5a030",borderRadius:20,padding:"3px 12px",fontSize:13,fontWeight:700},
+  addPataBtn:{background:"#00e5a015",color:"#00e5a0",border:"1px solid #00e5a040",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"},
+  removePataBtn:{background:"transparent",color:"#ff4e6a",border:"1px solid #ff4e6a40",borderRadius:7,padding:"4px 10px",fontSize:11,cursor:"pointer",flexShrink:0,fontWeight:600},
+};
+
+// ── Sub-components ──
+function SC({label,value,sub,vc,bc}) {
+  return html`<div style=${{...S.card,...(bc?{borderColor:bc}:{})}}>
+    <div style=${S.cardLabel}>${label}</div>
+    <div style=${{...S.cardValue,...(vc?{color:vc}:{})}}>${value}</div>
+    <div style=${S.cardSub}>${sub}</div>
+  </div>`;
+}
+
+function DI({label,val,vc}) {
+  return html`<div style=${{display:"flex",flexDirection:"column",gap:4}}>
+    <span style=${{fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:0.8}}>${label}</span>
+    <span style=${{fontSize:15,fontWeight:700,color:vc||"#e8e8f0"}}>${val}</span>
+  </div>`;
+}
+
+function DeportesGrid({data,onSelect,selected}) {
+  return html`<div style=${S.section}>
+    <h2 style=${S.secTitle}>Por deporte <span style=${{color:"#444",fontSize:10,fontWeight:400,marginLeft:6}}>· toca para filtrar</span></h2>
+    <div style=${S.deportesGrid}>
+      ${data.map(d => {
+        const isSel = selected===d.deporte;
+        return html`<div key=${d.deporte} onClick=${()=>onSelect(d.deporte)}
+          style=${{...S.deporteCard,cursor:"pointer",borderColor:isSel?"#00e5a0":"#1e2130",background:isSel?"#00e5a008":"transparent",transition:"all .15s"}}>
+          <span style=${{fontSize:26}}>${iconDeporte[d.deporte]||"🎯"}</span>
+          <div style=${{fontSize:13,color:isSel?"#e8e8f0":"#aaa",marginTop:6,marginBottom:4,fontWeight:isSel?700:400}}>${d.deporte}</div>
+          <div style=${{fontSize:14,fontWeight:700}}>
+            <span style=${{color:"#00e5a0"}}>${d.ganadas}G</span>
+            <span style=${{color:"#888"}}> · </span>
+            <span style=${{color:"#ff4e6a"}}>${d.perdidas}P</span>
+          </div>
+          <div style=${{fontSize:11,color:"#555",marginTop:2}}>${d.total} total</div>
+        </div>`;
+      })}
+    </div>
+  </div>`;
+}
+
+function AR({a,onEdit,onDelete,onToggle,g,expanded,editable}) {
+  const [open,setOpen] = useState(false);
+  const show = open||expanded;
+  return html`<div style=${S.apCard}>
+    <div style=${S.apMain} onClick=${()=>setOpen(o=>!o)}>
+      <div style=${S.apLeft}>
+        <span style=${{fontSize:22,flexShrink:0}}>${iconDeporte[a.deporte]||"🎯"}</span>
+        <div style=${{minWidth:0}}>
+          <div style=${S.apDesc}>${a.descripcion}</div>
+          <div style=${S.apMeta}>${a.deporte} · ${a.tipo} · ${a.fecha}</div>
+        </div>
+      </div>
+      <div style=${S.apRight}>
+        <div style=${{...S.resTag,background:bgRes[a.resultado],color:colorRes[a.resultado]}}>${a.resultado}</div>
+        <div style=${{color:g>0?"#00e5a0":g<0?"#ff4e6a":"#aaa",fontWeight:700,fontSize:15}}>
+          ${g>0?"+":""}${fmt(g!==0?g:a.monto)}
+        </div>
+      </div>
+    </div>
+    ${show && html`<div style=${S.apDetail}>
+      <div style=${S.detailGrid}>
+        <${DI} label="Monto" val=${fmt(a.monto)}/>
+        <${DI} label="Momio" val=${fmtMomio(a.cuota)}/>
+        <${DI} label="Retorno" val=${fmt(a.monto*momioToDec(a.cuota))}/>
+        <${DI} label="Ganancia" val=${(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#00e5a0":"#ff4e6a"}/>
+      </div>
+      ${a.tipo==="Parlay/Combinada" && a.patas && a.patas.length>0 && html`
+        <div style=${{marginBottom:14}}>
+          <div style=${{fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Patas del parlay</div>
+          <div style=${{display:"flex",flexDirection:"column",gap:6}}>
+            ${a.patas.map((p,i) => {
+              const dep = typeof p==="object"?p.deporte:"";
+              const desc = typeof p==="object"?p.desc:p;
+              if(!desc) return null;
+              return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"#0d0f1480",borderRadius:7,padding:"6px 10px"}}>
+                <span style=${{fontSize:12,color:"#00e5a0",fontWeight:700,minWidth:18}}>${i+1}.</span>
+                ${dep && html`<span style=${{fontSize:12}}>${iconDeporte[dep]||"🎯"}</span>`}
+                ${dep && html`<span style=${{fontSize:11,color:"#666",flexShrink:0}}>${dep}</span>`}
+                <span style=${{fontSize:13,color:"#ccc"}}>${desc}</span>
+              </div>`;
+            })}
+          </div>
+        </div>
+      `}
+      ${editable && React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}},
+        React.createElement("div", {style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          ["Ganada","Perdida","Pendiente","Nula"].map(r => React.createElement("button", {
+            key:r,
+            onClick:()=>onToggle(r),
+            style:{fontSize:12,border:"1px solid",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontWeight:600,
+              background:a.resultado===r?bgRes[r]:"transparent",
+              color:a.resultado===r?colorRes[r]:"#666",
+              borderColor:a.resultado===r?colorRes[r]:"#333"}
+          }, r))
+        ),
+        React.createElement("div", {style:{display:"flex",gap:8}},
+          React.createElement("button", {onClick:onEdit, style:S.actBtn}, "✏️ Editar"),
+          React.createElement("button", {onClick:onDelete, style:{...S.actBtn,color:"#ff4e6a"}}, "🗑️")
+        )
+      )}
+    </div>`}
+  </div>`;
+}
+
+
+// ── Calendario mensual ──
+function CalendarioMes({apuestas, mes, ano}) {
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
+
+  const primerDia = new Date(ano, mes, 1).getDay(); // 0=Dom
+  const diasEnMes = new Date(ano, mes+1, 0).getDate();
+
+  // Calcular neto por día
+  const netosPorDia = {};
+  apuestas.forEach(a => {
+    const {y,m,d} = parseFecha(a.fecha);
+    if(m===mes && y===ano && a.resultado!=="Pendiente") {
+      const g = a.resultado==="Ganada" ? a.monto*momioToDec(a.cuota)-a.monto : a.resultado==="Perdida" ? -a.monto : 0;
+      netosPorDia[d] = (netosPorDia[d]||0) + g;
+    }
+  });
+
+  // Apuestas del día seleccionado
+  const apuestasDia = diaSeleccionado
+    ? apuestas.filter(a => { const {y,m,d}=parseFecha(a.fecha); return d===diaSeleccionado&&m===mes&&y===ano; })
+    : [];
+
+  const dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+  // Total ganadas/perdidas del mes
+  const totalG = apuestas.filter(a=>a.resultado==="Ganada").length;
+  const totalP = apuestas.filter(a=>a.resultado==="Perdida").length;
+  const totalPen = apuestas.filter(a=>a.resultado==="Pendiente").length;
+  const profit = apuestas.filter(a=>a.resultado!=="Pendiente").reduce((s,a)=>{
+    return s + (a.resultado==="Ganada" ? a.monto*momioToDec(a.cuota)-a.monto : a.resultado==="Perdida" ? -a.monto : 0);
+  },0);
+
+  const fmtK = n => {
+    const abs = Math.abs(n);
+    if(abs>=1000) return (n<0?"-":"+")+"\$"+(abs/1000).toFixed(abs%1000===0?0:1)+"K";
+    return (n<0?"-":"+")+"\$"+Math.round(abs);
+  };
+
+  return html`<div style=${{marginBottom:32}}>
+    <h2 style=${{fontSize:12,fontWeight:700,color:"#555",marginBottom:16,textTransform:"uppercase",letterSpacing:1.2}}>Calendario</h2>
+    <div style=${{background:"#10131a",border:"1px solid #1e2130",borderRadius:16,padding:"20px 16px"}}>
+
+      <!-- Header días semana -->
+      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8}}>
+        ${dias.map(d=>html`<div key=${d} style=${{textAlign:"center",fontSize:11,color:"#555",fontWeight:600,padding:"4px 0"}}>${d}</div>`)}
+      </div>
+
+      <!-- Grid días -->
+      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+        <!-- Espacios vacíos al inicio -->
+        ${Array(primerDia).fill(0).map((_,i)=>html`<div key=${"empty-"+i}/>`)}
+
+        <!-- Días del mes -->
+        ${Array(diasEnMes).fill(0).map((_,i)=>{
+          const dia = i+1;
+          const neto = netosPorDia[dia];
+          const tieneApuestas = apuestas.some(a=>{const {y,m,d}=parseFecha(a.fecha);return d===dia&&m===mes&&y===ano;});
+          const isSelected = diaSeleccionado===dia;
+          const isHoy = new Date().getDate()===dia && new Date().getMonth()===mes && new Date().getFullYear()===ano;
+
+          let bg = "#13162a";
+          let borderColor = isSelected?"#00e5a0":"#1e2130";
+          if(neto!==undefined) {
+            bg = neto>=0 ? (isSelected?"#00e5a030":"#00e5a015") : (isSelected?"#ff4e6a30":"#ff4e6a15");
+            borderColor = neto>=0 ? "#00e5a040" : "#ff4e6a40";
+          }
+
+          return html`<div key=${dia}
+            onClick=${()=>tieneApuestas?setDiaSeleccionado(isSelected?null:dia):null}
+            style=${{
+              background:bg,
+              border:"1px solid "+borderColor,
+              borderRadius:10,
+              padding:"8px 4px",
+              textAlign:"center",
+              cursor:tieneApuestas?"pointer":"default",
+              minHeight:56,
+              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
+              transition:"all .15s"
+            }}>
+            <div style=${{fontSize:12,color:isHoy?"#00e5a0":tieneApuestas?"#e8e8f0":"#444",fontWeight:isHoy?800:500}}>${dia}</div>
+            ${neto!==undefined && html`<div style=${{fontSize:10,fontWeight:700,color:neto>=0?"#00e5a0":"#ff4e6a"}}>${fmtK(neto)}</div>`}
+            ${tieneApuestas&&neto===undefined && html`<div style=${{fontSize:10,color:"#f5c842"}}>⏳</div>`}
+          </div>`;
+        })}
+      </div>
+
+      <!-- Record y profit -->
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,paddingTop:14,borderTop:"1px solid #1e2130",flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style=${{fontSize:11,color:"#555",marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Record</div>
+          <div style=${{fontSize:20,fontWeight:800,color:"#e8e8f0"}}>${totalG}-${totalP}${totalPen>0?"-"+totalPen:""}</div>
+        </div>
+        <div style=${{textAlign:"right"}}>
+          <div style=${{fontSize:11,color:"#555",marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Profit</div>
+          <div style=${{fontSize:20,fontWeight:800,color:profit>=0?"#00e5a0":"#ff4e6a"}}>${profit>=0?"+":""}${fmt(profit)}</div>
+        </div>
+      </div>
+
+      <!-- Detalle día seleccionado -->
+      ${diaSeleccionado && apuestasDia.length>0 && html`<div style=${{marginTop:14,paddingTop:14,borderTop:"1px solid #1e2130"}}>
+        <div style=${{fontSize:12,color:"#00e5a0",fontWeight:700,marginBottom:10,textTransform:"uppercase",letterSpacing:0.8}}>
+          ${diaSeleccionado} de ${MESES[mes]}
+        </div>
+        ${apuestasDia.map(a=>{
+          const g = a.resultado==="Ganada"?a.monto*momioToDec(a.cuota)-a.monto:a.resultado==="Perdida"?-a.monto:0;
+          return html`<div key=${a.id} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #1e213040"}}>
+            <div>
+              <div style=${{fontSize:13,color:"#e8e8f0",fontWeight:600}}>${a.descripcion}</div>
+              <div style=${{fontSize:11,color:"#555",marginTop:2}}>${a.deporte} · ${a.tipo} · Momio: ${fmtMomio(a.cuota)}</div>
+            </div>
+            <div style=${{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+              <div style=${{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:5,background:bgRes[a.resultado],color:colorRes[a.resultado]}}>${a.resultado}</div>
+              <div style=${{fontSize:13,fontWeight:700,color:g>0?"#00e5a0":g<0?"#ff4e6a":"#aaa"}}>${g>0?"+":""}${fmt(g!==0?g:a.monto)}</div>
+            </div>
+          </div>`;
+        })}
+      </div>`}
+    </div>
+  </div>`;
+}
+
+// ── Main App ──
+function App() {
+  const [apuestas,setApuestas] = useState([]);
+  const [cargando,setCargando] = useState(true);
+  const [form,setForm] = useState(initialForm);
+  const [editId,setEditId] = useState(null);
+  const [modal,setModal] = useState(false);
+  const [vistaActual,setVistaActual] = useState("dashboard");
+  const [periodoVista,setPeriodoVista] = useState("mensual");
+  const [mesSeleccionado,setMesSeleccionado] = useState(new Date().getMonth());
+  const [anoSeleccionado,setAnoSeleccionado] = useState(new Date().getFullYear());
+  const [deleteConfirm,setDeleteConfirm] = useState(null);
+  const [deporteFiltro,setDeporteFiltro] = useState(null);
+  const [modoEdicion,setModoEdicion] = useState(false);
+  const [loginModal,setLoginModal] = useState(false);
+  const [passInput,setPassInput] = useState("");
+  const [passError,setPassError] = useState(false);
+  const [bankrolls,setBankrolls] = useState({});
+  const [editingBank,setEditingBank] = useState(false);
+  const [bankInput,setBankInput] = useState("");
+
+  useEffect(()=>{
+    const unsub = db.collection("apuestas").orderBy("fecha","asc").onSnapshot(snap=>{
+      setApuestas(snap.docs.map(d=>({...d.data(),_docId:d.id})));
+      setCargando(false);
+    },()=>setCargando(false));
+    return ()=>unsub();
+  },[]);
+
+  useEffect(()=>{
+    const unsub = db.collection("config").doc("bankrolls").onSnapshot(snap=>{
+      if(snap.exists) setBankrolls(snap.data());
+    });
+    return ()=>unsub();
+  },[]);
+
+  const bankKey = `${anoSeleccionado}-${mesSeleccionado}`;
+  const bankrollMes = bankrolls[bankKey]||0;
+  const setBankroll = val => {
+    const updated = {...bankrolls,[bankKey]:Number(val)||0};
+    db.collection("config").doc("bankrolls").set(updated);
+  };
+
+  const intentarLogin = () => {
+    if(passInput === ADMIN_PASS) {
+      setModoEdicion(true);
+      setLoginModal(false);
+      setPassInput("");
+      setPassError(false);
+    } else {
+      setPassError(true);
+    }
+  };
+
+  const apuestasMes = useMemo(()=>apuestas.filter(a=>{
+    const {y,m}=parseFecha(a.fecha); return m===mesSeleccionado&&y===anoSeleccionado;
+  }),[apuestas,mesSeleccionado,anoSeleccionado]);
+
+  const apuestasAno = useMemo(()=>apuestas.filter(a=>parseFecha(a.fecha).y===anoSeleccionado),[apuestas,anoSeleccionado]);
+  const stats = useMemo(()=>calcStats(apuestasMes),[apuestasMes]);
+
+  const momioPromedioMes = useMemo(()=>{
+    const con = apuestasMes.filter(a=>a.cuota&&a.cuota!==0);
+    if(!con.length) return null;
+    return Math.round(con.reduce((s,a)=>s+Number(a.cuota),0)/con.length);
+  },[apuestasMes]);
+
+  const rachaActual = useMemo(()=>{
+    const finalizadas = apuestasMes.filter(a=>a.resultado!=="Pendiente").sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    if(finalizadas.length===0) return {racha:0,tipo:null};
+    let racha=1, tipo=finalizadas[finalizadas.length-1].resultado;
+    for(let i=finalizadas.length-2;i>=0;i--){
+      if(finalizadas[i].resultado===tipo) racha++;
+      else break;
+    }
+    return {racha,tipo};
+  },[apuestasMes]);
+  const statsAnual = useMemo(()=>calcStats(apuestasAno),[apuestasAno]);
+
+  const momioPromedio = useMemo(()=>{
+    const finalizadas = apuestasAno.filter(a=>a.cuota&&a.cuota!==0);
+    if(!finalizadas.length) return null;
+    const suma = finalizadas.reduce((s,a)=>s+Number(a.cuota),0);
+    const prom = suma/finalizadas.length;
+    return Math.round(prom);
+  },[apuestasAno]);
+
+  const datosPorMes = useMemo(()=>MESES_CORTO.map((mes,i)=>{
+    const lista=apuestas.filter(a=>{const {y,m}=parseFecha(a.fecha);return m===i&&y===anoSeleccionado;});
+    return {mes,...calcStats(lista)};
+  }),[apuestas,anoSeleccionado]);
+
+  const porDeporteMes = useMemo(()=>DEPORTES.map(d=>{
+    const ap=apuestasMes.filter(a=>a.deporte===d);
+    return {deporte:d,total:ap.length,ganadas:ap.filter(a=>a.resultado==="Ganada").length,perdidas:ap.filter(a=>a.resultado==="Perdida").length};
+  }).filter(d=>d.total>0),[apuestasMes]);
+
+  const porDeporteAno = useMemo(()=>DEPORTES.map(d=>{
+    const ap=apuestasAno.filter(a=>a.deporte===d);
+    const gan=ap.filter(a=>a.resultado==="Ganada");
+    const per=ap.filter(a=>a.resultado==="Perdida");
+    const ganancia=gan.reduce((s,a)=>s+(a.monto*momioToDec(a.cuota)-a.monto),0);
+    const perdido=per.reduce((s,a)=>s+a.monto,0);
+    return {deporte:d,total:ap.length,ganadas:gan.length,perdidas:per.length,neto:ganancia-perdido};
+  }).filter(d=>d.total>0),[apuestasAno]);
+
+  const maxNeto = useMemo(()=>Math.max(...datosPorMes.map(d=>Math.abs(d.neto)),1),[datosPorMes]);
+
+  const gananciaAp = a => a.resultado==="Ganada"?a.monto*momioToDec(a.cuota)-a.monto:a.resultado==="Perdida"?-a.monto:0;
+
+  const openModal = (ap=null) => {
+    if(ap){
+      const patas=ap.patas?ap.patas.map(p=>typeof p==="string"?{deporte:"",desc:p}:p):[{deporte:"",desc:""},{deporte:"",desc:""}];
+      setForm({...ap,monto:String(ap.monto),cuota:String(ap.cuota),patas});
+      setEditId(ap.id);
+    } else {setForm(initialForm);setEditId(null);}
+    setModal(true);
+  };
+
+  const guardar = () => {
+    const esParlay = form.tipo==="Parlay/Combinada";
+    const desc = esParlay
+      ? form.patas.filter(p=>p.desc && p.desc.trim()).map(p=>(p.deporte?`[${p.deporte}] `:"")+p.desc).join(" | ")
+      : form.descripcion;
+    const deporteOk = esParlay||!!form.deporte;
+    const cuotaVal = String(form.cuota).trim();
+    const cuotaOk = cuotaVal!==""&&cuotaVal!=="0"&&!isNaN(Number(cuotaVal));
+    const montoOk = String(form.monto).trim()!==""&&Number(form.monto)>0;
+    const descOk = desc && desc.trim().length>0;
+    if(!deporteOk||!form.tipo||!descOk||!montoOk||!cuotaOk||!form.fecha) return;
+    const deporte = esParlay&&!form.deporte?"Combinación":form.deporte;
+    const nueva = {deporte,descripcion:desc,monto:Number(form.monto),cuota:Number(form.cuota),resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
+    if(editId){
+      const docId=apuestas.find(a=>a.id===editId)?._docId;
+      if(docId) db.collection("apuestas").doc(docId).set({...nueva,id:editId});
+      else db.collection("apuestas").add({...nueva,id:editId});
+    } else {
+      db.collection("apuestas").add({...nueva,id:Date.now()});
+      // Notificar a todos
+      const momioStr = Number(nueva.cuota)>0?"+"+nueva.cuota:String(nueva.cuota);
+      enviarNotificacion(
+        "🎯 Nuevo pick — AlexPicks",
+        nueva.descripcion+" | "+nueva.deporte+" | Momio: "+momioStr+" | $"+nueva.monto
+      );
+    }
+    setModal(false);
+  };
+
+  const eliminar = id => {
+    const docId=apuestas.find(a=>a.id===id)?._docId;
+    if(docId) db.collection("apuestas").doc(docId).delete();
+    setDeleteConfirm(null);
+  };
+
+  const cambiarResultado = (id,resultado) => {
+    const ap=apuestas.find(a=>a.id===id);
+    if(!ap?._docId) return;
+    db.collection("apuestas").doc(ap._docId).update({resultado});
+    if(resultado==="Ganada"||resultado==="Perdida"||resultado==="Nula") {
+      const emoji = resultado==="Ganada"?"✅":resultado==="Nula"?"🔄":"❌";
+      const ganancia = resultado==="Ganada"
+        ? Math.round(ap.monto*momioToDec(ap.cuota)-ap.monto)
+        : -ap.monto;
+      const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
+      enviarNotificacion(
+        emoji+" "+resultado.toUpperCase()+" — AlexPicks",
+        ap.descripcion+" | "+ap.deporte+" | "+ganStr
+      );
+    }
+  };
+
+  const prevMes = () => { if(mesSeleccionado===0){setMesSeleccionado(11);setAnoSeleccionado(y=>y-1);}else setMesSeleccionado(m=>m-1); };
+  const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
+
+  if(cargando) return html`<div style=${{minHeight:"100vh",background:"#0d0f14",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+    <div style=${{fontSize:40,color:"#00e5a0"}}>◈</div>
+    <div style=${{color:"#555",fontSize:14}}>Conectando...</div>
+  </div>`;
+
+  return html`<div style=${S.root}>
+    <div style=${S.glow1}/><div style=${S.glow2}/>
+
+    <!-- Header -->
+    <header style=${S.header}>
+      <div style=${S.logo}>
+        <span style=${S.logoIcon}>◈</span>
+        <div>
+          <div style=${S.logoTitle}>Registro de Apuestas</div>
+          <div style=${S.logoSub}>Control de apuestas</div>
+        </div>
+      </div>
+      <nav style=${S.nav}>
+        ${[["dashboard","Dashboard"],["apuestas","Mis Apuestas"]].map(([v,l])=>html`
+          <button key=${v} onClick=${()=>setVistaActual(v)} style=${{...S.navBtn,...(vistaActual===v?S.navBtnActive:{})}}>${l}</button>
+        `)}
+      </nav>
+      <div style=${{display:"flex",gap:8,alignItems:"center"}}>
+        ${modoEdicion
+          ? html`<span style=${{fontSize:12,color:"#00e5a0",border:"1px solid #00e5a040",borderRadius:8,padding:"6px 12px"}}>✏️ Modo edición</span>`
+          : html`<button onClick=${()=>setLoginModal(true)} style=${{...S.btnSecondary,fontSize:13}}>🔒 Editar</button>`
+        }
+        ${modoEdicion && html`<button onClick=${()=>openModal()} style=${S.btnPrimary}>+ Nueva apuesta</button>`}
+        ${modoEdicion && html`<button onClick=${()=>setModoEdicion(false)} style=${{...S.btnSecondary,fontSize:12,padding:"8px 12px"}}>Salir</button>`}
+      </div>
+    </header>
+
+    <!-- Period bar -->
+    <div style=${{...S.periodBar,flexDirection:"column",alignItems:"center",gap:10}}>
+      <div style=${S.togglePeriodo}>
+        <button onClick=${()=>setPeriodoVista("mensual")} style=${{...S.tpBtn,...(periodoVista==="mensual"?S.tpBtnActive:{})}}>Mensual</button>
+        <button onClick=${()=>setPeriodoVista("anual")} style=${{...S.tpBtn,...(periodoVista==="anual"?S.tpBtnActive:{})}}>Anual</button>
+      </div>
+      ${periodoVista==="mensual"
+        ? html`<div style=${{...S.navFecha,justifyContent:"center"}}>
+            <button style=${S.monthNav} onClick=${prevMes}>‹</button>
+            <span style=${S.monthLabel}>${MESES[mesSeleccionado]} ${anoSeleccionado}</span>
+            <button style=${S.monthNav} onClick=${nextMes}>›</button>
+          </div>`
+        : html`<div style=${{...S.navFecha,justifyContent:"center"}}>
+            <button style=${S.monthNav} onClick=${()=>setAnoSeleccionado(y=>y-1)}>‹</button>
+            <span style=${S.monthLabel}>${anoSeleccionado}</span>
+            <button style=${S.monthNav} onClick=${()=>setAnoSeleccionado(y=>y+1)}>›</button>
+          </div>`
+      }
+    </div>
+
+    <main style=${S.main}>
+
+      <!-- MENSUAL DASHBOARD -->
+      ${periodoVista==="mensual" && vistaActual==="dashboard" && html`<div>
+        <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:32,maxWidth:780,margin:"0 auto 32px auto"}}>
+          <div style=${{...S.card,cursor:"pointer",borderColor:editingBank?"#00e5a060":"#1e2130"}}
+            onClick=${()=>{setEditingBank(true);setBankInput(bankrollMes?String(bankrollMes):"");}}>
+            <div style=${S.cardLabel}>Bank del mes</div>
+            ${editingBank
+              ? html`<input autoFocus style=${{...S.input,fontSize:18,fontWeight:800,padding:"4px 8px"}} type="number"
+                  value=${bankInput} placeholder="0"
+                  onInput=${e=>setBankInput(e.target.value)}
+                  onBlur=${()=>{setBankroll(bankInput);setEditingBank(false);}}
+                  onKeyDown=${e=>{if(e.key==="Enter"){setBankroll(bankInput);setEditingBank(false);}}}/>`
+              : html`<div style=${{...S.cardValue,color:bankrollMes?"#fff":"#333"}}>${bankrollMes?fmt(bankrollMes):"— Editar"}</div>`
+            }
+            ${bankrollMes>0&&!editingBank && html`<div style=${{fontSize:11,color:stats.neto>=0?"#00e5a0":"#ff4e6a",marginTop:4}}>
+              ${stats.neto>=0?"+":""}${fmt(stats.neto)} (${((stats.neto/bankrollMes)*100).toFixed(1)}%)
+            </div>`}
+            ${!bankrollMes&&!editingBank && html`<div style=${S.cardSub}>MXN presupuestado</div>`}
+          </div>
+          <${SC} label="Balance Neto" value=${(stats.neto>=0?"+":"")+fmt(stats.neto)} sub="Este mes" vc=${stats.neto>=0?"#00e5a0":"#ff4e6a"} bc=${stats.neto>=0?"#00e5a040":"#ff4e6a40"}/>
+          <${SC} label="Efectividad" value=${stats.efectividad+"%"} sub=${stats.ganadas+"G · "+stats.perdidas+"P · "+stats.pendientes+"⏳"+(stats.nulas>0?" · "+stats.nulas+"N":"")} vc=${stats.efectividad>=50?"#00e5a0":"#ff4e6a"}/>
+          <div style=${{...S.card,borderColor:rachaActual.tipo==="Ganada"?"#00e5a040":rachaActual.tipo==="Perdida"?"#ff4e6a40":"#1e2130"}}>
+            <div style=${S.cardLabel}>Racha actual</div>
+            <div style=${{...S.cardValue,color:rachaActual.tipo==="Ganada"?"#00e5a0":rachaActual.tipo==="Perdida"?"#ff4e6a":"#555"}}>
+              ${rachaActual.racha>0?rachaActual.racha+"":"—"}
+              ${rachaActual.tipo==="Ganada"?" 🔥":rachaActual.tipo==="Perdida"?" 🥶":""}
+            </div>
+            <div style=${S.cardSub}>${rachaActual.tipo==="Ganada"?"Ganadas seguidas":rachaActual.tipo==="Perdida"?"Perdidas seguidas":"Sin apuestas"}</div>
+          </div>
+          <${SC} label="Momio promedio" value=${momioPromedioMes!==null?(momioPromedioMes>0?"+"+momioPromedioMes:String(momioPromedioMes)):"—"} sub="Este mes" vc="#e8e8f0"/>
+        </div>
+        <${CalendarioMes} apuestas=${apuestasMes} mes=${mesSeleccionado} ano=${anoSeleccionado}/>
+        ${porDeporteMes.length>0 && html`<${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>`}
+        ${deporteFiltro && html`<div style=${{...S.section,marginTop:-8}}>
+          <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <h2 style=${{...S.secTitle,marginBottom:0,color:"#00e5a0"}}>${iconDeporte[deporteFiltro]||"🎯"} ${deporteFiltro}</h2>
+            <button onClick=${()=>setDeporteFiltro(null)} style=${{background:"transparent",border:"1px solid #2a2e42",borderRadius:7,color:"#666",padding:"4px 12px",fontSize:12,cursor:"pointer"}}>✕ Cerrar</button>
+          </div>
+          ${apuestasMes.filter(a=>a.deporte===deporteFiltro).length===0
+            ? html`<div style=${S.empty}>No hay apuestas de este deporte este mes.</div>`
+            : [...apuestasMes].reverse().filter(a=>a.deporte===deporteFiltro).map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} expanded editable=${modoEdicion}/>`)
+          }
+        </div>`}
+        <div style=${S.section}>
+          <h2 style=${S.secTitle}>Apuestas del mes</h2>
+          ${apuestasMes.length===0
+            ? html`<div style=${S.empty}>No hay apuestas este mes.<br/>¡Agrega tu primera!</div>`
+            : apuestasMes.slice().reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} editable=${modoEdicion}/>`)
+          }
+        </div>
+      </div>`}
+
+      <!-- MENSUAL APUESTAS -->
+      ${periodoVista==="mensual" && vistaActual==="apuestas" && html`<div style=${S.section}>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 style=${{...S.secTitle,marginBottom:0}}>Apuestas — ${MESES[mesSeleccionado]}</h2>
+          <span style=${S.badge}>${apuestasMes.length}</span>
+        </div>
+        ${apuestasMes.length===0
+          ? html`<div style=${S.empty}>No hay apuestas este mes.</div>`
+          : [...apuestasMes].reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} expanded editable=${modoEdicion}/>`)
+        }
+      </div>`}
+
+      <!-- ANUAL DASHBOARD -->
+      ${periodoVista==="anual" && vistaActual==="dashboard" && html`<div>
+        <div style=${S.statsGrid}>
+          <${SC} label="Balance anual" value=${(statsAnual.neto>=0?"+":"")+fmt(statsAnual.neto)} sub=${String(anoSeleccionado)} vc=${statsAnual.neto>=0?"#00e5a0":"#ff4e6a"} bc=${statsAnual.neto>=0?"#00e5a040":"#ff4e6a40"}/>
+          <${SC} label="Efectividad" value=${statsAnual.efectividad+"%"} sub=${statsAnual.ganadas+"G · "+statsAnual.perdidas+"P"+(statsAnual.nulas>0?" · "+statsAnual.nulas+"N":"")} vc=${statsAnual.efectividad>=50?"#00e5a0":"#ff4e6a"}/>
+          <${SC} label="Total ganado" value=${"+"+fmt(statsAnual.ganancia)} sub=${statsAnual.ganadas+" ganadoras"} vc="#00e5a0"/>
+          <${SC} label="Apuestas" value=${statsAnual.total} sub=${statsAnual.pendientes+" pendientes"}/>
+          <${SC} label="Momio promedio" value=${momioPromedio!==null?(momioPromedio>0?"+"+momioPromedio:String(momioPromedio)):"—"} sub="Todas las apuestas" vc="#e8e8f0"/>
+        </div>
+        <div style=${S.section}>
+          <h2 style=${S.secTitle}>Balance mensual — ${anoSeleccionado}</h2>
+          <div style=${S.chartCard}>
+            <div style=${S.chartBars}>
+              ${datosPorMes.map((d,i)=>{
+                const h=Math.round((Math.abs(d.neto)/maxNeto)*84);
+                const isPos=d.neto>=0;
+                return html`<div key=${d.mes} style=${S.chartCol} onClick=${()=>{setMesSeleccionado(i);setPeriodoVista("mensual");}}>
+                  <div style=${S.barWrap}>
+                    ${d.neto!==0
+                      ? html`<div style=${{width:"100%",height:h+"px",minHeight:4,background:isPos?"#00e5a0":"#ff4e6a",borderRadius:4,opacity:i===mesSeleccionado?1:0.55}} title=${MESES[i]+": "+fmt(d.neto)}/>`
+                      : html`<div style=${{width:"100%",height:"2px",background:"#1e2130",borderRadius:2}}/>`
+                    }
+                  </div>
+                  <div style=${{fontSize:9,color:i===mesSeleccionado?"#e8e8f0":"#555",fontWeight:i===mesSeleccionado?700:400,marginTop:4}}>${d.mes}</div>
+                  ${d.total>0 && html`<div style=${{fontSize:8,color:isPos?"#00e5a070":"#ff4e6a70",textAlign:"center"}}>${isPos?"+":""}${Math.round(d.neto/1000*10)/10}k</div>`}
+                </div>`;
+              })}
+            </div>
+            <div style=${{display:"flex",gap:16,fontSize:11,color:"#555",marginTop:12,flexWrap:"wrap",alignItems:"center"}}>
+              <span style=${{color:"#00e5a0"}}>■ Ganancia</span>
+              <span style=${{color:"#ff4e6a"}}>■ Pérdida</span>
+              <span>· Clic en un mes para ver detalle</span>
+            </div>
+          </div>
+        </div>
+        <div style=${S.section}>
+          <h2 style=${S.secTitle}>Resumen por mes</h2>
+          <div style=${S.tableWrap}>
+            <div style=${S.tableHead}>
+              ${["Mes","Apuestas","Ganadas","Perdidas","Invertido","Balance"].map(h=>html`<span key=${h}>${h}</span>`)}
+            </div>
+            ${datosPorMes.map((d,i)=>d.total>0 && html`
+              <div key=${i} style=${S.tableRow} onClick=${()=>{setMesSeleccionado(i);setPeriodoVista("mensual");}}>
+                <span style=${{color:"#e8e8f0",fontWeight:600}}>${MESES[i]}</span>
+                <span style=${{color:"#888"}}>${d.total}</span>
+                <span style=${{color:"#00e5a0"}}>${d.ganadas}</span>
+                <span style=${{color:"#ff4e6a"}}>${d.perdidas}</span>
+                <span style=${{color:"#888"}}>${fmt(d.invertido)}</span>
+                <span style=${{color:d.neto>=0?"#00e5a0":"#ff4e6a",fontWeight:700}}>${d.neto>=0?"+":""}${fmt(d.neto)}</span>
+              </div>
+            `)}
+            ${datosPorMes.every(d=>d.total===0) && html`<div style=${S.empty}>No hay apuestas en ${anoSeleccionado}.</div>`}
+          </div>
+        </div>
+        ${porDeporteAno.length>0 && html`<div style=${S.section}>
+          <h2 style=${S.secTitle}>Por deporte — ${anoSeleccionado}</h2>
+          <div style=${S.deportesGrid}>
+            ${porDeporteAno.map(d=>html`<div key=${d.deporte} style=${{...S.deporteCard,minWidth:130}}>
+              <span style=${{fontSize:26}}>${iconDeporte[d.deporte]}</span>
+              <div style=${{fontSize:13,color:"#aaa",marginTop:6,marginBottom:4}}>${d.deporte}</div>
+              <div style=${{fontSize:14,fontWeight:700}}><span style=${{color:"#00e5a0"}}>${d.ganadas}G</span><span style=${{color:"#888"}}> · </span><span style=${{color:"#ff4e6a"}}>${d.perdidas}P</span></div>
+              <div style=${{fontSize:13,fontWeight:700,color:d.neto>=0?"#00e5a0":"#ff4e6a",marginTop:6}}>${d.neto>=0?"+":""}${fmt(d.neto)}</div>
+              <div style=${{fontSize:11,color:"#555",marginTop:2}}>${d.total} total</div>
+            </div>`)}
+          </div>
+        </div>`}
+      </div>`}
+
+      <!-- ANUAL APUESTAS -->
+      ${periodoVista==="anual" && vistaActual==="apuestas" && html`<div style=${S.section}>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 style=${{...S.secTitle,marginBottom:0}}>Todas las apuestas — ${anoSeleccionado}</h2>
+          <span style=${S.badge}>${apuestasAno.length}</span>
+        </div>
+        ${apuestasAno.length===0
+          ? html`<div style=${S.empty}>No hay apuestas en ${anoSeleccionado}.</div>`
+          : [...apuestasAno].reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} expanded editable=${modoEdicion}/>`)
+        }
+      </div>`}
+
+    </main>
+
+    <!-- Modal nueva/editar -->
+    ${modal && html`<div style=${S.overlay} onClick=${()=>setModal(false)}>
+      <div style=${S.modal} onClick=${e=>e.stopPropagation()}>
+        <div style=${S.modalHeader}>
+          <h2 style=${S.modalTitle}>${editId?"Editar apuesta":"Nueva apuesta"}</h2>
+          <button onClick=${()=>setModal(false)} style=${S.closeBtn}>✕</button>
+        </div>
+        <div style=${S.formGrid}>
+          <div style=${S.fg}>
+            <label style=${S.label}>Deporte</label>
+            <select style=${S.select} value=${form.deporte} onChange=${e=>setForm(f=>({...f,deporte:e.target.value}))}>
+              <option value="">Seleccionar...</option>
+              ${DEPORTES.map(d=>html`<option key=${d} value=${d}>${iconDeporte[d]} ${d}</option>`)}
+            </select>
+          </div>
+          <div style=${S.fg}>
+            <label style=${S.label}>Tipo</label>
+            <select style=${S.select} value=${form.tipo} onChange=${e=>setForm(f=>({...f,tipo:e.target.value}))}>
+              <option value="">Seleccionar...</option>
+              ${TIPOS.map(t=>html`<option key=${t} value=${t}>${t}</option>`)}
+            </select>
+          </div>
+          ${form.tipo!=="Parlay/Combinada"
+            ? html`<div style=${{...S.fg,gridColumn:"1/-1"}}>
+                <label style=${S.label}>Descripción</label>
+                <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder="Ej: Real Madrid vs Barcelona"/>
+              </div>`
+            : html`<div style=${{gridColumn:"1/-1"}}>
+                <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <label style=${S.label}>Patas del Parlay (${form.patas.length})</label>
+                  <button onClick=${()=>setForm(f=>({...f,patas:[...f.patas,{deporte:"",desc:""}]}))} style=${S.addPataBtn}>+ Agregar</button>
+                </div>
+                <div style=${{display:"flex",flexDirection:"column",gap:10}}>
+                  ${form.patas.map((p,i)=>html`
+                    <div key=${i} style=${{background:"#0d0f14",border:"1px solid #1e2130",borderRadius:10,padding:"10px 12px"}}>
+                      <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                        <span style=${{fontSize:12,color:"#00e5a0",fontWeight:700}}>Pata ${i+1}</span>
+                        <button onClick=${()=>setForm(f=>({...f,patas:f.patas.filter((_,j)=>j!==i)}))} style=${S.removePataBtn}>✕ Eliminar</button>
+                      </div>
+                      <div style=${{display:"flex",gap:8,flexDirection:"column"}}>
+                        <select style=${S.select} value=${p.deporte} onChange=${e=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],deporte:e.target.value};return{...f,patas:np};})}>
+                          <option value="">Deporte (opcional)</option>
+                          ${DEPORTES.map(d=>html`<option key=${d} value=${d}>${iconDeporte[d]} ${d}</option>`)}
+                        </select>
+                        <input style=${S.input} value=${p.desc} onInput=${e=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],desc:e.target.value};return{...f,patas:np};})} placeholder=${"Descripción: Ej: Lakers -5.5"}/>
+                      </div>
+                    </div>
+                  `)}
+                </div>
+              </div>`
+          }
+          <div style=${S.fg}>
+            <label style=${S.label}>Monto (MXN)</label>
+            <input style=${S.input} type="number" value=${form.monto} onInput=${e=>setForm(f=>({...f,monto:e.target.value}))} placeholder="0" min="0"/>
+          </div>
+          <div style=${S.fg}>
+            <label style=${S.label}>Momio (americano)</label>
+            <input style=${S.input} type="number" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} placeholder="-110 o +150" step="1"/>
+          </div>
+          <div style=${S.fg}>
+            <label style=${S.label}>Fecha</label>
+            <input style=${S.input} type="date" value=${form.fecha} onChange=${e=>setForm(f=>({...f,fecha:e.target.value}))}/>
+          </div>
+          <div style=${S.fg}>
+            <label style=${S.label}>Resultado</label>
+            <select style=${S.select} value=${form.resultado} onChange=${e=>setForm(f=>({...f,resultado:e.target.value}))}>
+              ${RESULTADOS.map(r=>html`<option key=${r} value=${r}>${r}</option>`)}
+            </select>
+          </div>
+        </div>
+        ${form.monto&&form.cuota&&momioToDec(form.cuota)>0 && html`<div style=${S.preview}>
+          Momio: <span style=${{color:"#fff",fontWeight:700}}>${fmtMomio(form.cuota)}</span>
+          <span style=${{marginLeft:12}}>· Ganancia potencial: </span>
+          <span style=${{color:"#00e5a0",fontWeight:700}}>${fmt(form.monto*momioToDec(form.cuota)-form.monto)}</span>
+          <span style=${{color:"#666",marginLeft:12}}>Retorno: ${fmt(form.monto*momioToDec(form.cuota))}</span>
+        </div>`}
+        <div style=${S.modalFooter}>
+          <button onClick=${()=>setModal(false)} style=${S.btnSecondary}>Cancelar</button>
+          <button onClick=${guardar} style=${S.btnPrimary}>Guardar</button>
+        </div>
+      </div>
+    </div>`}
+
+    <!-- Modal login -->
+    ${loginModal && html`<div style=${S.overlay} onClick=${()=>{setLoginModal(false);setPassInput("");setPassError(false);}}>
+      <div style=${{...S.modal,maxWidth:360}} onClick=${e=>e.stopPropagation()}>
+        <div style=${S.modalHeader}>
+          <h2 style=${S.modalTitle}>🔒 Modo edición</h2>
+          <button onClick=${()=>{setLoginModal(false);setPassInput("");setPassError(false);}} style=${S.closeBtn}>✕</button>
+        </div>
+        <p style=${{color:"#888",marginBottom:16,fontSize:14}}>Ingresa la contraseña para poder agregar y editar apuestas.</p>
+        <input style=${{...S.input,marginBottom:8}} type="password" value=${passInput}
+          placeholder="Contraseña"
+          onInput=${e=>setPassInput(e.target.value)}
+          onKeyDown=${e=>{if(e.key==="Enter") intentarLogin();}}
+          autoFocus/>
+        ${passError && html`<div style=${{color:"#ff4e6a",fontSize:12,marginBottom:12}}>Contraseña incorrecta</div>`}
+        <div style=${{...S.modalFooter,marginTop:16}}>
+          <button onClick=${()=>{setLoginModal(false);setPassInput("");setPassError(false);}} style=${S.btnSecondary}>Cancelar</button>
+          <button onClick=${intentarLogin} style=${S.btnPrimary}>Entrar</button>
+        </div>
+      </div>
+    </div>`}
+
+    <!-- Modal eliminar -->
+    ${deleteConfirm && html`<div style=${S.overlay} onClick=${()=>setDeleteConfirm(null)}>
+      <div style=${{...S.modal,maxWidth:360}} onClick=${e=>e.stopPropagation()}>
+        <div style=${S.modalHeader}>
+          <h2 style=${{...S.modalTitle,color:"#ff4e6a"}}>Eliminar apuesta</h2>
+          <button onClick=${()=>setDeleteConfirm(null)} style=${S.closeBtn}>✕</button>
+        </div>
+        <p style=${{color:"#aaa",marginBottom:24}}>¿Estás seguro? Esta acción no se puede deshacer.</p>
+        <div style=${S.modalFooter}>
+          <button onClick=${()=>setDeleteConfirm(null)} style=${S.btnSecondary}>Cancelar</button>
+          <button onClick=${()=>eliminar(deleteConfirm)} style=${{...S.btnPrimary,background:"#ff4e6a"}}>Eliminar</button>
+        </div>
+      </div>
+    </div>`}
+  </div>`;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
