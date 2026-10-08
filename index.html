@@ -132,7 +132,7 @@ const ADMIN_PASS = "Camboya135$";
 
 // ── Constants ──
 const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Americano Colegial","Basquetbol Colegial","Combinación"];
-const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Especial por jugador","PlayBoost"];
+const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Especial por jugador","PlayBoost","Freebet"];
 const RESULTADOS = ["Ganada","Perdida","Pendiente","Nula"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -574,7 +574,7 @@ function App() {
 
   const guardar = () => {
     const esParlay = form.tipo==="Parlay/Combinada";
-    const deporteOpcional = esParlay||form.tipo==="Especial por jugador"||form.tipo==="PlayBoost";
+    const deporteOpcional = esParlay||form.tipo==="Especial por jugador"||form.tipo==="PlayBoost"||form.tipo==="Freebet";
     const desc = esParlay
       ? form.patas.filter(p=>p.desc && p.desc.trim()).map(p=>(p.deporte?`[${p.deporte}] `:"")+p.desc).join(" | ")
       : form.descripcion;
