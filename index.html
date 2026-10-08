@@ -891,7 +891,7 @@ function App() {
           </div>
           <div style=${S.fg}>
             <label style=${S.label}>Momio (americano)</label>
-            <input style=${S.input} type="number" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} placeholder="-110 o +150" step="1"/>
+            <input style=${S.input} type="text" inputMode="numeric" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} placeholder="-110 o +150"/>
           </div>
           <div style=${S.fg}>
             <label style=${S.label}>Fecha</label>
