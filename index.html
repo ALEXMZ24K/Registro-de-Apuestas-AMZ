@@ -859,7 +859,7 @@ function App() {
           ${form.tipo!=="Parlay/Combinada"
             ? html`<div style=${{...S.fg,gridColumn:"1/-1"}}>
                 <label style=${S.label}>Descripción</label>
-                <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder="Ej: Real Madrid vs Barcelona"/>
+                <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder=${form.tipo==="Especial por jugador"?"Ej: LeBron James +25.5 puntos":form.tipo==="PlayBoost"?"Ej: Boost Chiefs gana +180":"Ej: Real Madrid vs Barcelona"}/>
               </div>`
             : html`<div style=${{gridColumn:"1/-1"}}>
                 <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
