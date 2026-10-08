@@ -23,39 +23,64 @@
     body { padding-top: env(safe-area-inset-top); }
     .sticky-header { top: env(safe-area-inset-top) !important; }
 
-    /* ── Mobile responsive ── */
+    /* ── Responsive breakpoints ── */
+
+    /* Tablet (601–900px) */
+    @media(min-width:601px) and (max-width:900px){
+      .stats-grid{grid-template-columns:repeat(3,1fr) !important}
+      .main-content{padding:20px 18px !important}
+      .modal-inner{max-width:90vw !important}
+    }
+
+    /* Desktop (901px+) */
+    @media(min-width:901px){
+      .stats-grid{grid-template-columns:repeat(4,1fr) !important}
+      .main-content{max-width:960px !important;margin:0 auto !important;padding:28px 24px !important}
+      .modal-inner{max-width:540px !important}
+      .deporte-card{min-width:110px !important}
+    }
+
+    /* Mobile (≤600px) */
     @media(max-width:600px){
       .period-bar-inner{justify-content:center !important;flex-direction:column !important;align-items:center !important}
       .period-spacer{display:none !important}
-      .header-inner{padding:10px 14px !important;gap:8px !important}
+      .header-inner{padding:10px 14px !important;gap:8px !important;flex-wrap:wrap !important}
       .logo-title{font-size:16px !important}
       .logo-sub{display:none}
-      .nav-btn{padding:6px 12px !important;font-size:13px !important}
-      .btn-primary{padding:8px 14px !important;font-size:13px !important}
-      .btn-secondary{padding:8px 10px !important;font-size:12px !important}
+      .nav-btn{padding:6px 10px !important;font-size:12px !important}
+      .btn-primary{padding:8px 12px !important;font-size:12px !important}
+      .btn-secondary{padding:7px 10px !important;font-size:11px !important}
       .period-bar{padding:10px 14px !important}
       .month-label{min-width:130px !important;font-size:15px !important}
-      .main-content{padding:16px 12px !important}
+      .main-content{padding:14px 10px !important}
       .stats-grid{grid-template-columns:repeat(2,1fr) !important;gap:10px !important}
-      .stat-card{padding:14px 12px !important}
+      .stat-card{padding:12px 10px !important}
       .stat-value{font-size:18px !important}
       .ap-desc{font-size:14px !important}
       .ap-meta{font-size:11px !important}
       .detail-grid{grid-template-columns:repeat(2,1fr) !important}
-      .modal-inner{padding:20px 16px !important;margin:8px !important}
+      .modal-inner{padding:18px 14px !important;margin:8px !important;max-width:calc(100vw - 16px) !important}
       .form-grid{grid-template-columns:1fr !important}
       .form-grid-full{grid-column:1 !important}
       .table-head,.table-row{grid-template-columns:2fr 1fr 1fr 2fr !important}
       .table-col-hide{display:none !important}
-      .deporte-card{min-width:80px !important;padding:10px 12px !important}
+      .deporte-card{min-width:76px !important;padding:10px 8px !important}
       .cal-day{min-height:46px !important;padding:5px 2px !important}
       .cal-day-num{font-size:11px !important}
       .cal-day-val{font-size:9px !important}
       .action-btns{flex-direction:column !important;gap:6px !important}
+      .ap-main{padding:12px 14px !important;gap:8px !important}
+      .ap-right{gap:8px !important}
+      .ap-monto{font-size:13px !important}
+      .header-actions{flex-wrap:wrap !important;gap:6px !important}
     }
+
+    /* Extra small (≤380px) */
     @media(max-width:380px){
       .stats-grid{grid-template-columns:repeat(2,1fr) !important}
-      .stat-value{font-size:16px !important}
+      .stat-value{font-size:15px !important}
+      .nav-btn{padding:5px 8px !important;font-size:11px !important}
+      .deporte-card{min-width:68px !important;font-size:11px !important}
     }
   </style>
   <link rel="manifest" href="/manifest.json">
@@ -156,7 +181,7 @@ const S = {
   navFecha:{display:"flex",alignItems:"center",gap:16},
   monthNav:{background:"transparent",border:"none",color:"#666",fontSize:22,cursor:"pointer",padding:"0 8px"},
   monthLabel:{fontSize:"clamp(14px,4vw,17px)",fontWeight:700,color:"#fff",minWidth:"clamp(120px,40vw,180px)",textAlign:"center"},
-  main:{maxWidth:900,margin:"0 auto",padding:"clamp(12px,3vw,28px) clamp(10px,3vw,20px)"},
+  main:{maxWidth:960,margin:"0 auto",padding:"clamp(12px,3vw,28px) clamp(10px,3vw,24px)"},
   statsGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:28},
   card:{background:"transparent",border:"1px solid #1e2130",borderRadius:14,padding:"clamp(12px,3vw,18px) clamp(10px,2vw,16px)"},
   cardLabel:{fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:1,marginBottom:8},
