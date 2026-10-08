@@ -572,16 +572,17 @@ function App() {
 
   const guardar = () => {
     const esParlay = form.tipo==="Parlay/Combinada";
+    const deporteOpcional = esParlay||form.tipo==="Especial por jugador"||form.tipo==="PlayBoost";
     const desc = esParlay
       ? form.patas.filter(p=>p.desc && p.desc.trim()).map(p=>(p.deporte?`[${p.deporte}] `:"")+p.desc).join(" | ")
       : form.descripcion;
-    const deporteOk = esParlay||!!form.deporte;
+    const deporteOk = deporteOpcional||!!form.deporte;
     const cuotaVal = String(form.cuota).trim();
     const cuotaOk = cuotaVal!==""&&cuotaVal!=="0"&&!isNaN(Number(cuotaVal));
     const montoOk = String(form.monto).trim()!==""&&Number(form.monto)>0;
     const descOk = desc && desc.trim().length>0;
     if(!deporteOk||!form.tipo||!descOk||!montoOk||!cuotaOk||!form.fecha) return;
-    const deporte = esParlay&&!form.deporte?"Combinación":form.deporte;
+    const deporte = !form.deporte ? (esParlay?"Combinación":form.tipo) : form.deporte;
     const nueva = {deporte,descripcion:desc,monto:Number(form.monto),cuota:Number(form.cuota),resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
     if(editId){
       const docId=apuestas.find(a=>a.id===editId)?._docId;
