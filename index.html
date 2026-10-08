@@ -865,14 +865,14 @@ function App() {
               </div>`
             : html`<div style=${{gridColumn:"1/-1"}}>
                 <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <label style=${S.label}>${form.tipo==="Freebet"?"Selecciones de la Freebet":"Patas del Parlay"} (${form.patas.length})</label>
+                  <label style=${S.label}>${form.tipo==="Freebet"?"Legs de la Freebet":"Legs del Parlay"} (${form.patas.length})</label>
                   <button onClick=${()=>setForm(f=>({...f,patas:[...f.patas,{deporte:"",desc:""}]}))} style=${S.addPataBtn}>+ Agregar</button>
                 </div>
                 <div style=${{display:"flex",flexDirection:"column",gap:10}}>
                   ${form.patas.map((p,i)=>html`
                     <div key=${i} style=${{background:"#0d0f14",border:"1px solid #1e2130",borderRadius:10,padding:"10px 12px"}}>
                       <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                        <span style=${{fontSize:12,color:"#00e5a0",fontWeight:700}}>Pata ${i+1}</span>
+                        <span style=${{fontSize:12,color:"#00e5a0",fontWeight:700}}>Leg ${i+1}</span>
                         <button onClick=${()=>setForm(f=>({...f,patas:f.patas.filter((_,j)=>j!==i)}))} style=${S.removePataBtn}>✕ Eliminar</button>
                       </div>
                       <div style=${{display:"flex",gap:8,flexDirection:"column"}}>
