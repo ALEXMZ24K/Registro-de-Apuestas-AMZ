@@ -41,8 +41,12 @@
       .deporte-card{min-width:110px !important}
     }
 
+    .nueva-bottom,.nueva-spacer{display:none}
     /* Mobile (≤600px) */
     @media(max-width:600px){
+      .nueva-top{display:none !important}
+      .nueva-bottom{display:block;position:fixed;left:0;right:0;bottom:0;z-index:90;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,#0d0f14 60%,#0d0f1400)}
+      .nueva-spacer{display:block !important;height:90px}
       .period-bar-inner{justify-content:center !important;flex-direction:column !important;align-items:center !important}
       .period-spacer{display:none !important}
       .header-inner{padding:10px 14px !important;gap:8px !important;flex-wrap:wrap !important}
@@ -703,12 +707,16 @@ function App() {
               ${user.photoURL
                 ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:28,height:28,borderRadius:"50%",border:isAdmin?"2px solid #00e5a0":"1px solid #2a2e42"}} title=${user.email}/>`
                 : html`<span style=${{fontSize:12,color:"#aaa"}}>${(user.displayName||user.email||"").split(" ")[0]}</span>`}
-              ${isAdmin && html`<button onClick=${()=>openModal()} style=${S.btnPrimary}>+ Nueva apuesta</button>`}
+              ${isAdmin && html`<button className="nueva-top" onClick=${()=>openModal()} style=${S.btnPrimary}>+ Nueva apuesta</button>`}
               <button onClick=${()=>auth.signOut()} style=${{...S.btnSecondary,fontSize:12,padding:"8px 12px"}}>Salir</button>
             </div>`
         }
       </div>
     </header>
+
+    ${isAdmin && html`<div className="nueva-bottom">
+      <button onClick=${()=>openModal()} style=${{...S.btnPrimary,width:"100%",padding:"15px",fontSize:16,borderRadius:14,boxShadow:"0 8px 24px #00000080"}}>+ Nueva apuesta</button>
+    </div>`}
 
     <!-- Period bar -->
     <div style=${{...S.periodBar,flexDirection:"column",alignItems:"center",gap:10}}>
@@ -878,6 +886,7 @@ function App() {
       </div>`}
 
     </main>
+    ${isAdmin && html`<div className="nueva-spacer"></div>`}
 
     <!-- Modal nueva/editar -->
     ${modal && html`<div style=${S.overlay} onClick=${()=>setModal(false)}>
