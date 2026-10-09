@@ -42,6 +42,10 @@
     }
 
     .nueva-bottom,.nueva-spacer{display:none}
+    /* Campo de fecha en iOS: respetar ancho y alinear a la izquierda */
+    input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;text-align:left;line-height:normal;min-height:42px}
+    input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.2em}
+    input[type=date]::-webkit-datetime-edit{padding:0}
     .tbl-grid>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     /* Mobile (≤600px) */
     @media(max-width:600px){
