@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/htm@3/dist/htm.js"></script>
@@ -104,6 +105,8 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 // ── ntfy.sh notifications ──
 const NTFY_TOPIC = "alexpicks-apuestas-amz-2026";
 
@@ -128,7 +131,16 @@ const { useState, useMemo, useEffect } = React;
 const html = htm.bind(React.createElement);
 
 // ── Auth ──
-const ADMIN_PASS = "Camboya135$";
+const ADMIN_EMAIL = "alexitozenil@gmail.com";
+const loginGoogle = async () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({prompt:"select_account"});
+  try { await auth.signInWithPopup(provider); }
+  catch(e) {
+    if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment") { await auth.signInWithRedirect(provider); }
+    else if(e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request") { alert("No se pudo iniciar sesión: "+(e.message||e.code)); }
+  }
+};
 
 // ── Constants ──
 const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Americano Colegial","Basquetbol Colegial","Combinación"];
@@ -468,11 +480,9 @@ function App() {
   const [anoSeleccionado,setAnoSeleccionado] = useState(new Date().getFullYear());
   const [deleteConfirm,setDeleteConfirm] = useState(null);
   const [deporteFiltro,setDeporteFiltro] = useState(null);
-  const [modoEdicion,setModoEdicion] = useState(false);
-  const [loginModal,setLoginModal] = useState(false);
-  const [passInput,setPassInput] = useState("");
-  const [passError,setPassError] = useState(false);
+  const [user,setUser] = useState(null);
   const [bankrolls,setBankrolls] = useState({});
+  const [bankrollsUser,setBankrollsUser] = useState({});
   const [editingBank,setEditingBank] = useState(false);
   const [bankInput,setBankInput] = useState("");
   const [formError,setFormError] = useState("");
@@ -486,29 +496,43 @@ function App() {
   },[]);
 
   useEffect(()=>{
+    auth.getRedirectResult().catch(()=>{});
+    return auth.onAuthStateChanged(u=>setUser(u));
+  },[]);
+
+  const isAdmin = !!user && user.email===ADMIN_EMAIL;
+  const modoEdicion = isAdmin;
+  const usaBankPropio = !!user && !isAdmin;
+
+  // Bank del admin (el de siempre) — lo ven también los que no han iniciado sesión
+  useEffect(()=>{
     const unsub = db.collection("config").doc("bankrolls").onSnapshot(snap=>{
       if(snap.exists) setBankrolls(snap.data());
     });
     return ()=>unsub();
   },[]);
 
-  const bankKey = `${anoSeleccionado}-${mesSeleccionado}`;
-  const bankrollMes = bankrolls[bankKey]||0;
-  const setBankroll = val => {
-    const updated = {...bankrolls,[bankKey]:Number(val)||0};
-    db.collection("config").doc("bankrolls").set(updated);
-  };
+  // Bank personal de cada usuario
+  useEffect(()=>{
+    if(!usaBankPropio){ setBankrollsUser({}); return; }
+    const unsub = db.collection("usuarios").doc(user.uid).onSnapshot(snap=>{
+      setBankrollsUser(snap.exists?(snap.data().bankrolls||{}):{});
+    });
+    return ()=>unsub();
+  },[usaBankPropio,user&&user.uid]);
 
-  const intentarLogin = () => {
-    if(passInput === ADMIN_PASS) {
-      setModoEdicion(true);
-      setLoginModal(false);
-      setPassInput("");
-      setPassError(false);
-    } else {
-      setPassError(true);
+  const bankKey = `${anoSeleccionado}-${mesSeleccionado}`;
+  const bankrollMes = (usaBankPropio?bankrollsUser:bankrolls)[bankKey]||0;
+  const setBankroll = val => {
+    if(isAdmin){
+      const updated = {...bankrolls,[bankKey]:Number(val)||0};
+      db.collection("config").doc("bankrolls").set(updated);
+    } else if(usaBankPropio){
+      const updated = {...bankrollsUser,[bankKey]:Number(val)||0};
+      db.collection("usuarios").doc(user.uid).set({bankrolls:updated,email:user.email||"",nombre:user.displayName||""},{merge:true});
     }
   };
+  const puedeEditarBank = !!user;
 
   const apuestasMes = useMemo(()=>apuestas.filter(a=>{
     const {y,m}=parseFecha(a.fecha); return m===mesSeleccionado&&y===anoSeleccionado;
@@ -664,12 +688,17 @@ function App() {
         `)}
       </nav>
       <div style=${{display:"flex",gap:8,alignItems:"center"}}>
-        ${modoEdicion
-          ? html`<span style=${{fontSize:12,color:"#00e5a0",border:"1px solid #00e5a040",borderRadius:8,padding:"6px 12px"}}>✏️ Modo edición</span>`
-          : html`<button onClick=${()=>setLoginModal(true)} style=${{...S.btnSecondary,fontSize:13}}>🔒 Editar</button>`
+        ${!user
+          ? html`<button onClick=${loginGoogle} style=${{...S.btnSecondary,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
+              <span style=${{fontWeight:800,color:"#4285f4"}}>G</span> Entrar con Google</button>`
+          : html`<div style=${{display:"flex",alignItems:"center",gap:8}}>
+              ${user.photoURL
+                ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:28,height:28,borderRadius:"50%",border:isAdmin?"2px solid #00e5a0":"1px solid #2a2e42"}} title=${user.email}/>`
+                : html`<span style=${{fontSize:12,color:"#aaa"}}>${(user.displayName||user.email||"").split(" ")[0]}</span>`}
+              ${isAdmin && html`<button onClick=${()=>openModal()} style=${S.btnPrimary}>+ Nueva apuesta</button>`}
+              <button onClick=${()=>auth.signOut()} style=${{...S.btnSecondary,fontSize:12,padding:"8px 12px"}}>Salir</button>
+            </div>`
         }
-        ${modoEdicion && html`<button onClick=${()=>openModal()} style=${S.btnPrimary}>+ Nueva apuesta</button>`}
-        ${modoEdicion && html`<button onClick=${()=>setModoEdicion(false)} style=${{...S.btnSecondary,fontSize:12,padding:"8px 12px"}}>Salir</button>`}
       </div>
     </header>
 
@@ -699,15 +728,15 @@ function App() {
       ${periodoVista==="mensual" && vistaActual==="dashboard" && html`<div>
         <div style=${{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:32,maxWidth:780,margin:"0 auto 32px auto"}}>
           <div style=${{...S.card,cursor:"pointer",borderColor:editingBank?"#00e5a060":"#1e2130"}}
-            onClick=${()=>{setEditingBank(true);setBankInput(bankrollMes?String(bankrollMes):"");}}>
-            <div style=${S.cardLabel}>Bank del mes</div>
+            onClick=${()=>{ if(!puedeEditarBank){ loginGoogle(); return; } setEditingBank(true);setBankInput(bankrollMes?String(bankrollMes):"");}}>
+            <div style=${S.cardLabel}>${usaBankPropio?"Tu bank del mes":"Bank del mes"}</div>
             ${editingBank
               ? html`<input autoFocus style=${{...S.input,fontSize:18,fontWeight:800,padding:"4px 8px"}} type="number"
                   value=${bankInput} placeholder="0"
                   onInput=${e=>setBankInput(e.target.value)}
                   onBlur=${()=>{setBankroll(bankInput);setEditingBank(false);}}
                   onKeyDown=${e=>{if(e.key==="Enter"){setBankroll(bankInput);setEditingBank(false);}}}/>`
-              : html`<div style=${{...S.cardValue,color:bankrollMes?"#fff":"#333"}}>${bankrollMes?fmt(bankrollMes):"— Editar"}</div>`
+              : html`<div style=${{...S.cardValue,color:bankrollMes?"#fff":"#333"}}>${bankrollMes?fmt(bankrollMes):(puedeEditarBank?"— Editar":"Entra para poner tu bank")}</div>`
             }
             ${bankrollMes>0&&!editingBank && html`<div style=${{fontSize:11,color:stats.neto>=0?"#00e5a0":"#ff4e6a",marginTop:4}}>
               ${stats.neto>=0?"+":""}${fmt(stats.neto)} (${((stats.neto/bankrollMes)*100).toFixed(1)}%)
@@ -922,27 +951,6 @@ function App() {
         <div style=${S.modalFooter}>
           <button onClick=${()=>setModal(false)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${guardar} style=${S.btnPrimary}>Guardar</button>
-        </div>
-      </div>
-    </div>`}
-
-    <!-- Modal login -->
-    ${loginModal && html`<div style=${S.overlay} onClick=${()=>{setLoginModal(false);setPassInput("");setPassError(false);}}>
-      <div style=${{...S.modal,maxWidth:360}} onClick=${e=>e.stopPropagation()}>
-        <div style=${S.modalHeader}>
-          <h2 style=${S.modalTitle}>🔒 Modo edición</h2>
-          <button onClick=${()=>{setLoginModal(false);setPassInput("");setPassError(false);}} style=${S.closeBtn}>✕</button>
-        </div>
-        <p style=${{color:"#888",marginBottom:16,fontSize:14}}>Ingresa la contraseña para poder agregar y editar apuestas.</p>
-        <input style=${{...S.input,marginBottom:8}} type="password" value=${passInput}
-          placeholder="Contraseña"
-          onInput=${e=>setPassInput(e.target.value)}
-          onKeyDown=${e=>{if(e.key==="Enter") intentarLogin();}}
-          autoFocus/>
-        ${passError && html`<div style=${{color:"#ff4e6a",fontSize:12,marginBottom:12}}>Contraseña incorrecta</div>`}
-        <div style=${{...S.modalFooter,marginTop:16}}>
-          <button onClick=${()=>{setLoginModal(false);setPassInput("");setPassError(false);}} style=${S.btnSecondary}>Cancelar</button>
-          <button onClick=${intentarLogin} style=${S.btnPrimary}>Entrar</button>
         </div>
       </div>
     </div>`}
