@@ -131,7 +131,7 @@ const { useState, useMemo, useEffect } = React;
 const html = htm.bind(React.createElement);
 
 // ── Auth ──
-const ADMIN_EMAIL = "alexitozenil@gmail.com";
+const ADMIN_EMAILS = ["alexitozenil@gmail.com","prokiller548@gmail.com"];
 const loginGoogle = async () => {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({prompt:"select_account"});
@@ -500,7 +500,7 @@ function App() {
     return auth.onAuthStateChanged(u=>setUser(u));
   },[]);
 
-  const isAdmin = !!user && user.email===ADMIN_EMAIL;
+  const isAdmin = !!user && ADMIN_EMAILS.includes((user.email||"").toLowerCase());
   const modoEdicion = isAdmin;
   const usaBankPropio = !!user && !isAdmin;
 
