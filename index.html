@@ -42,6 +42,7 @@
     }
 
     .nueva-bottom,.nueva-spacer{display:none}
+    .tbl-grid>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     /* Mobile (≤600px) */
     @media(max-width:600px){
       .nueva-top{display:none !important}
@@ -224,8 +225,8 @@ const S = {
   chartCol:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},
   barWrap:{width:"100%",display:"flex",alignItems:"flex-end",justifyContent:"center",height:88},
   tableWrap:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,overflow:"hidden"},
-  tableHead:{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 2fr 2fr",gap:8,padding:"12px 18px",borderBottom:"1px solid #1e2130",fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:0.8},
-  tableRow:{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 2fr 2fr",gap:8,padding:"13px 18px",borderBottom:"1px solid #13162020",fontSize:14,cursor:"pointer"},
+  tableHead:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"12px clamp(10px,2.5vw,18px)",borderBottom:"1px solid #1e2130",fontSize:"clamp(9px,2.6vw,11px)",color:"#555",textTransform:"uppercase",letterSpacing:0.4},
+  tableRow:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"13px clamp(10px,2.5vw,18px)",borderBottom:"1px solid #13162020",fontSize:"clamp(12px,3.4vw,14px)",cursor:"pointer"},
   apCard:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,marginBottom:10,overflow:"hidden"},
   apMain:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",gap:12,cursor:"pointer"},
   apLeft:{display:"flex",alignItems:"center",gap:14,flex:1,minWidth:0},
@@ -843,11 +844,11 @@ function App() {
         <div style=${S.section}>
           <h2 style=${S.secTitle}>Resumen por mes</h2>
           <div style=${S.tableWrap}>
-            <div style=${S.tableHead}>
-              ${["Mes","Apuestas","Ganadas","Perdidas","Invertido","Balance"].map(h=>html`<span key=${h}>${h}</span>`)}
+            <div className="tbl-grid" style=${S.tableHead}>
+              ${["Mes","Tot.","G","P","Inv.","Balance"].map(h=>html`<span key=${h}>${h}</span>`)}
             </div>
             ${datosPorMes.map((d,i)=>d.total>0 && html`
-              <div key=${i} style=${S.tableRow} onClick=${()=>{setMesSeleccionado(i);setPeriodoVista("mensual");}}>
+              <div key=${i} className="tbl-grid" style=${S.tableRow} onClick=${()=>{setMesSeleccionado(i);setPeriodoVista("mensual");}}>
                 <span style=${{color:"#e8e8f0",fontWeight:600}}>${MESES[i]}</span>
                 <span style=${{color:"#888"}}>${d.total}</span>
                 <span style=${{color:"#00e5a0"}}>${d.ganadas}</span>
