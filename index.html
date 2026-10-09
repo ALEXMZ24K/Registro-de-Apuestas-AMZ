@@ -155,6 +155,12 @@ const bgRes = {Ganada:"#00e5a020",Perdida:"#ff4e6a20",Pendiente:"#88888820",Nula
 const fmt = n => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
 const fmtMomio = m => { const n=Number(m); if(!n) return ""; return n>0?`+${n}`:`${n}`; };
 const momioToDec = m => { const n=Number(m); if(!n) return 0; return n>0?(n/100)+1:(100/Math.abs(n))+1; };
+// Promedio de momios americanos: se promedia en decimal y se regresa a americano (promediar +150 y -160 directo no tiene sentido)
+const promedioMomio = lista => {
+  const dec = lista.reduce((s,a)=>s+momioToDec(a.cuota),0)/lista.length;
+  if(dec>=2) return Math.round((dec-1)*100);
+  return -Math.round(100/(dec-1));
+};
 const parseFecha = f => { const [y,m,d]=f.split("-").map(Number); return {y,m:m-1,d}; };
 
 const apMonto = (a, bank) => (Number(a.monto)||0) / 100 * (bank||0);
@@ -544,7 +550,7 @@ function App() {
   const momioPromedioMes = useMemo(()=>{
     const con = apuestasMes.filter(a=>a.cuota&&a.cuota!==0);
     if(!con.length) return null;
-    return Math.round(con.reduce((s,a)=>s+Number(a.cuota),0)/con.length);
+    return promedioMomio(con);
   },[apuestasMes]);
 
   const rachaActual = useMemo(()=>{
@@ -562,9 +568,7 @@ function App() {
   const momioPromedio = useMemo(()=>{
     const finalizadas = apuestasAno.filter(a=>a.cuota&&a.cuota!==0);
     if(!finalizadas.length) return null;
-    const suma = finalizadas.reduce((s,a)=>s+Number(a.cuota),0);
-    const prom = suma/finalizadas.length;
-    return Math.round(prom);
+    return promedioMomio(finalizadas);
   },[apuestasAno]);
 
   const datosPorMes = useMemo(()=>MESES_CORTO.map((mes,i)=>{
