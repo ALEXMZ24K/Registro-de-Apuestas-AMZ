@@ -388,12 +388,12 @@ function CalendarioMes({apuestas, mes, ano, bank}) {
     <div style=${{background:"#10131a",border:"1px solid #1e2130",borderRadius:16,padding:"20px 16px"}}>
 
       <!-- Header días semana -->
-      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:8}}>
+      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:4,marginBottom:8}}>
         ${dias.map(d=>html`<div key=${d} style=${{textAlign:"center",fontSize:11,color:"#555",fontWeight:600,padding:"4px 0"}}>${d}</div>`)}
       </div>
 
       <!-- Grid días -->
-      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:4}}>
         <!-- Espacios vacíos al inicio -->
         ${Array(primerDia).fill(0).map((_,i)=>html`<div key=${"empty-"+i}/>`)}
 
@@ -743,6 +743,7 @@ function App() {
             </div>`}
             ${!bankrollMes&&!editingBank && html`<div style=${S.cardSub}>MXN presupuestado</div>`}
           </div>
+          ${bankrollMes>0 && html`<${SC} label=${usaBankPropio?"Tu bank actual":"Bank actual"} value=${fmt(bankrollMes+stats.neto)} sub=${"Inicio: "+fmt(bankrollMes)} vc=${stats.neto>=0?"#00e5a0":"#ff4e6a"} bc=${stats.neto>=0?"#00e5a040":"#ff4e6a40"}/>`}
           <${SC} label="Balance Neto" value=${(stats.neto>=0?"+":"")+fmt(stats.neto)} sub="Este mes" vc=${stats.neto>=0?"#00e5a0":"#ff4e6a"} bc=${stats.neto>=0?"#00e5a040":"#ff4e6a40"}/>
           <${SC} label="Efectividad" value=${stats.efectividad+"%"} sub=${stats.ganadas+"G · "+stats.perdidas+"P · "+stats.pendientes+"⏳"+(stats.nulas>0?" · "+stats.nulas+"N":"")} vc=${stats.efectividad>=50?"#00e5a0":"#ff4e6a"}/>
           <div style=${{...S.card,borderColor:rachaActual.tipo==="Ganada"?"#00e5a040":rachaActual.tipo==="Perdida"?"#ff4e6a40":"#1e2130"}}>
