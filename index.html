@@ -145,14 +145,15 @@ const fmtMomio = m => { const n=Number(m); if(!n) return ""; return n>0?`+${n}`:
 const momioToDec = m => { const n=Number(m); if(!n) return 0; return n>0?(n/100)+1:(100/Math.abs(n))+1; };
 const parseFecha = f => { const [y,m,d]=f.split("-").map(Number); return {y,m:m-1,d}; };
 
-const calcStats = lista => {
+const apMonto = (a, bank) => (Number(a.monto)||0) / 100 * (bank||0);
+const calcStats = (lista, bank) => {
   const gan = lista.filter(a=>a.resultado==="Ganada");
   const per = lista.filter(a=>a.resultado==="Perdida");
   const pen = lista.filter(a=>a.resultado==="Pendiente");
   const nul = lista.filter(a=>a.resultado==="Nula");
-  const invertido = lista.reduce((s,a)=>s+Number(a.monto),0);
-  const ganancia = gan.reduce((s,a)=>s+(Number(a.monto)*momioToDec(a.cuota)-Number(a.monto)),0);
-  const perdido = per.reduce((s,a)=>s+Number(a.monto),0);
+  const invertido = lista.reduce((s,a)=>s+apMonto(a,bank),0);
+  const ganancia = gan.reduce((s,a)=>{ const m=apMonto(a,bank); return s+(m*momioToDec(a.cuota)-m); },0);
+  const perdido = per.reduce((s,a)=>s+apMonto(a,bank),0);
   const neto = ganancia-perdido;
   const tot = gan.length+per.length;
   return {ganadas:gan.length,perdidas:per.length,pendientes:pen.length,nulas:nul.length,invertido,ganancia,perdido,neto,efectividad:tot>0?Math.round(gan.length/tot*100):0,total:lista.length};
@@ -264,7 +265,7 @@ function DeportesGrid({data,onSelect,selected}) {
   </div>`;
 }
 
-function AR({a,onEdit,onDelete,onToggle,g,expanded,editable}) {
+function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   const show = open||expanded;
   return html`<div style=${S.apCard}>
@@ -279,15 +280,16 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable}) {
       <div style=${S.apRight}>
         <div style=${{...S.resTag,background:bgRes[a.resultado],color:colorRes[a.resultado]}}>${a.resultado}</div>
         <div style=${{color:g>0?"#00e5a0":g<0?"#ff4e6a":"#aaa",fontWeight:700,fontSize:15}}>
-          ${g>0?"+":""}${fmt(g!==0?g:a.monto)}
+          ${g>0?"+":""}${fmt(g!==0?g:monto||0)}
         </div>
       </div>
     </div>
     ${show && html`<div style=${S.apDetail}>
       <div style=${S.detailGrid}>
-        <${DI} label="Monto" val=${fmt(a.monto)}/>
+        <${DI} label="Unidades" val=${`${a.monto}u`}/>
+        <${DI} label="Monto" val=${fmt(monto||0)}/>
         <${DI} label="Momio" val=${fmtMomio(a.cuota)}/>
-        <${DI} label="Retorno" val=${fmt(a.monto*momioToDec(a.cuota))}/>
+        <${DI} label="Retorno" val=${fmt((monto||0)*momioToDec(a.cuota))}/>
         <${DI} label="Ganancia" val=${(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#00e5a0":"#ff4e6a"}/>
       </div>
       ${a.tipo==="Parlay/Combinada" && a.patas && a.patas.length>0 && html`
@@ -330,7 +332,7 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable}) {
 
 
 // ── Calendario mensual ──
-function CalendarioMes({apuestas, mes, ano}) {
+function CalendarioMes({apuestas, mes, ano, bank}) {
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
 
   const primerDia = new Date(ano, mes, 1).getDay(); // 0=Dom
@@ -341,7 +343,8 @@ function CalendarioMes({apuestas, mes, ano}) {
   apuestas.forEach(a => {
     const {y,m,d} = parseFecha(a.fecha);
     if(m===mes && y===ano && a.resultado!=="Pendiente") {
-      const g = a.resultado==="Ganada" ? a.monto*momioToDec(a.cuota)-a.monto : a.resultado==="Perdida" ? -a.monto : 0;
+      const m = apMonto(a,bank);
+      const g = a.resultado==="Ganada" ? m*momioToDec(a.cuota)-m : a.resultado==="Perdida" ? -m : 0;
       netosPorDia[d] = (netosPorDia[d]||0) + g;
     }
   });
@@ -358,7 +361,8 @@ function CalendarioMes({apuestas, mes, ano}) {
   const totalP = apuestas.filter(a=>a.resultado==="Perdida").length;
   const totalPen = apuestas.filter(a=>a.resultado==="Pendiente").length;
   const profit = apuestas.filter(a=>a.resultado!=="Pendiente").reduce((s,a)=>{
-    return s + (a.resultado==="Ganada" ? a.monto*momioToDec(a.cuota)-a.monto : a.resultado==="Perdida" ? -a.monto : 0);
+    const m=apMonto(a,bank);
+    return s + (a.resultado==="Ganada" ? m*momioToDec(a.cuota)-m : a.resultado==="Perdida" ? -m : 0);
   },0);
 
   const fmtK = n => {
@@ -511,7 +515,7 @@ function App() {
   }),[apuestas,mesSeleccionado,anoSeleccionado]);
 
   const apuestasAno = useMemo(()=>apuestas.filter(a=>parseFecha(a.fecha).y===anoSeleccionado),[apuestas,anoSeleccionado]);
-  const stats = useMemo(()=>calcStats(apuestasMes),[apuestasMes]);
+  const stats = useMemo(()=>calcStats(apuestasMes,bankrollMes),[apuestasMes,bankrollMes]);
 
   const momioPromedioMes = useMemo(()=>{
     const con = apuestasMes.filter(a=>a.cuota&&a.cuota!==0);
@@ -529,7 +533,7 @@ function App() {
     }
     return {racha,tipo};
   },[apuestasMes]);
-  const statsAnual = useMemo(()=>calcStats(apuestasAno),[apuestasAno]);
+  const statsAnual = useMemo(()=>calcStats(apuestasAno,bankrollMes),[apuestasAno,bankrollMes]);
 
   const momioPromedio = useMemo(()=>{
     const finalizadas = apuestasAno.filter(a=>a.cuota&&a.cuota!==0);
@@ -541,7 +545,7 @@ function App() {
 
   const datosPorMes = useMemo(()=>MESES_CORTO.map((mes,i)=>{
     const lista=apuestas.filter(a=>{const {y,m}=parseFecha(a.fecha);return m===i&&y===anoSeleccionado;});
-    return {mes,...calcStats(lista)};
+    return {mes,...calcStats(lista,bankrollMes)};
   }),[apuestas,anoSeleccionado]);
 
   const porDeporteMes = useMemo(()=>DEPORTES.map(d=>{
@@ -553,14 +557,14 @@ function App() {
     const ap=apuestasAno.filter(a=>a.deporte===d);
     const gan=ap.filter(a=>a.resultado==="Ganada");
     const per=ap.filter(a=>a.resultado==="Perdida");
-    const ganancia=gan.reduce((s,a)=>s+(a.monto*momioToDec(a.cuota)-a.monto),0);
-    const perdido=per.reduce((s,a)=>s+a.monto,0);
+    const ganancia=gan.reduce((s,a)=>{ const m=apMonto(a,bankrollMes); return s+(m*momioToDec(a.cuota)-m); },0);
+    const perdido=per.reduce((s,a)=>s+apMonto(a,bankrollMes),0);
     return {deporte:d,total:ap.length,ganadas:gan.length,perdidas:per.length,neto:ganancia-perdido};
   }).filter(d=>d.total>0),[apuestasAno]);
 
   const maxNeto = useMemo(()=>Math.max(...datosPorMes.map(d=>Math.abs(d.neto)),1),[datosPorMes]);
 
-  const gananciaAp = a => a.resultado==="Ganada"?a.monto*momioToDec(a.cuota)-a.monto:a.resultado==="Perdida"?-a.monto:0;
+  const gananciaAp = a => { const m=apMonto(a,bankrollMes); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
   const openModal = (ap=null) => {
     if(ap){
@@ -604,7 +608,7 @@ function App() {
       const momioStr = Number(nueva.cuota)>0?"+"+nueva.cuota:String(nueva.cuota);
       enviarNotificacion(
         "🎯 Nuevo pick — AlexPicks",
-        nueva.descripcion+" | "+nueva.deporte+" | Momio: "+momioStr+" | $"+nueva.monto
+        nueva.descripcion+" | "+nueva.deporte+" | Momio: "+momioStr+" | "+nueva.monto+"u = "+fmt(apMonto(nueva,bankrollMes))
       );
     }
     setModal(false);
@@ -622,9 +626,10 @@ function App() {
     db.collection("apuestas").doc(ap._docId).update({resultado});
     if(resultado==="Ganada"||resultado==="Perdida"||resultado==="Nula") {
       const emoji = resultado==="Ganada"?"✅":resultado==="Nula"?"🔄":"❌";
+      const m = apMonto(ap,bankrollMes);
       const ganancia = resultado==="Ganada"
-        ? Math.round(ap.monto*momioToDec(ap.cuota)-ap.monto)
-        : -ap.monto;
+        ? Math.round(m*momioToDec(ap.cuota)-m)
+        : -m;
       const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
       enviarNotificacion(
         emoji+" "+resultado.toUpperCase()+" — AlexPicks",
@@ -721,7 +726,7 @@ function App() {
           </div>
           <${SC} label="Momio promedio" value=${momioPromedioMes!==null?(momioPromedioMes>0?"+"+momioPromedioMes:String(momioPromedioMes)):"—"} sub="Este mes" vc="#e8e8f0"/>
         </div>
-        <${CalendarioMes} apuestas=${apuestasMes} mes=${mesSeleccionado} ano=${anoSeleccionado}/>
+        <${CalendarioMes} apuestas=${apuestasMes} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankrollMes}/>
         ${porDeporteMes.length>0 && html`<${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>`}
         ${deporteFiltro && html`<div style=${{...S.section,marginTop:-8}}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
@@ -730,14 +735,14 @@ function App() {
           </div>
           ${apuestasMes.filter(a=>a.deporte===deporteFiltro).length===0
             ? html`<div style=${S.empty}>No hay apuestas de este deporte este mes.</div>`
-            : [...apuestasMes].reverse().filter(a=>a.deporte===deporteFiltro).map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} expanded editable=${modoEdicion}/>`)
+            : [...apuestasMes].reverse().filter(a=>a.deporte===deporteFiltro).map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankrollMes)} expanded editable=${modoEdicion}/>`)
           }
         </div>`}
         <div style=${S.section}>
           <h2 style=${S.secTitle}>Apuestas del mes</h2>
           ${apuestasMes.length===0
             ? html`<div style=${S.empty}>No hay apuestas este mes.<br/>¡Agrega tu primera!</div>`
-            : apuestasMes.slice().reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} editable=${modoEdicion}/>`)
+            : apuestasMes.slice().reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankrollMes)} editable=${modoEdicion}/>`)
           }
         </div>
       </div>`}
@@ -750,7 +755,7 @@ function App() {
         </div>
         ${apuestasMes.length===0
           ? html`<div style=${S.empty}>No hay apuestas este mes.</div>`
-          : [...apuestasMes].reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} expanded editable=${modoEdicion}/>`)
+          : [...apuestasMes].reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankrollMes)} expanded editable=${modoEdicion}/>`)
         }
       </div>`}
 
@@ -830,7 +835,7 @@ function App() {
         </div>
         ${apuestasAno.length===0
           ? html`<div style=${S.empty}>No hay apuestas en ${anoSeleccionado}.</div>`
-          : [...apuestasAno].reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} expanded editable=${modoEdicion}/>`)
+          : [...apuestasAno].reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankrollMes)} expanded editable=${modoEdicion}/>`)
         }
       </div>`}
 
@@ -888,8 +893,9 @@ function App() {
               </div>`
           }
           <div style=${S.fg}>
-            <label style=${S.label}>Monto (MXN)</label>
-            <input style=${S.input} type="number" value=${form.monto} onInput=${e=>setForm(f=>({...f,monto:e.target.value}))} placeholder="0" min="0"/>
+            <label style=${S.label}>Unidades (%)</label>
+            <input style=${S.input} type="number" value=${form.monto} onInput=${e=>setForm(f=>({...f,monto:e.target.value}))} placeholder="2" min="0" step="0.5"/>
+            ${bankrollMes>0 && html`<div style=${{fontSize:11,color:"#00e5a0",marginTop:4}}>= ${fmt((Number(form.monto)||0)/100*bankrollMes)} MXN</div>`}
           </div>
           <div style=${S.fg}>
             <label style=${S.label}>Momio (americano)</label>
