@@ -138,8 +138,12 @@ const loginGoogle = async () => {
   provider.setCustomParameters({prompt:"select_account"});
   try { await auth.signInWithPopup(provider); }
   catch(e) {
-    if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment") { await auth.signInWithRedirect(provider); }
-    else if(e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request") { alert("No se pudo iniciar sesión: "+(e.message||e.code)); }
+    if(e.code==="auth/popup-closed-by-user"||e.code==="auth/cancelled-popup-request") return;
+    if(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment") {
+      alert("No se pudo abrir la ventana de Google. Abre la página directamente en Safari (no desde el ícono de la pantalla de inicio) y permite las ventanas emergentes.");
+    } else {
+      alert("No se pudo iniciar sesión: "+(e.message||e.code));
+    }
   }
 };
 
@@ -503,7 +507,6 @@ function App() {
   },[]);
 
   useEffect(()=>{
-    auth.getRedirectResult().catch(()=>{});
     return auth.onAuthStateChanged(u=>setUser(u));
   },[]);
 
