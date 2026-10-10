@@ -364,7 +364,8 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
 
 
 // ── Calendario mensual ──
-function CalendarioMes({apuestas, mes, ano, bank}) {
+function CalendarioMes({apuestas, todas, mes, ano, bank}) {
+  const vistas = todas||apuestas;
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
 
   const primerDia = new Date(ano, mes, 1).getDay(); // 0=Dom
@@ -372,7 +373,7 @@ function CalendarioMes({apuestas, mes, ano, bank}) {
 
   // Calcular neto por día
   const netosPorDia = {};
-  apuestas.forEach(a => {
+  vistas.forEach(a => {
     const {y,m,d} = parseFecha(a.fecha);
     if(m===mes && y===ano && a.resultado!=="Pendiente") {
       const m = apMonto(a,bank);
@@ -383,7 +384,7 @@ function CalendarioMes({apuestas, mes, ano, bank}) {
 
   // Apuestas del día seleccionado
   const apuestasDia = diaSeleccionado
-    ? apuestas.filter(a => { const {y,m,d}=parseFecha(a.fecha); return d===diaSeleccionado&&m===mes&&y===ano; })
+    ? vistas.filter(a => { const {y,m,d}=parseFecha(a.fecha); return d===diaSeleccionado&&m===mes&&y===ano; })
     : [];
 
   const dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
@@ -421,7 +422,7 @@ function CalendarioMes({apuestas, mes, ano, bank}) {
         ${Array(diasEnMes).fill(0).map((_,i)=>{
           const dia = i+1;
           const neto = netosPorDia[dia];
-          const tieneApuestas = apuestas.some(a=>{const {y,m,d}=parseFecha(a.fecha);return d===dia&&m===mes&&y===ano;});
+          const tieneApuestas = vistas.some(a=>{const {y,m,d}=parseFecha(a.fecha);return d===dia&&m===mes&&y===ano;});
           const isSelected = diaSeleccionado===dia;
           const isHoy = new Date().getDate()===dia && new Date().getMonth()===mes && new Date().getFullYear()===ano;
 
@@ -443,7 +444,8 @@ function CalendarioMes({apuestas, mes, ano, bank}) {
               cursor:tieneApuestas?"pointer":"default",
               minHeight:56,
               display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
-              transition:"all .15s"
+              transition:"all .15s",
+              opacity:(tieneApuestas&&!apuestas.some(a=>{const {y,m,d}=parseFecha(a.fecha);return d===dia&&m===mes&&y===ano;}))?.45:1
             }}>
             <div style=${{fontSize:12,color:isHoy?"#00e5a0":tieneApuestas?"#e8e8f0":"#444",fontWeight:isHoy?800:500}}>${dia}</div>
             ${neto!==undefined && html`<div style=${{fontSize:10,fontWeight:700,color:neto>=0?"#00e5a0":"#ff4e6a"}}>${fmtK(neto)}</div>`}
@@ -851,7 +853,7 @@ function App() {
           </div>
           <${SC} label="Momio promedio" value=${momioPromedioMes!==null?(momioPromedioMes>0?"+"+momioPromedioMes:String(momioPromedioMes)):"—"} sub="Este mes" vc="#e8e8f0"/>
         </div>
-        <${CalendarioMes} apuestas=${apuestasMes} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe}/>
+        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe}/>
         ${porDeporteMes.length>0 && html`<${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>`}
         ${deporteFiltro && html`<div style=${{...S.section,marginTop:-8}}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
