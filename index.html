@@ -561,10 +561,20 @@ function App() {
   const puedeEditarBank = !!user;
 
   // Bank y día de inicio por apuesta (cada mes es independiente)
-  const bankDe = a => { const {y,m}=parseFecha(a.fecha); return (usaBankPropio?bankrollsUser:bankrolls)[`${y}-${m}`]||0; };
+  const bankReal = a => { const {y,m}=parseFecha(a.fecha); return (usaBankPropio?bankrollsUser:bankrolls)[`${y}-${m}`]||0; };
+  // Estimado para meses sin bank (solo amigos): el bank registrado del mes más cercano
+  const bankEstimado = (y,m) => {
+    if(!usaBankPropio) return 0;
+    const ks = Object.keys(bankrollsUser).filter(k=>bankrollsUser[k]>0).map(k=>{const [yy,mm]=k.split("-").map(Number);return {k,idx:yy*12+mm};});
+    if(!ks.length) return 0;
+    const t=y*12+m; ks.sort((a,b)=>Math.abs(a.idx-t)-Math.abs(b.idx-t)||b.idx-a.idx);
+    return bankrollsUser[ks[0].k];
+  };
+  const bankDe = a => { const r=bankReal(a); if(r>0||!usaBankPropio) return r; const {y,m}=parseFecha(a.fecha); return bankEstimado(y,m); };
   const inicioDe = a => { if(!usaBankPropio) return ""; const {y,m}=parseFecha(a.fecha); return iniciosUser[`${y}-${m}`]||""; };
   // Una apuesta cuenta si el usuario no tiene bank ese mes (solo se ve) o si es del día de inicio en adelante
-  const cuentaAp = a => { if(!usaBankPropio) return true; if(!(bankDe(a)>0)) return true; const ini=inicioDe(a); return !ini || a.fecha>=ini; };
+  const cuentaAp = a => { if(!usaBankPropio) return true; if(!(bankReal(a)>0)) return true; const ini=inicioDe(a); return !ini || a.fecha>=ini; };
+  const cuentaAnual = a => !usaBankPropio || (bankReal(a)>0 && cuentaAp(a));
   const fmtDia = iso => { const {m,d}=parseFecha(iso); return d+" "+MESES_CORTO[m].toLowerCase(); };
   const hoyISO = new Date().toLocaleDateString("en-CA");
   const esMesActual = mesSeleccionado===new Date().getMonth() && anoSeleccionado===new Date().getFullYear();
@@ -600,7 +610,7 @@ function App() {
   const apuestasMes = useMemo(()=>apuestasMesTodas.filter(cuentaAp),[apuestasMesTodas,...dep]);
   const apuestasAntes = useMemo(()=>apuestasMesTodas.filter(a=>!cuentaAp(a)),[apuestasMesTodas,...dep]);
 
-  const apuestasAno = useMemo(()=>apuestas.filter(a=>parseFecha(a.fecha).y===anoSeleccionado).filter(cuentaAp),[apuestas,anoSeleccionado,...dep]);
+  const apuestasAno = useMemo(()=>apuestas.filter(a=>parseFecha(a.fecha).y===anoSeleccionado).filter(cuentaAnual),[apuestas,anoSeleccionado,...dep]);
   const stats = useMemo(()=>calcStats(apuestasMes,bankDe),[apuestasMes,...dep]);
   const simNeto = (usaBankPropio&&bankrollMes>0&&apuestasAntes.length>0) ? calcStats(apuestasMesTodas,bankDe).neto : null;
 
@@ -629,7 +639,7 @@ function App() {
   },[apuestasAno]);
 
   const datosPorMes = useMemo(()=>MESES_CORTO.map((mes,i)=>{
-    const lista=apuestas.filter(a=>{const {y,m}=parseFecha(a.fecha);return m===i&&y===anoSeleccionado;}).filter(cuentaAp);
+    const lista=apuestas.filter(a=>{const {y,m}=parseFecha(a.fecha);return m===i&&y===anoSeleccionado;}).filter(cuentaAnual);
     return {mes,...calcStats(lista,bankDe)};
   }),[apuestas,anoSeleccionado,...dep]);
 
@@ -802,7 +812,7 @@ function App() {
       <!-- MENSUAL DASHBOARD -->
       ${periodoVista==="mensual" && vistaActual==="dashboard" && html`<div>
         ${usaBankPropio && !bankrollMes && html`<div style=${{maxWidth:780,margin:"0 auto 16px auto",background:"#f5c84215",border:"1px solid #f5c84240",color:"#f5c842",borderRadius:12,padding:"12px 14px",fontSize:13,lineHeight:1.4,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-          <span style=${{flex:1,minWidth:200}}>No registraste bank en ${MESES[mesSeleccionado]}. Puedes ver los picks, pero sin montos en pesos.</span>
+          <span style=${{flex:1,minWidth:200}}>No registraste bank en ${MESES[mesSeleccionado]}. Los montos de abajo son estimados con tu bank de otro mes y no suman al anual.</span>
           <button onClick=${abrirBankModal} style=${{...S.btnPrimary,flexShrink:0}}>Poner mi bank</button>
         </div>`}
         <div style=${{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:32,maxWidth:780,margin:"0 auto 32px auto"}}>
