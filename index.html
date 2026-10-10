@@ -826,7 +826,7 @@ function App() {
         <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Agregar a pantalla de inicio</div>
         ${[["1","Abre esta página en Safari (no en otra app)."],["2","Toca el botón Compartir ⬆︎ en la barra de abajo de Safari."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#00e5a0",color:"#06130d",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
         <div style=${{fontSize:12,color:"#888",margin:"4px 0 12px"}}>Después, abre AlexPicks desde el nuevo ícono. Tendrás que iniciar sesión otra vez dentro de la app.</div>
-        <button onClick=${()=>{setInstalarGuia(false);cerrarInstalar();}} style=${{...S.btnPrimary,width:"100%"}}>Entendido</button>
+        <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%"}}>Entendido</button>
       </div>
     </div>`}
 
