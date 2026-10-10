@@ -536,7 +536,7 @@ function App() {
 
   useEffect(()=>{
     const unsub = db.collection("apuestas").orderBy("fecha","asc").onSnapshot(snap=>{
-      setApuestas(snap.docs.map(d=>({...d.data(),_docId:d.id})));
+      setApuestas(snap.docs.map(d=>({...d.data(),_docId:d.id})).sort((x,y)=>(x.fecha||"").localeCompare(y.fecha||"")||(Number(x.id)||0)-(Number(y.id)||0)));
       setCargando(false);
     },()=>setCargando(false));
     return ()=>unsub();
