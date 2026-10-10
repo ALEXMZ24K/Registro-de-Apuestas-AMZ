@@ -1089,9 +1089,9 @@ function App() {
         </div>
         ${form.monto&&form.cuota&&momioToDec(form.cuota)>0 && html`<div style=${S.preview}>
           Momio: <span style=${{color:"#fff",fontWeight:700}}>${fmtMomio(form.cuota)}</span>
-          <span style=${{marginLeft:12}}>· Ganancia potencial: </span>
-          <span style=${{color:"#00e5a0",fontWeight:700}}>${fmt(form.monto*momioToDec(form.cuota)-form.monto)}</span>
-          <span style=${{color:"#666",marginLeft:12}}>Retorno: ${fmt(form.monto*momioToDec(form.cuota))}</span>
+          ${bankrollMes>0 && (()=>{ const st=(Number(form.monto)||0)/100*bankrollMes; return html`<span><span style=${{marginLeft:12}}>· Ganancia potencial: </span>
+          <span style=${{color:"#00e5a0",fontWeight:700}}>${fmt(st*momioToDec(form.cuota)-st)}</span>
+          <span style=${{color:"#666",marginLeft:12}}>Retorno: ${fmt(st*momioToDec(form.cuota))}</span></span>`; })()}
         </div>`}
         ${formError && html`<div style=${{color:"#ff4e6a",fontSize:13,marginBottom:12,padding:"8px 12px",background:"#ff4e6a15",borderRadius:8,border:"1px solid #ff4e6a30"}}>⚠️ ${formError}</div>`}
         <div style=${S.modalFooter}>
