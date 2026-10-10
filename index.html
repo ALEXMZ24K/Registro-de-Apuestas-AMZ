@@ -41,7 +41,7 @@
       .deporte-card{min-width:110px !important}
     }
 
-    .nueva-bottom,.nueva-spacer{display:none}
+    .nueva-bottom,.nueva-spacer,.tabbar{display:none}
     /* Campo de fecha en iOS: respetar ancho y alinear a la izquierda */
     input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;text-align:left;line-height:normal;min-height:42px}
     input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.2em}
@@ -50,8 +50,14 @@
     /* Mobile (≤600px) */
     @media(max-width:600px){
       .nueva-top{display:none !important}
-      .nueva-bottom{display:block;position:fixed;left:0;right:0;bottom:0;z-index:90;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,#0d0f14 60%,#0d0f1400)}
-      .nueva-spacer{display:block !important;height:90px}
+      .nueva-bottom{display:none !important}
+      .nav-top,.salir-top{display:none !important}
+      .nueva-spacer{display:block !important;height:96px}
+      .tabbar{display:flex;position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:90;background:#171b28f2;border:1px solid #232840;border-radius:22px;padding:8px 6px;justify-content:space-around;align-items:center;box-shadow:0 8px 28px #000a;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+      .tabbar button{flex:1;min-width:0;background:none;border:none;color:#6c7289;font-size:10px;font-weight:700;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;cursor:pointer}
+      .tabbar button span{font-size:18px;line-height:1}
+      .tabbar button.on{color:#00e5a0}
+      .tabbar .plus{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:#00e5a0;color:#06130d;font-size:26px;margin-top:-22px;box-shadow:0 6px 18px #00e5a055;justify-content:center}
       .period-bar-inner{justify-content:center !important;flex-direction:column !important;align-items:center !important}
       .period-spacer{display:none !important}
       .header-inner{padding:10px 14px !important;gap:8px !important;flex-wrap:wrap !important}
@@ -765,7 +771,7 @@ function App() {
           <div style=${S.logoSub}>Control de apuestas</div>
         </div>
       </div>
-      <nav style=${S.nav}>
+      <nav className="nav-top" style=${S.nav}>
         ${[["dashboard","Dashboard"],["apuestas","Mis Apuestas"]].map(([v,l])=>html`
           <button key=${v} onClick=${()=>setVistaActual(v)} style=${{...S.navBtn,...(vistaActual===v?S.navBtnActive:{})}}>${l}</button>
         `)}
@@ -779,11 +785,21 @@ function App() {
                 ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:28,height:28,borderRadius:"50%",border:isAdmin?"2px solid #00e5a0":"1px solid #2a2e42"}} title=${user.email}/>`
                 : html`<span style=${{fontSize:12,color:"#aaa"}}>${(user.displayName||user.email||"").split(" ")[0]}</span>`}
               ${isAdmin && html`<button className="nueva-top" onClick=${()=>openModal()} style=${S.btnPrimary}>+ Nueva apuesta</button>`}
-              <button onClick=${()=>auth.signOut()} style=${{...S.btnSecondary,fontSize:12,padding:"8px 12px"}}>Salir</button>
+              <button className="salir-top" onClick=${()=>auth.signOut()} style=${{...S.btnSecondary,fontSize:12,padding:"8px 12px"}}>Salir</button>
             </div>`
         }
       </div>
     </header>
+
+    <div className="tabbar">
+      <button className=${vistaActual==="dashboard"?"on":""} onClick=${()=>setVistaActual("dashboard")}><span>▦</span>Dashboard</button>
+      <button className=${vistaActual==="apuestas"?"on":""} onClick=${()=>setVistaActual("apuestas")}><span>☰</span>Apuestas</button>
+      ${isAdmin && html`<button className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">+</button>`}
+      <button className=${periodoVista==="anual"?"on":""} onClick=${()=>setPeriodoVista(p=>p==="anual"?"mensual":"anual")}><span>◔</span>${periodoVista==="anual"?"Mensual":"Anual"}</button>
+      ${user
+        ? html`<button onClick=${()=>auth.signOut()}><span>⎋</span>Salir</button>`
+        : html`<button onClick=${loginGoogle}><span>G</span>Entrar</button>`}
+    </div>
 
     ${isAdmin && html`<div className="nueva-bottom">
       <button onClick=${()=>openModal()} style=${{...S.btnPrimary,width:"100%",padding:"15px",fontSize:16,borderRadius:14,boxShadow:"0 8px 24px #00000080"}}>+ Nueva apuesta</button>
@@ -967,7 +983,7 @@ function App() {
       </div>`}
 
     </main>
-    ${isAdmin && html`<div className="nueva-spacer"></div>`}
+    <div className="nueva-spacer"></div>
 
     <!-- Modal nueva/editar -->
     ${modal && html`<div style=${S.overlay} onClick=${()=>setModal(false)}>
