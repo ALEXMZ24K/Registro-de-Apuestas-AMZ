@@ -478,7 +478,8 @@ function CalendarioMes({apuestas, todas, mes, ano, bank}) {
           ${diaSeleccionado} de ${MESES[mes]}
         </div>
         ${apuestasDia.map(a=>{
-          const g = a.resultado==="Ganada"?a.monto*momioToDec(a.cuota)-a.monto:a.resultado==="Perdida"?-a.monto:0;
+          const mp = apMonto(a,bank);
+          const g = a.resultado==="Ganada"?mp*momioToDec(a.cuota)-mp:a.resultado==="Perdida"?-mp:0;
           return html`<div key=${a.id} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #1e213040"}}>
             <div>
               <div style=${{fontSize:13,color:"#e8e8f0",fontWeight:600}}>${a.descripcion}</div>
@@ -486,7 +487,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank}) {
             </div>
             <div style=${{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
               <div style=${{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:5,background:bgRes[a.resultado],color:colorRes[a.resultado]}}>${a.resultado}</div>
-              <div style=${{fontSize:13,fontWeight:700,color:g>0?"#00e5a0":g<0?"#ff4e6a":"#aaa"}}>${g>0?"+":""}${fmt(g!==0?g:a.monto)}</div>
+              <div style=${{fontSize:13,fontWeight:700,color:g>0?"#00e5a0":g<0?"#ff4e6a":"#aaa"}}>${g>0?"+":""}${fmt(g!==0?g:mp)}</div>
             </div>
           </div>`;
         })}
