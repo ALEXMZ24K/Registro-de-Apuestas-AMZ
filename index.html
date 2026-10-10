@@ -309,21 +309,21 @@ function DeportesGrid({data,onSelect,selected}) {
 function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   const show = open||expanded;
-  return html`<div style=${S.apCard}>
-    <div style=${S.apMain} onClick=${()=>setOpen(o=>!o)}>
-      <div style=${S.apLeft}>
-        <span style=${{fontSize:22,flexShrink:0}}>${iconDeporte[a.deporte]||"🎯"}</span>
-        <div style=${{minWidth:0}}>
-          <div style=${S.apDesc}>${a.descripcion}</div>
-          <div style=${S.apMeta}>${a.deporte} · ${a.tipo} · ${a.fecha}</div>
+  const cr = colorRes[a.resultado]||"#888";
+  const montoTxt = a.resultado==="Pendiente" ? "⏳ Pendiente" : a.resultado==="Nula" ? "Nula" : (g>0?"+":"")+fmt(g);
+  return html`<div style=${{...S.apCard,display:"flex"}}>
+    <div style=${{width:5,background:cr,flexShrink:0}}></div>
+    <div style=${{flex:1,minWidth:0}}>
+    <div style=${{padding:"13px 14px",cursor:"pointer"}} onClick=${()=>setOpen(o=>!o)}>
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+        <div style=${{display:"flex",gap:8,minWidth:0,alignItems:"flex-start"}}>
+          <span style=${{fontSize:18,flexShrink:0,lineHeight:"22px"}}>${iconDeporte[a.deporte]||"🎯"}</span>
+          <div style=${{fontSize:15,fontWeight:700,color:"#e8e8f0",lineHeight:"22px",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${a.descripcion}</div>
         </div>
+        <div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"22px"}}>${montoTxt}</div>
       </div>
-      <div style=${S.apRight}>
-        <div style=${{...S.resTag,background:bgRes[a.resultado],color:colorRes[a.resultado]}}>${a.resultado}</div>
-        <div style=${{color:g>0?"#00e5a0":g<0?"#ff4e6a":"#aaa",fontWeight:700,fontSize:15}}>
-          ${g>0?"+":""}${fmt(g!==0?g:monto||0)}
-        </div>
-      </div>
+      <div style=${{fontSize:12,color:"#666",marginTop:4}}>${a.deporte} · ${a.tipo} · ${a.fecha}</div>
+      <div style=${{fontSize:12,color:"#777",marginTop:6}}>${fmtMomio(a.cuota)} · ${a.monto}% del bank${monto?" · "+fmt(monto):""}</div>
     </div>
     ${show && html`<div style=${S.apDetail}>
       <div style=${S.detailGrid}>
@@ -368,6 +368,7 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
         )
       )}
     </div>`}
+    </div>
   </div>`;
 }
 
