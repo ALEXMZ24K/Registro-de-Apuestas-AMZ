@@ -43,6 +43,8 @@
     }
 
     .nueva-bottom,.nueva-spacer,.tabbar{display:none}
+    /* iOS hace zoom al enfocar campos con letra menor a 16px */
+    @media(hover:none) and (pointer:coarse){input,select,textarea{font-size:16px !important}}
     /* Campo de fecha en iOS: respetar ancho y alinear a la izquierda */
     input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;text-align:left;line-height:normal;min-height:42px}
     input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.2em}
