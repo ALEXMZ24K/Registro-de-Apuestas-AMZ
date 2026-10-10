@@ -50,17 +50,20 @@
     input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.2em}
     input[type=date]::-webkit-datetime-edit{padding:0}
     .tbl-grid>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    /* Mobile (≤600px) */
-    @media(max-width:600px){
+    /* Barra inferior: celulares y tabletas (pantallas táctiles) */
+    @media(max-width:600px),(hover:none) and (pointer:coarse){
       .nueva-top{display:none !important}
       .nueva-bottom{display:none !important}
       .nav-top,.salir-top{display:none !important}
       .nueva-spacer{display:block !important;height:96px}
-      .tabbar{display:flex;position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:90;background:#171b28f2;border:1px solid #232840;border-radius:22px;padding:8px 6px;justify-content:space-around;align-items:center;box-shadow:0 8px 28px #000a;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+      .tabbar{display:flex;position:fixed;left:12px;right:12px;max-width:560px;margin:0 auto;bottom:calc(10px + env(safe-area-inset-bottom));z-index:90;background:#171b28f2;border:1px solid #232840;border-radius:22px;padding:8px 6px;justify-content:space-around;align-items:center;box-shadow:0 8px 28px #000a;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
       .tabbar button{flex:1;min-width:0;background:none;border:none;color:#6c7289;font-size:10px;font-weight:700;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;cursor:pointer}
       .tabbar button span{font-size:18px;line-height:1}
       .tabbar button.on{color:#00e5a0}
       .tabbar .plus{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:#00e5a0;color:#06130d;font-size:26px;margin-top:-22px;box-shadow:0 6px 18px #00e5a055;justify-content:center}
+    }
+    /* Mobile (≤600px) */
+    @media(max-width:600px){
       .period-bar-inner{justify-content:center !important;flex-direction:column !important;align-items:center !important}
       .period-spacer{display:none !important}
       .header-inner{padding:10px 14px !important;gap:8px !important;flex-wrap:wrap !important}
