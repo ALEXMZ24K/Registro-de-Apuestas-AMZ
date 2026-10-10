@@ -504,14 +504,13 @@ function App() {
   const [modal,setModal] = useState(false);
   const [vistaActual,setVistaActual] = useState("dashboard");
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
-  const [instalarCerrado,setInstalarCerrado] = useState(()=>{ try{return localStorage.getItem("instalarCerrado2")==="1";}catch(e){return false;} });
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
   useEffect(()=>{ const h=e=>{e.preventDefault();setPromptInstalar(e);}; window.addEventListener("beforeinstallprompt",h); return ()=>window.removeEventListener("beforeinstallprompt",h); },[]);
-  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints>1);
+  const esAndroid = /android/i.test(navigator.userAgent);
   const yaInstalada = window.navigator.standalone===true || (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches);
-  const mostrarInstalar = !instalarCerrado && !yaInstalada && (esIOS || !!promptInstalar);
-  const cerrarInstalar = () => { setInstalarCerrado(true); try{localStorage.setItem("instalarCerrado2","1");}catch(e){} };
+  const mostrarInstalar = !yaInstalada && (esIOS || esAndroid);
   const instalarApp = async () => { if(promptInstalar){ promptInstalar.prompt(); try{await promptInstalar.userChoice;}catch(e){} setPromptInstalar(null); } else setInstalarGuia(true); };
   const [periodoVista,setPeriodoVista] = useState("mensual");
   const [mesSeleccionado,setMesSeleccionado] = useState(new Date().getMonth());
@@ -819,12 +818,11 @@ function App() {
       <img src="icon-192.png" style=${{width:36,height:36,borderRadius:9}}/>
       <div style=${{flex:1,minWidth:0,fontSize:12,lineHeight:1.3}}><b style=${{fontSize:13}}>Instala AlexPicks</b><br/><span style=${{color:"#9aa"}}>Ábrela como app desde tu pantalla de inicio</span></div>
       <button onClick=${instalarApp} style=${{...S.btnPrimary,padding:"8px 12px",fontSize:12,flexShrink:0}}>Instalar</button>
-      <button onClick=${cerrarInstalar} aria-label="Cerrar" style=${{background:"none",border:"none",color:"#777",fontSize:18,cursor:"pointer",padding:4}}>✕</button>
     </div>`}
     ${instalarGuia && html`<div style=${S.overlay} onClick=${()=>setInstalarGuia(false)}>
       <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
         <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Agregar a pantalla de inicio</div>
-        ${[["1","Abre esta página en Safari (no en otra app)."],["2","Toca el botón Compartir ⬆︎ en la barra de abajo de Safari."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#00e5a0",color:"#06130d",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
+        ${(esIOS?[["1","Abre esta página en Safari o Chrome (no dentro de otra app)."],["2","Toca el botón Compartir ⬆︎ del navegador."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]]:[["1","Toca el menú ⋮ de Chrome (arriba a la derecha)."],["2","Elige “Instalar app” o “Agregar a pantalla de inicio”."],["3","Confirma con “Instalar” o “Agregar”."]]).map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#00e5a0",color:"#06130d",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
         <div style=${{fontSize:12,color:"#888",margin:"4px 0 12px"}}>Después, abre AlexPicks desde el nuevo ícono. Tendrás que iniciar sesión otra vez dentro de la app.</div>
         <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%"}}>Entendido</button>
       </div>
