@@ -504,14 +504,14 @@ function App() {
   const [modal,setModal] = useState(false);
   const [vistaActual,setVistaActual] = useState("dashboard");
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
-  const [instalarCerrado,setInstalarCerrado] = useState(()=>{ try{return localStorage.getItem("instalarCerrado")==="1";}catch(e){return false;} });
+  const [instalarCerrado,setInstalarCerrado] = useState(()=>{ try{return localStorage.getItem("instalarCerrado2")==="1";}catch(e){return false;} });
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
   useEffect(()=>{ const h=e=>{e.preventDefault();setPromptInstalar(e);}; window.addEventListener("beforeinstallprompt",h); return ()=>window.removeEventListener("beforeinstallprompt",h); },[]);
   const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const yaInstalada = window.navigator.standalone===true || (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches);
   const mostrarInstalar = !instalarCerrado && !yaInstalada && (esIOS || !!promptInstalar);
-  const cerrarInstalar = () => { setInstalarCerrado(true); try{localStorage.setItem("instalarCerrado","1");}catch(e){} };
+  const cerrarInstalar = () => { setInstalarCerrado(true); try{localStorage.setItem("instalarCerrado2","1");}catch(e){} };
   const instalarApp = async () => { if(promptInstalar){ promptInstalar.prompt(); try{await promptInstalar.userChoice;}catch(e){} setPromptInstalar(null); } else setInstalarGuia(true); };
   const [periodoVista,setPeriodoVista] = useState("mensual");
   const [mesSeleccionado,setMesSeleccionado] = useState(new Date().getMonth());
