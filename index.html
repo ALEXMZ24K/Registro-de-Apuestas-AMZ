@@ -346,20 +346,18 @@ function DI({label,val,vc}) {
 function DeportesGrid({data,onSelect,selected}) {
   return html`<div style=${S.section}>
     <h2 style=${S.secTitle}>Por deporte <span style=${{color:"var(--mu3)",fontSize:10,fontWeight:400,marginLeft:6}}>· toca para filtrar</span></h2>
-    <div style=${S.deportesGrid}>
+    <div style=${{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(104px,1fr))",gap:10}}>
       ${data.map(d => {
         const isSel = selected===d.deporte;
-        return html`<div key=${d.deporte} onClick=${()=>onSelect(d.deporte)}
-          style=${{...S.deporteCard,cursor:"pointer",borderColor:isSel?"#2fe0a0":"var(--br)",background:isSel?"#2fe0a008":"transparent",transition:"all .15s"}}>
-          <span style=${{fontSize:26}}>${iconDeporte[d.deporte]||"🎯"}</span>
-          <div style=${{fontSize:13,color:isSel?"#e8e8f0":"#aaa",marginTop:6,marginBottom:4,fontWeight:isSel?700:400}}>${d.deporte}</div>
-          <div style=${{fontSize:14,fontWeight:700}}>
-            <span style=${{color:"#2fe0a0"}}>${d.ganadas}G</span>
-            <span style=${{color:"#888"}}> · </span>
-            <span style=${{color:"#ff5d7a"}}>${d.perdidas}P</span>
-          </div>
-          <div style=${{fontSize:11,color:"var(--mu2)",marginTop:2}}>${d.total} total</div>
-        </div>`;
+        return html`<button key=${d.deporte} onClick=${()=>onSelect(d.deporte)}
+          style=${{minWidth:0,aspectRatio:"1 / 1.05",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,padding:"10px 6px",
+            background:isSel?"color-mix(in srgb,var(--ac) 14%,var(--card))":"var(--card)",border:isSel?"2px solid var(--ac)":"1px solid var(--br)",borderRadius:16,
+            cursor:"pointer",fontFamily:"inherit",color:"#fff",transition:"all .15s"}}>
+          <span style=${{fontSize:30,lineHeight:"34px"}}>${iconDeporte[d.deporte]||"🎯"}</span>
+          <span style=${{fontSize:13,fontWeight:isSel?800:600,color:isSel?"#fff":"#dfe5ff",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${d.deporte}</span>
+          <span style=${{fontSize:15,fontWeight:800}}><span style=${{color:"#2fe0a0"}}>${d.ganadas}G</span><span style=${{color:"var(--mu3)"}}> · </span><span style=${{color:"#ff5d7a"}}>${d.perdidas}P</span></span>
+          <span style=${{fontSize:11,color:"var(--mu)"}}>${d.total} total</span>
+        </button>`;
       })}
     </div>
   </div>`;
