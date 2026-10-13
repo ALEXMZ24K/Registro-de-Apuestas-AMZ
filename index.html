@@ -1382,6 +1382,11 @@ function App() {
       }));
     },170);
   };
+  // Pestañas: si ya estás en ella, te sube hasta arriba (y en Anual borra la búsqueda)
+  const tab = v => {
+    if(vista===v){ if(v==="anual" && busca && window.scrollY<40) setBusca(""); window.scrollTo({top:0,behavior:"smooth"}); return; }
+    irA(v);
+  };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
   const pctMes = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
@@ -1789,11 +1794,11 @@ function App() {
 
     <nav className="tabbar">
       <div className="tabbar-in">
-        <button className=${vista==="inicio"?"on":""} onClick=${()=>irA("inicio")}><span className="ic">🏠</span>Inicio</button>
-        <button id="t-tab-cal" className=${vista==="calendario"?"on":""} onClick=${()=>irA("calendario")}><span className="ic">📅</span>Calendario</button>
+        <button className=${vista==="inicio"?"on":""} onClick=${()=>tab("inicio")}><span className="ic">🏠</span>Inicio</button>
+        <button id="t-tab-cal" className=${vista==="calendario"?"on":""} onClick=${()=>tab("calendario")}><span className="ic">📅</span>Calendario</button>
         ${isAdmin && html`<button id="t-tab-plus" className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">＋</button>`}
-        <button id="t-tab-anual" className=${vista==="anual"?"on":""} onClick=${()=>irA("anual")}><span className="ic">📊</span>Anual</button>
-        <button id="t-tab-mas" className=${vista==="mas"||vista==="compartir"||vista==="ayuda"?"on":""} onClick=${()=>irA("mas")}><span className="ic">☰</span>Más</button>
+        <button id="t-tab-anual" className=${vista==="anual"?"on":""} onClick=${()=>tab("anual")}><span className="ic">📊</span>Anual</button>
+        <button id="t-tab-mas" className=${vista==="mas"||vista==="compartir"||vista==="ayuda"?"on":""} onClick=${()=>tab("mas")}><span className="ic">☰</span>Más</button>
       </div>
     </nav>
 
