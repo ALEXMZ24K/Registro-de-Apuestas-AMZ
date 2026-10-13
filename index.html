@@ -953,7 +953,8 @@ function App() {
   },[apuestasMes]);
 
   const rachaActual = useMemo(()=>{
-    const finalizadas = apuestasMes.filter(a=>a.resultado!=="Pendiente").sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    // Solo cuentan ganadas y perdidas: las nulas (y pendientes) no cortan ni suman a la racha
+    const finalizadas = apuestasMes.filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").sort((a,b)=>a.fecha.localeCompare(b.fecha));
     if(finalizadas.length===0) return {racha:0,tipo:null};
     let racha=1, tipo=finalizadas[finalizadas.length-1].resultado;
     for(let i=finalizadas.length-2;i>=0;i--){
