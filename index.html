@@ -176,7 +176,11 @@ const colorRes = {Ganada:"#2fe0a0",Perdida:"#ff5d7a",Pendiente:"#888",Nula:"#f5c
 const bgRes = {Ganada:"#2fe0a020",Perdida:"#ff5d7a20",Pendiente:"#88888820",Nula:"#f5c84220"};
 
 const fmt = n => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
-const fmtMomio = m => { const n=Number(m); if(!n) return ""; return n>0?`+${n}`:`${n}`; };
+// Formato de momio elegido por el usuario (americano o decimal); se actualiza en cada render de App
+let MOMIO_DEC = false;
+const fmtMomio = m => { const n=Number(m); if(!n) return ""; if(MOMIO_DEC) return momioToDec(n).toFixed(2); return n>0?`+${n}`:`${n}`; };
+// Decimal (1.91) → americano (-110)
+const decToAm = d => { const n=Number(String(d).replace(",",".")); if(!(n>1)) return 0; return n>=2?Math.round((n-1)*100):-Math.round(100/(n-1)); };
 const momioToDec = m => { const n=Number(m); if(!n) return 0; return n>0?(n/100)+1:(100/Math.abs(n))+1; };
 // Promedio de momios americanos: se promedia en decimal y se regresa a americano (promediar +150 y -160 directo no tiene sentido)
 const promedioMomio = lista => {
@@ -475,6 +479,9 @@ function App() {
   const [editId,setEditId] = useState(null);
   const [modal,setModal] = useState(false);
   const [vistaActual,setVistaActual] = useState("inicio");
+  const [momioDec,setMomioDecState] = useState(()=>{ try{ return localStorage.getItem("formatoMomio")==="decimal"; }catch(e){ return false; } });
+  MOMIO_DEC = momioDec;
+  const cuotaAm = v => momioDec ? decToAm(v) : Number(v);
   const [verTodasAno,setVerTodasAno] = useState(false);
   const [notisGuia,setNotisGuia] = useState(false);
   const [notisCopiado,setNotisCopiado] = useState(false);
@@ -516,6 +523,20 @@ function App() {
     return auth.onAuthStateChanged(u=>setUser(u));
   },[]);
 
+  // Formato de momio guardado en la cuenta (para que se conserve al cambiar de teléfono)
+  useEffect(()=>{
+    if(!user) return;
+    return db.collection("usuarios").doc(user.uid).onSnapshot(snap=>{
+      const f = snap.exists && snap.data().formatoMomio;
+      if(f){ setMomioDecState(f==="decimal"); try{ localStorage.setItem("formatoMomio",f); }catch(e){} }
+    },()=>{});
+  },[user&&user.uid]);
+  const setMomioDec = dec => {
+    const f = dec?"decimal":"americano";
+    setMomioDecState(dec);
+    try{ localStorage.setItem("formatoMomio",f); }catch(e){}
+    if(user) db.collection("usuarios").doc(user.uid).set({formatoMomio:f},{merge:true}).catch(()=>{});
+  };
   const isAdmin = !!user && ADMIN_EMAILS.includes((user.email||"").toLowerCase());
   const modoEdicion = isAdmin;
   const usaBankPropio = !!user && !isAdmin;
@@ -667,7 +688,7 @@ function App() {
   const openModal = (ap=null) => {
     if(ap){
       const patas=ap.patas?ap.patas.map(p=>typeof p==="string"?{deporte:"",desc:p}:p):[{deporte:"",desc:""},{deporte:"",desc:""}];
-      setForm({...ap,monto:String(ap.monto),cuota:String(ap.cuota),patas});
+      setForm({...ap,monto:String(ap.monto),cuota:momioDec?momioToDec(ap.cuota).toFixed(2):String(ap.cuota),patas});
       setEditId(ap.id);
     } else {setForm(initialForm);setEditId(null);}
     setFormError("");
@@ -683,19 +704,19 @@ function App() {
       ? form.patas.filter(p=>p.desc && p.desc.trim()).map(p=>(p.deporte?`[${p.deporte}] `:"")+p.desc).join(" | ")
       : form.descripcion;
     const deporteOk = deporteOpcional||!!form.deporte;
-    const cuotaVal = String(form.cuota).trim();
-    const cuotaOk = cuotaVal!==""&&cuotaVal!=="0"&&!isNaN(Number(cuotaVal));
+    const cuotaNum = cuotaAm(String(form.cuota).trim());
+    const cuotaOk = !!cuotaNum && !isNaN(cuotaNum);
     const montoOk = String(form.monto).trim()!==""&&Number(form.monto)>0;
     const descOk = desc && desc.trim().length>0;
     if(!form.tipo) { setFormError("Selecciona el tipo de apuesta"); return; }
     if(!deporteOk) { setFormError("Selecciona el deporte"); return; }
     if(!descOk) { setFormError("Agrega una descripción"); return; }
     if(!montoOk) { setFormError("Agrega un monto mayor a 0"); return; }
-    if(!cuotaOk) { setFormError("Agrega un momio válido (ej: -110 o +150)"); return; }
+    if(!cuotaOk) { setFormError(momioDec?"Agrega un momio decimal válido (ej: 1.91 o 2.50)":"Agrega un momio válido (ej: -110 o +150)"); return; }
     if(!form.fecha) { setFormError("Selecciona la fecha"); return; }
     setFormError("");
     const deporte = !form.deporte ? (usaPatas?"Combinación":form.tipo) : form.deporte;
-    const nueva = {deporte,descripcion:desc,monto:Number(form.monto),cuota:Number(form.cuota),resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
+    const nueva = {deporte,descripcion:desc,monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
     if(editId){
       const docId=apuestas.find(a=>a.id===editId)?._docId;
       if(docId) db.collection("apuestas").doc(docId).set({...nueva,id:editId});
@@ -935,6 +956,16 @@ function App() {
           <span style=${{color:"#5a668f",fontSize:18}}>›</span>
         </button>`}
 
+        <div style=${{...S.row,cursor:"default",flexWrap:"wrap"}}>
+          <span style=${{fontSize:24}}>🎲</span>
+          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Formato de momio</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Cómo ves y escribes los momios</div></div>
+          <div style=${{display:"flex",background:"#0a0f20",border:"1px solid #243060",borderRadius:12,padding:3,gap:3,width:"100%"}}>
+            ${[[false,"Americano","-110 / +150"],[true,"Decimal","1.91 / 2.50"]].map(([v,l,ej])=>html`<button key=${l} onClick=${()=>setMomioDec(v)}
+              style=${{flex:1,border:"none",borderRadius:9,padding:"9px 4px",minHeight:46,cursor:"pointer",fontFamily:"inherit",background:momioDec===v?"#4a8dff":"transparent",color:momioDec===v?"#fff":"#8f9bc4"}}>
+              <b style=${{fontSize:14,display:"block"}}>${l}</b><span style=${{fontSize:11,opacity:.85}}>${ej}</span></button>`)}
+          </div>
+        </div>
+
         <button onClick=${()=>setNotisGuia(true)} style=${S.row}>
           <span style=${{fontSize:24}}>🔔</span>
           <div style=${{flex:1}}><b style=${{fontSize:15}}>Notificaciones</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Aviso en tu celular con cada pick nuevo</div></div>
@@ -1038,12 +1069,14 @@ function App() {
             ${bankrollMes>0 && html`<div style=${{fontSize:11,color:"#2fe0a0",marginTop:4}}>= ${fmt((Number(form.monto)||0)/100*bankrollMes)} MXN</div>`}
           </div>
           <div style=${S.fg}>
-            <label style=${S.label}>Momio (americano)</label>
-            <div style=${{display:"flex",gap:8}}>
+            <label style=${S.label}>Momio (${momioDec?"decimal":"americano"})</label>
+            ${momioDec
+              ? html`<input style=${S.input} type="text" inputMode="decimal" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} placeholder="1.91 o 2.50"/>`
+              : html`<div style=${{display:"flex",gap:8}}>
               <button type="button" onClick=${()=>setForm(f=>{const d=String(f.cuota).replace(/[^0-9]/g,"");const neg=String(f.cuota).trim().startsWith("-");return{...f,cuota:(neg?"+":"-")+d};})}
                 style=${{...S.btnSecondary,padding:"0 16px",fontSize:20,fontWeight:800,flexShrink:0,color:String(form.cuota).trim().startsWith("-")?"#ff5d7a":"#2fe0a0"}}>${String(form.cuota).trim().startsWith("-")?"−":"+"}</button>
               <input style=${{...S.input,flex:1,minWidth:0}} type="text" inputMode="numeric" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} onBlur=${e=>{const v=e.target.value.trim();if(v&&!v.startsWith("-")&&!v.startsWith("+"))setForm(f=>({...f,cuota:"+"+v}));}} placeholder="-110 o +150"/>
-            </div>
+            </div>`}
           </div>
           <div style=${S.fg}>
             <label style=${S.label}>Fecha</label>
@@ -1056,11 +1089,11 @@ function App() {
             </select>
           </div>
         </div>
-        ${form.monto&&form.cuota&&momioToDec(form.cuota)>0 && html`<div style=${S.preview}>
-          Momio: <span style=${{color:"#fff",fontWeight:700}}>${fmtMomio(form.cuota)}</span>
+        ${form.monto&&form.cuota&&momioToDec(cuotaAm(form.cuota))>0 && html`<div style=${S.preview}>
+          Momio: <span style=${{color:"#fff",fontWeight:700}}>${fmtMomio(cuotaAm(form.cuota))}</span>
           ${bankrollMes>0 && (()=>{ const st=(Number(form.monto)||0)/100*bankrollMes; return html`<span><span style=${{marginLeft:12}}>· Ganancia potencial: </span>
-          <span style=${{color:"#2fe0a0",fontWeight:700}}>${fmt(st*momioToDec(form.cuota)-st)}</span>
-          <span style=${{color:"#8f9bc4",marginLeft:12}}>Retorno: ${fmt(st*momioToDec(form.cuota))}</span></span>`; })()}
+          <span style=${{color:"#2fe0a0",fontWeight:700}}>${fmt(st*momioToDec(cuotaAm(form.cuota))-st)}</span>
+          <span style=${{color:"#8f9bc4",marginLeft:12}}>Retorno: ${fmt(st*momioToDec(cuotaAm(form.cuota)))}</span></span>`; })()}
         </div>`}
         ${formError && html`<div style=${{color:"#ff5d7a",fontSize:13,marginBottom:12,padding:"8px 12px",background:"#ff5d7a15",borderRadius:8,border:"1px solid #ff5d7a30"}}>⚠️ ${formError}</div>`}
         <div style=${S.modalFooter}>
