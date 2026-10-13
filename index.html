@@ -375,7 +375,11 @@ function DeportesGrid({data,onSelect,selected}) {
   </div>`;
 }
 
-function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
+// Patas de un parlay/freebet como lista limpia {deporte,desc,res}
+const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
+const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
+
+function AR({a,onEdit,onDelete,onToggle,onPata,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   const show = open||expanded;
   const cr = colorRes[a.resultado]||"var(--mu)";
@@ -384,16 +388,20 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
     : (a.resultado==="Pendiente" ? (monto?fmt(monto):"⏳") : a.resultado==="Nula" ? "$0" : (g>0?"+":"")+fmt(g));
   const resTxt = {Ganada:"GANADO",Perdida:"PERDIDO",Pendiente:"PENDIENTE",Nula:"NULA"}[a.resultado]||a.resultado;
   const f = parseFecha(a.fecha);
+  const patas = esCombo(a) ? patasDe(a) : [];
+  const combo = patas.length>0;
+  const titulo = combo ? (a.tipo==="Freebet"?"🎁 Freebet":"🎯 Parlay")+" · "+patas.length+(patas.length===1?" pick":" picks") : (iconDeporte[a.deporte]||"🎯")+" "+a.descripcion;
+  const subtitulo = combo ? patas.map(p=>p.desc).join(" · ") : a.tipo;
   return html`<div style=${S.apCard}>
     <div style=${{display:"flex",cursor:"pointer"}} onClick=${()=>setOpen(o=>!o)}>
       <div style=${{width:5,background:cr,flexShrink:0}}></div>
       <div style=${{flex:1,minWidth:0,padding:"12px 12px 12px 13px"}}>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
-          <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${iconDeporte[a.deporte]||"🎯"} ${a.descripcion}</div>
+          <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${titulo}</div>
           <div style=${{color:a.resultado==="Pendiente"?"#c9d2f0":cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px"}}>${montoTxt}</div>
         </div>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"var(--mu)"}}>
-          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${a.tipo} · ${f.d} ${MESES_CORTO[f.m]}</span>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${f.d} ${MESES_CORTO[f.m]} · ${subtitulo}</span>
           <span style=${{whiteSpace:"nowrap"}}>${a.monto}% del bank</span>
         </div>
       </div>
@@ -410,18 +418,23 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
         <${DI} label="Retorno" val=${fmt((monto||0)*momioToDec(a.cuota))}/>
         <${DI} label="Ganancia" val=${OCULTAR?fmtPct(gPct(a)):(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#2fe0a0":"#ff5d7a"}/>
       </div>
-      ${a.tipo==="Parlay/Combinada" && a.patas && a.patas.length>0 && html`
+      ${combo && html`
         <div style=${{marginBottom:14}}>
-          <div style=${{fontSize:11,color:"var(--mu2)",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Patas del parlay</div>
+          <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <span style=${{fontSize:11,color:"var(--mu2)",textTransform:"uppercase",letterSpacing:0.8}}>${a.tipo==="Freebet"?"Picks de la freebet":"Picks del parlay"}</span>
+            ${editable && html`<span style=${{fontSize:11,color:"var(--mu3)"}}>Toca ✓/✕ para marcar cada pick</span>`}
+          </div>
           <div style=${{display:"flex",flexDirection:"column",gap:6}}>
-            ${a.patas.map((p,i) => {
-              const dep = typeof p==="object"?p.deporte:"";
-              const desc = typeof p==="object"?p.desc:p;
-              if(!desc) return null;
-              return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"color-mix(in srgb,var(--bg) 50%,transparent)",borderRadius:8,padding:"7px 10px"}}>
-                <span style=${{fontSize:12,color:"var(--ac)",fontWeight:700,minWidth:18}}>${i+1}.</span>
-                ${dep && html`<span style=${{fontSize:12}}>${iconDeporte[dep]||"🎯"}</span>`}
-                <span style=${{fontSize:13,color:"#dfe5ff"}}>${desc}</span>
+            ${patas.map((p,i) => {
+              const rc = p.res==="G"?"#2fe0a0":p.res==="P"?"#ff5d7a":"var(--mu3)";
+              const marca = html`<span style=${{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:13,flexShrink:0,
+                  background:p.res?rc:"transparent",color:p.res?"#06101f":"var(--mu3)",border:p.res?"none":"1.5px dashed var(--mu3)"}}>${p.res==="G"?"✓":p.res==="P"?"✕":""}</span>`;
+              return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"color-mix(in srgb,var(--bg) 55%,transparent)",borderRadius:10,padding:"9px 10px"}}>
+                <span style=${{fontSize:16,flexShrink:0}}>${iconDeporte[p.deporte]||"🎯"}</span>
+                <span style=${{fontSize:14,color:"#e8ecff",flex:1,minWidth:0,wordBreak:"break-word"}}>${p.desc}</span>
+                ${editable
+                  ? html`<button onClick=${e=>{e.stopPropagation();onPata&&onPata(i);}} style=${{background:"none",border:"none",padding:4,cursor:"pointer"}} aria-label="Marcar pick">${marca}</button>`
+                  : (p.res && marca)}
               </div>`;
             })}
           </div>
@@ -510,8 +523,8 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
       <span><span style=${{color:"#2fe0a0"}}>●</span> Ganó</span>
       <span><span style=${{color:"#ff5d7a"}}>●</span> Perdió</span>
       <span>⏳ Pendiente</span>
-      <span>Toca un día para ver sus picks</span>
     </div>
+    <div style=${{textAlign:"center",fontSize:11,color:"var(--mu3)",marginTop:6}}>👆 Toca un día para ver sus picks</div>
     <div style=${{display:"flex",gap:8,marginTop:14}}>
       ${[[OCULTAR?fmtPct(profitPct):(profit>=0?"+":"")+fmt(profit),"Del mes",(OCULTAR?profitPct:profit)>=0?"#2fe0a0":"#ff5d7a"],[totalG+" ✓","Ganados","#2fe0a0"],[totalP+" ✕","Perdidos","#ff5d7a"]].map(([v,l,c])=>html`
         <div key=${l} style=${{flex:1,background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:"11px 6px",textAlign:"center"}}>
@@ -801,6 +814,7 @@ function App() {
   const [faqAbierta,setFaqAbierta] = useState(null);
   const [faqBusca,setFaqBusca] = useState("");
   const [hojaMas,setHojaMas] = useState(null);
+  const [infoDato,setInfoDato] = useState(null);
   const [ia,setIa] = useState({estado:null,msg:""});
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
@@ -1017,7 +1031,7 @@ function App() {
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
+  const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
   const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMes.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
@@ -1114,6 +1128,17 @@ function App() {
     const docId=apuestas.find(a=>a.id===id)?._docId;
     if(docId) db.collection("apuestas").doc(docId).delete();
     setDeleteConfirm(null);
+  };
+
+  // Marcar una pata del parlay: vacío → ✓ → ✕ → vacío (no cambia el resultado total)
+  const cambiarPata = (id,i) => {
+    const ap = apuestas.find(a=>a.id===id); if(!ap?._docId) return;
+    const lista = (ap.patas||[]).map(p=>typeof p==="object"?{...p}:{deporte:"",desc:p});
+    const vis = lista.filter(p=>p.desc&&String(p.desc).trim());
+    const p = vis[i]; if(!p) return;
+    p.res = !p.res ? "G" : p.res==="G" ? "P" : null;
+    if(!p.res) delete p.res;
+    db.collection("apuestas").doc(ap._docId).update({patas:lista});
   };
 
   const cambiarResultado = (id,resultado) => {
@@ -1228,6 +1253,24 @@ function App() {
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
   const chipTxt = !user ? "Entrar" : bankrollMes>0 ? (ocultar?"Bank ✎":fmt(bankrollMes+stats.neto)+" ✎") : "Poner bank ＋";
   const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
+  // Datos del cuadro azul: se tocan para ver qué significan
+  const miniDato = (v,l,clave,ctx) => html`<button key=${l} onClick=${()=>setInfoDato({clave,ctx})} style=${{...S.miniStat,border:"none",color:"#fff",fontFamily:"inherit",cursor:"pointer"}}>
+    <b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2,whiteSpace:"nowrap"}}>${l} <span style=${{opacity:.8}}>ⓘ</span></div></button>`;
+  const infoDe = ({clave,ctx}) => {
+    const anual = ctx==="anual", st = anual?statsAnual:stats, periodo = anual?"en "+anoSeleccionado:"este mes";
+    const mp = anual?momioPromedio:momioPromedioMes;
+    if(clave==="acierto") return {ic:"🎯",t:"Acierto: "+st.efectividad+"%",d:"De los picks que ya terminaron "+periodo+", qué porcentaje se ganó. Llevas "+st.ganadas+" ganados y "+st.perdidas+" perdidos. Las nulas y pendientes no cuentan.",ej:[["50%","Mitad y mitad"],["55%+","Muy bueno"],["60%+","Excelente"]]};
+    if(clave==="racha") { const r=rachaActual; return {ic:r.tipo==="Perdida"?"🥶":"🔥",t:"Racha: "+(r.racha||0)+(r.tipo==="Ganada"?" ganados seguidos":r.tipo==="Perdida"?" perdidos seguidos":""),d:"Cuántos picks seguidos van con el mismo resultado este mes, contando del más reciente hacia atrás. 🔥 = ganando, 🥶 = perdiendo. Las nulas no cortan la racha."}; }
+    if(clave==="picks") return {ic:"🧾",t:"Picks: "+st.total,d:"Cuántos picks hay "+periodo+": "+st.ganadas+" ganados, "+st.perdidas+" perdidos"+(st.pendientes?", "+st.pendientes+" pendientes":"")+(st.nulas?" y "+st.nulas+" nulos":"")+"."};
+    if(clave==="record") return {ic:"📋",t:"Récord: "+st.ganadas+"-"+st.perdidas,d:"Picks ganados contra perdidos "+periodo+". El primer número son los ganados y el segundo los perdidos."};
+    if(clave==="momio") { const v=mp!==null?fmtMomio(mp):"—"; return {ic:"🎲",t:"Momio promedio: "+v,
+      d: mp===null?"Todavía no hay picks para calcularlo.":
+        momioDec?"El momio típico de los picks "+periodo+". "+fmtMomio(mp)+" significa que por cada $100 apostados se cobrarían $"+Math.round(momioToDec(mp)*100)+" en total (incluye lo apostado).":
+        (mp<0?"El momio típico de los picks "+periodo+". "+fmtMomio(mp)+" significa que en promedio se apostaron $"+Math.abs(mp)+" para ganar $100: picks con buena probabilidad de pegar."
+             :"El momio típico de los picks "+periodo+". "+fmtMomio(mp)+" significa que en promedio por cada $100 apostados se ganarían $"+mp+": picks más arriesgados pero que pagan más."),
+      ej:[[momioDec?"1.50":"-200","Favorito claro"],[momioDec?"1.91":"-110","Parejo"],[momioDec?"2.50":"+150","Arriesgado"]]}; }
+    return null;
+  };
   // Filas compactas de la pestaña Más
   const filaMas = ({e,t,sub,val,der,onClick}) => ({e,t,sub,val,der,onClick});
   const grupoMas = (titulo,filas) => { const fs=filas.filter(Boolean); if(!fs.length) return null; return html`<div>
@@ -1308,8 +1351,7 @@ function App() {
           </div>
           ${usaBankPropio&&bankrollMes>0 && html`<button onClick=${abrirBankModal} style=${{background:"none",border:"none",color:"#dfe7ff",fontSize:12,padding:"6px 0 0",cursor:"pointer",fontFamily:"inherit"}}>${iniciosUser[bankKey]?"Cuentas desde el "+fmtDia(iniciosUser[bankKey]):"Cuentas desde el día 1"} · <b style=${{color:"var(--ac2)"}}>Cambiar</b></button>`}
           <div style=${{display:"flex",gap:8,marginTop:12}}>
-            ${[[stats.efectividad+"%","Acierto"],[rachaActual.racha>0?(rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha:"—","Racha"],[String(stats.total),"Picks"],[momioPromedioMes!==null?fmtMomio(momioPromedioMes):"—","Momio prom."]].map(([v,l])=>html`
-              <div key=${l} style=${S.miniStat}><b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2}}>${l}</div></div>`)}
+            ${[[stats.efectividad+"%","Acierto","acierto"],[rachaActual.racha>0?(rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha:"—","Racha","racha"],[String(stats.total),"Picks","picks"],[momioPromedioMes!==null?fmtMomio(momioPromedioMes):"—","Momio prom.","momio"]].map(([v,l,k])=>miniDato(v,l,k,"mes"))}
           </div>
         </div>
 
@@ -1372,8 +1414,7 @@ function App() {
           <div style=${{fontSize:12,opacity:.9,letterSpacing:.5,fontWeight:700}}>BALANCE ${anoSeleccionado}</div>
           <div style=${{fontSize:34,fontWeight:900,letterSpacing:-1,color:"#fff",marginTop:2}}>${ocultar ? html`<${Contador} valor=${statsAnual.pct} formato=${fmtPct}/>` : html`<${Contador} valor=${statsAnual.neto} formato=${n=>fmtSigno(Math.round(n)||0)}/>`}</div>
           <div style=${{display:"flex",gap:8,marginTop:12}}>
-            ${[[statsAnual.efectividad+"%","Acierto"],[statsAnual.ganadas+"-"+statsAnual.perdidas,"Récord"],[String(statsAnual.total),"Picks"],[momioPromedio!==null?fmtMomio(momioPromedio):"—","Momio prom."]].map(([v,l])=>html`
-              <div key=${l} style=${S.miniStat}><b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2}}>${l}</div></div>`)}
+            ${[[statsAnual.efectividad+"%","Acierto","acierto"],[statsAnual.ganadas+"-"+statsAnual.perdidas,"Récord","record"],[String(statsAnual.total),"Picks","picks"],[momioPromedio!==null?fmtMomio(momioPromedio):"—","Momio prom.","momio"]].map(([v,l,k])=>miniDato(v,l,k,"anual"))}
           </div>
         </div>
         <div style=${S.section}>
@@ -1573,6 +1614,12 @@ function App() {
         <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Entendido</button>
     </${Hoja}>`}
 
+    ${infoDato && (()=>{ const inf=infoDe(infoDato); return inf && html`<${Hoja} onClose=${()=>setInfoDato(null)} maxW=${480}>
+      <b style=${{fontSize:19,color:"#fff",display:"block"}}>${inf.ic} ${inf.t}</b>
+      <p style=${{fontSize:15,color:"var(--mu)",lineHeight:1.55,marginTop:10}}>${inf.d}</p>
+      ${inf.ej && html`<div style=${{display:"flex",gap:6,marginTop:14}}>${inf.ej.map(([a,b])=>html`<div key=${a} style=${{flex:1,background:"var(--card)",border:"1px solid var(--br)",borderRadius:12,padding:"10px 6px",textAlign:"center"}}><b style=${{fontSize:15,color:"#fff"}}>${a}</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:3}}>${b}</div></div>`)}</div>`}
+      <button onClick=${()=>setInfoDato(null)} style=${{...S.btnSecondary,width:"100%",marginTop:16,minHeight:46}}>Entendido</button>
+    </${Hoja}>`; })()}
     ${verTutorial && html`<${Tutorial} onClose=${()=>setVerTutorial(false)}/>`}
     ${verRecorrido && html`<${Recorrido} pasos=${pasosRecorrido} onClose=${()=>setVerRecorrido(false)}/>`}
 
