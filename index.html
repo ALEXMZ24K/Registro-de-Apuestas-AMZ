@@ -1033,6 +1033,7 @@ function App() {
     swipe.current = null;
     if(vista!=="inicio" && vista!=="calendario") return;
     if(e.touches.length!==1 || e.target.closest("[data-noswipe]")) return;
+    if(!e.target.closest("[data-swipe-mover]")) return; // solo se desliza desde el cuadro de arriba (o el calendario)
     const t = e.touches[0];
     if(t.clientX<25 || t.clientX>window.innerWidth-25) return; // bordes: gesto de "atrás" del navegador
     swipe.current = {x:t.clientX, y:t.clientY, t:Date.now(), modo:null, dx:0};
