@@ -262,7 +262,7 @@ const calcStats = (lista, bank) => {
   return {ganadas:gan.length,perdidas:per.length,pendientes:pen.length,nulas:nul.length,invertido,ganancia,perdido,neto,pct:sumPct(lista),efectividad:tot>0?Math.round(gan.length/tot*100):0,total:lista.length};
 };
 
-const initialForm = {deporte:"",tipo:"",descripcion:"",patas:[{deporte:"",desc:""},{deporte:"",desc:""}],monto:"",cuota:"",resultado:"Pendiente",fecha:new Date().toISOString().slice(0,10)};
+const initialForm = {deporte:"",tipo:"",descripcion:"",partido:"",patas:[{deporte:"",desc:""},{deporte:"",desc:""}],monto:"",cuota:"",resultado:"Pendiente",fecha:new Date().toISOString().slice(0,10)};
 
 const S = {
   root:{minHeight:"100vh",background:"var(--bg)",color:"#e8e8f0",fontFamily:"'DM Sans',sans-serif",position:"relative",paddingBottom:"env(safe-area-inset-bottom)"},
@@ -375,6 +375,16 @@ function DeportesGrid({data,onSelect,selected}) {
   </div>`;
 }
 
+// Separa "pick" y "partido" de una descripción: usa el campo partido si existe; si no, lo intenta deducir
+const separarPick = a => {
+  const d = String(a.descripcion||"").trim();
+  if(a.partido) return {pick:d, partido:a.partido};
+  let m = d.match(/^(.+?)\s*\(([^()]*?\s(?:vs\.?|@|v\.?)\s[^()]*?)\)\s*$/i);
+  if(m) return {pick:m[1].trim(), partido:m[2].trim()};
+  m = d.match(/^(.+?\s(?:vs\.?|@)\s.+?)\s+[-–—:]\s+(.+)$/i);
+  if(m) return {pick:m[2].trim(), partido:m[1].trim()};
+  return {pick:d, partido:""};
+};
 // Patas de un parlay/freebet como lista limpia {deporte,desc,res}
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
@@ -383,26 +393,33 @@ function AR({a,onEdit,onDelete,onToggle,onPata,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   const show = open||expanded;
   const cr = colorRes[a.resultado]||"var(--mu)";
-  const montoTxt = OCULTAR
+  const montoTxtBase = OCULTAR
     ? (a.resultado==="Pendiente" ? a.monto+"%" : a.resultado==="Nula" ? "0%" : fmtPct(gPct(a)))
     : (a.resultado==="Pendiente" ? (monto?fmt(monto):"⏳") : a.resultado==="Nula" ? "$0" : (g>0?"+":"")+fmt(g));
+  const montoTxt = (a.resultado==="Pendiente") ? null : montoTxtBase;
   const resTxt = {Ganada:"GANADO",Perdida:"PERDIDO",Pendiente:"PENDIENTE",Nula:"NULA"}[a.resultado]||a.resultado;
   const f = parseFecha(a.fecha);
   const patas = esCombo(a) ? patasDe(a) : [];
   const combo = patas.length>0;
-  const titulo = combo ? (a.tipo==="Freebet"?"🎁 Freebet":"🎯 Parlay")+" · "+patas.length+(patas.length===1?" pick":" picks") : (iconDeporte[a.deporte]||"🎯")+" "+a.descripcion;
-  const subtitulo = combo ? patas.map(p=>p.desc).join(" · ") : a.tipo;
+  const sp = combo ? null : separarPick(a);
+  const titulo = combo ? (a.tipo==="Freebet"?"🎁 Freebet":"🎯 Parlay")+" · "+patas.length+(patas.length===1?" pick":" picks") : (iconDeporte[a.deporte]||"🎯")+" "+sp.pick;
+  const subtitulo = combo ? patas.map(p=>p.desc).join(" · ") : sp.partido;
+  const pend = a.resultado==="Pendiente";
+  const dec = momioToDec(a.cuota)||1;
+  const ganaria = (monto||0)*(dec-1);
   return html`<div style=${S.apCard}>
     <div style=${{display:"flex",cursor:"pointer"}} onClick=${()=>setOpen(o=>!o)}>
       <div style=${{width:5,background:cr,flexShrink:0}}></div>
       <div style=${{flex:1,minWidth:0,padding:"12px 12px 12px 13px"}}>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
           <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${titulo}</div>
-          <div style=${{color:a.resultado==="Pendiente"?"#c9d2f0":cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px"}}>${montoTxt}</div>
+          ${pend
+            ? html`<div style=${{textAlign:"right",whiteSpace:"nowrap",lineHeight:"17px"}}><div style=${{fontSize:10,color:"var(--mu)",fontWeight:700}}>GANA</div><div style=${{color:"#bff5dc",fontWeight:800,fontSize:16}}>${OCULTAR?fmtPct(Number(a.monto||0)*(dec-1)):"+"+fmt(ganaria)}</div></div>`
+            : html`<div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px"}}>${montoTxt}</div>`}
         </div>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"var(--mu)"}}>
-          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${f.d} ${MESES_CORTO[f.m]} · ${subtitulo}</span>
-          <span style=${{whiteSpace:"nowrap"}}>${a.monto}% del bank</span>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${f.d} ${MESES_CORTO[f.m]}${subtitulo?" · "+subtitulo:""}</span>
+          <span style=${{whiteSpace:"nowrap"}}>${pend ? "Apostado "+(OCULTAR?a.monto+"%":fmt(monto||0)) : a.monto+"% del bank"}</span>
         </div>
       </div>
       <div style=${{width:68,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"var(--card3)",borderLeft:"1px solid var(--br)",padding:"8px 2px"}}>
@@ -411,13 +428,17 @@ function AR({a,onEdit,onDelete,onToggle,onPata,g,expanded,editable,monto}) {
       </div>
     </div>
     ${show && html`<div style=${S.apDetail}>
-      <div style=${S.detailGrid}>
-        <${DI} label="Porcentaje" val=${`${a.monto}%`}/>
-        <${DI} label="Monto" val=${fmt(monto||0)}/>
-        <${DI} label="Momio" val=${fmtMomio(a.cuota)}/>
-        <${DI} label="Retorno" val=${fmt((monto||0)*momioToDec(a.cuota))}/>
-        <${DI} label="Ganancia" val=${OCULTAR?fmtPct(gPct(a)):(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#2fe0a0":"#ff5d7a"}/>
-      </div>
+      ${(()=>{ const m=monto||0, r=a.resultado;
+        const cobro = r==="Ganada"||r==="Pendiente" ? m*dec : r==="Nula" ? m : 0;
+        const gan = r==="Pendiente" ? ganaria : g;
+        const pc = n => OCULTAR ? (n/ (m||1) * Number(a.monto||0)).toFixed(1)+"%" : fmt(n);
+        return html`<div style=${{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          ${[["Apostado",OCULTAR?a.monto+"%":fmt(m),"#fff"],[r==="Pendiente"?"Cobrarías":"Cobro",pc(cobro),"#fff"],[r==="Pendiente"?"Ganarías":"Ganancia",(gan>0?"+":gan<0?"-":"")+pc(Math.abs(gan)),gan>0?"#2fe0a0":gan<0?"#ff5d7a":"#fff"]].map(([l,v,c])=>html`
+            <div key=${l} style=${{background:"color-mix(in srgb,var(--bg) 55%,transparent)",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+              <div style=${{fontSize:11,color:"var(--mu)",textTransform:"uppercase",letterSpacing:.6}}>${l}</div>
+              <div style=${{fontSize:16,fontWeight:800,color:c,marginTop:4}}>${v}</div>
+            </div>`)}
+        </div>`; })()}
       ${combo && html`
         <div style=${{marginBottom:14}}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1071,6 +1092,7 @@ function App() {
         tipo: TIPOS.includes(b.tipo)?b.tipo:f.tipo,
         deporte: esCombo?"":(DEPORTES.includes(b.deporte)?b.deporte:f.deporte),
         descripcion: esCombo?"":(b.descripcion||""),
+        partido: esCombo?"":(b.partido||""),
         patas,
         cuota: am ? (momioDec ? momioToDec(am).toFixed(2) : (am>0?"+"+am:String(am))) : f.cuota,
         monto: pct!==""?String(pct):f.monto,
@@ -1107,7 +1129,7 @@ function App() {
     if(!form.fecha) { setFormError("Selecciona la fecha"); return; }
     setFormError("");
     const deporte = !form.deporte ? (usaPatas?"Combinación":form.tipo) : form.deporte;
-    const nueva = {deporte,descripcion:desc,monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
+    const nueva = {deporte,descripcion:desc,partido:usaPatas?"":String(form.partido||"").trim(),monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
     if(editId){
       const docId=apuestas.find(a=>a.id===editId)?._docId;
       if(docId) db.collection("apuestas").doc(docId).set({...nueva,id:editId});
@@ -1381,7 +1403,8 @@ function App() {
         <div id="t-picks">
         <div style=${S.secHead}>
           <b style=${{fontSize:18,color:"#fff"}}>Picks de ${MESES[mesSeleccionado].toLowerCase()}</b>
-          <span style=${S.badge}>${apuestasMesTodas.length}</span>
+          ${(()=>{ const t=apuestasMesTodas; const G=t.filter(a=>a.resultado==="Ganada").length, P=t.filter(a=>a.resultado==="Perdida").length, E=t.filter(a=>a.resultado==="Pendiente").length;
+            return html`<span style=${{fontSize:13,fontWeight:700,whiteSpace:"nowrap"}}><span style=${{color:"#2fe0a0"}}>${G} ✓</span><span style=${{color:"var(--mu3)"}}> · </span><span style=${{color:"#ff5d7a"}}>${P} ✕</span>${E?html`<span style=${{color:"var(--mu3)"}}> · </span><span style=${{color:"#c9d2f0"}}>${E} ⏳</span>`:""}</span>`; })()}
         </div>
         ${apuestasMesTodas.length===0
           ? html`<div style=${S.empty}>No hay picks este mes.${isAdmin?html`<br/>Toca ＋ para agregar el primero.`:""}</div>`
@@ -1672,8 +1695,10 @@ function App() {
           </div>
           ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet")
             ? html`<div style=${{...S.fg,gridColumn:"1/-1"}}>
-                <label style=${S.label}>Descripción</label>
+                <label style=${S.label}>Pick</label>
                 <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder=${form.tipo==="Especial por jugador"?"Ej: LeBron James +25.5 puntos":form.tipo==="PlayBoost"?"Ej: Boost Chiefs gana +180":"Ej: Real Madrid vs Barcelona"}/>
+                <label style=${{...S.label,marginTop:8}}>Partido <span style=${{textTransform:"none",letterSpacing:0,fontWeight:400}}>(opcional)</span></label>
+                <input style=${S.input} value=${form.partido||""} onInput=${e=>setForm(f=>({...f,partido:e.target.value}))} placeholder="Ej: Galatasaray vs Barcelona"/>
               </div>`
             : html`<div style=${{gridColumn:"1/-1"}}>
                 <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>

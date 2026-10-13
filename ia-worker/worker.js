@@ -27,7 +27,8 @@ const HERRAMIENTA = {
     properties: {
       tipo: { type: "string", enum: TIPOS, description: "Tipo de apuesta. Un parlay o Same Game Parlay (SGP) es 'Parlay/Combinada'." },
       deporte: { type: "string", enum: [...DEPORTES, ""], description: "Deporte de la apuesta sencilla. Vacío si es parlay de varios deportes." },
-      descripcion: { type: "string", description: "Para apuesta sencilla: el pick corto y claro, ej. 'Steelers ML', 'Tigres vs Toluca Over 2.5', 'Lakers -5.5'. Vacío si es parlay." },
+      descripcion: { type: "string", description: "Para apuesta sencilla: SOLO el pick, corto y claro, sin el partido. Ej. 'Steelers ML', 'Over 2.5 goles', 'Lakers -5.5', 'Ambos equipos marcan: Sí'. Vacío si es parlay." },
+      partido: { type: "string", description: "Para apuesta sencilla: el partido, ej. 'Tigres vs Toluca', 'Bills @ Rams'. Vacío si es parlay o no aparece." },
       patas: { type: "array", description: "Solo para parlay/SGP: cada selección.", items: { type: "object", properties: {
         deporte: { type: "string", enum: [...DEPORTES, ""] },
         desc: { type: "string", description: "Selección corta, ej. 'Steelers ML', 'Over 45.5 puntos'." } }, required: ["deporte","desc"] } },
@@ -38,7 +39,7 @@ const HERRAMIENTA = {
       resultado: { type: "string", enum: ["Ganada","Perdida","Pendiente","Nula"], description: "GANADO/Ganada → Ganada, PERDIDO → Perdida, ABIERTA/en juego → Pendiente, ANULADA/reembolso → Nula." },
       notas: { type: "string", description: "Dudas o datos que no se pudieron leer bien. Vacío si todo está claro." },
     },
-    required: ["tipo","deporte","descripcion","patas","momio","apuesta","pago_total","fecha","resultado","notas"],
+    required: ["tipo","deporte","descripcion","partido","patas","momio","apuesta","pago_total","fecha","resultado","notas"],
   },
 };
 
