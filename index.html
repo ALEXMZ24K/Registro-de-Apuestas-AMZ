@@ -442,7 +442,7 @@ function AR({a,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g
               <div style=${{fontSize:16,fontWeight:800,color:c,marginTop:4}}>${v}</div>
             </div>`)}
         </div>`; })()}
-      ${puedeMeter && html`<button onClick=${e=>{e.stopPropagation();onMetida&&onMetida();}} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",background:"color-mix(in srgb,var(--bg) 55%,transparent)",border:"none",borderRadius:12,padding:"11px 12px",marginBottom:14,color:"#fff",fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+      ${puedeMeter && html`<button onClick=${e=>{e.stopPropagation();onMetida&&onMetida(e.currentTarget);}} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",background:"color-mix(in srgb,var(--bg) 55%,transparent)",border:"none",borderRadius:12,padding:"11px 12px",marginBottom:14,color:"#fff",fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
         <div><b style=${{fontSize:15}}>${metida?"✅ La metí":"🚫 No la metí"}</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:2}}>${metida?"Apágalo si no la jugaste y no te contará":"No cuenta en tus números · préndelo si sí la metiste"}</div></div>
         <span style=${{width:48,height:28,borderRadius:14,background:metida?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
           <span style=${{position:"absolute",top:3,left:metida?23:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span>
@@ -956,8 +956,14 @@ function App() {
   // Picks que el amigo marcó como "No la metí": se ven pero no cuentan en sus números
   const noMet = a => usaBankPropio && !!noMetidas[a.id];
   const cuentaAnual = a => !usaBankPropio || (bankReal(a)>0 && cuentaAp(a) && !noMet(a));
-  const toggleMetida = a => {
+  const toggleMetida = (a, el) => {
     if(!usaBankPropio) return;
+    // Mantener quieto el pick en pantalla aunque cambie lo de arriba (p. ej. la línea "Sin contar…")
+    if(el){
+      const top0 = el.getBoundingClientRect().top, t0 = performance.now();
+      const fijar = () => { const d = el.getBoundingClientRect().top - top0; if(Math.abs(d)>0.5) window.scrollBy(0,d); if(performance.now()-t0<700) requestAnimationFrame(fijar); };
+      requestAnimationFrame(fijar);
+    }
     // Aviso abajo con la ganancia del mes subiendo/bajando en vivo
     const mismoMes = (()=>{ const {y,m}=parseFecha(a.fecha); return y===anoSeleccionado&&m===mesSeleccionado; })();
     if(mismoMes){
@@ -1082,7 +1088,7 @@ function App() {
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${()=>toggleMetida(a)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
+  const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
   const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMesLista.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
