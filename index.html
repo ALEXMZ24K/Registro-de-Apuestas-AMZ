@@ -14,12 +14,12 @@
   <script src="https://unpkg.com/htm@3/dist/htm.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{background:#0d0f14;color:#e8e8f0;font-family:'DM Sans',sans-serif}
+    body{background:#0a0f20;color:#e8e8f0;font-family:'DM Sans',sans-serif}
     input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{opacity:1}
-    select option{background:#13162a;color:#e8e8f0}
+    select option{background:#141d40;color:#e8e8f0}
     ::-webkit-scrollbar{width:6px}
-    ::-webkit-scrollbar-track{background:#0d0f14}
-    ::-webkit-scrollbar-thumb{background:#2a2e42;border-radius:3px}
+    ::-webkit-scrollbar-track{background:#0a0f20}
+    ::-webkit-scrollbar-thumb{background:#2b3870;border-radius:3px}
     input,select,button{font-family:'DM Sans',sans-serif}
     /* Safe area for iPhone notch/home bar */
     body { padding-top: env(safe-area-inset-top); }
@@ -42,7 +42,6 @@
       .deporte-card{min-width:110px !important}
     }
 
-    .nueva-bottom,.nueva-spacer,.tabbar{display:none}
     /* iOS hace zoom al enfocar campos con letra menor a 16px */
     @media(hover:none) and (pointer:coarse){input,select,textarea{font-size:16px !important}}
     /* Campo de fecha en iOS: respetar ancho y alinear a la izquierda */
@@ -50,18 +49,16 @@
     input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1.2em}
     input[type=date]::-webkit-datetime-edit{padding:0}
     .tbl-grid>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    /* Barra inferior: celulares y tabletas (pantallas táctiles) */
-    @media(max-width:600px),(hover:none) and (pointer:coarse){
-      .nueva-top{display:none !important}
-      .nueva-bottom{display:none !important}
-      .nav-top,.salir-top{display:none !important}
-      .nueva-spacer{display:block !important;height:96px}
-      .tabbar{display:flex;position:fixed;left:12px;right:12px;max-width:560px;margin:0 auto;bottom:calc(10px + env(safe-area-inset-bottom));z-index:90;background:#171b28f2;border:1px solid #232840;border-radius:22px;padding:8px 6px;justify-content:space-around;align-items:center;box-shadow:0 8px 28px #000a;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-      .tabbar button{flex:1;min-width:0;background:none;border:none;color:#6c7289;font-size:10px;font-weight:700;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;cursor:pointer}
-      .tabbar button span{font-size:18px;line-height:1}
-      .tabbar button.on{color:#00e5a0}
-      .tabbar .plus{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:#00e5a0;color:#06130d;font-size:26px;margin-top:-22px;box-shadow:0 6px 18px #00e5a055;justify-content:center}
-    }
+    button{-webkit-tap-highlight-color:transparent}
+    /* Barra inferior (todas las pantallas) */
+    .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:90;background:#121a38f2;border-top:1px solid #243060;padding:8px 6px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .tabbar-in{display:flex;max-width:560px;margin:0 auto;justify-content:space-around;align-items:flex-start}
+    .tabbar button{flex:1;min-width:0;min-height:50px;background:none;border:none;color:#8f9bc4;font-size:11px;font-weight:600;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0;cursor:pointer}
+    .tabbar button .ic{font-size:22px;line-height:26px;filter:grayscale(1);opacity:.75}
+    .tabbar button.on{color:#4a8dff;font-weight:800}
+    .tabbar button.on .ic{filter:none;opacity:1}
+    .tabbar .plus{flex:0 0 auto;width:60px;height:60px;min-height:60px;border-radius:50%;background:#4a8dff;color:#fff;font-size:32px;font-weight:400;margin:-30px 4px 0;border:4px solid #0a0f20;box-shadow:0 6px 18px #4a8dff66;justify-content:center;padding:0}
+    .nueva-spacer{height:calc(112px + env(safe-area-inset-bottom))}
     /* Mobile (≤600px) */
     @media(max-width:600px){
       .period-bar-inner{justify-content:center !important;flex-direction:column !important;align-items:center !important}
@@ -175,8 +172,8 @@ const RESULTADOS = ["Ganada","Perdida","Pendiente","Nula"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const iconDeporte = {Fútbol:"⚽",Béisbol:"⚾",Basquetbol:"🏀",Americano:"🏈",Tenis:"🎾","Americano Colegial":"🏟️","Basquetbol Colegial":"🎓","Combinación":"🎯"};
-const colorRes = {Ganada:"#00e5a0",Perdida:"#ff4e6a",Pendiente:"#888",Nula:"#f5c842"};
-const bgRes = {Ganada:"#00e5a020",Perdida:"#ff4e6a20",Pendiente:"#88888820",Nula:"#f5c84220"};
+const colorRes = {Ganada:"#2fe0a0",Perdida:"#ff5d7a",Pendiente:"#888",Nula:"#f5c842"};
+const bgRes = {Ganada:"#2fe0a020",Perdida:"#ff5d7a20",Pendiente:"#88888820",Nula:"#f5c84220"};
 
 const fmt = n => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
 const fmtMomio = m => { const n=Number(m); if(!n) return ""; return n>0?`+${n}`:`${n}`; };
@@ -206,69 +203,78 @@ const calcStats = (lista, bank) => {
 const initialForm = {deporte:"",tipo:"",descripcion:"",patas:[{deporte:"",desc:""},{deporte:"",desc:""}],monto:"",cuota:"",resultado:"Pendiente",fecha:new Date().toISOString().slice(0,10)};
 
 const S = {
-  root:{minHeight:"100vh",background:"#0d0f14",color:"#e8e8f0",fontFamily:"'DM Sans',sans-serif",position:"relative",paddingBottom:"env(safe-area-inset-bottom)"},
-  glow1:{position:"fixed",top:-200,left:-200,width:600,height:600,background:"radial-gradient(circle,#00e5a015 0%,transparent 70%)",pointerEvents:"none"},
-  glow2:{position:"fixed",bottom:-200,right:-200,width:500,height:500,background:"radial-gradient(circle,#ff4e6a10 0%,transparent 70%)",pointerEvents:"none"},
-  header:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"clamp(10px,2vw,18px) clamp(12px,3vw,28px)",borderBottom:"1px solid #1e2130",position:"sticky",top:0,background:"#0d0f14ee",backdropFilter:"blur(12px)",zIndex:100,flexWrap:"wrap",gap:12,className:"header-inner"},
+  root:{minHeight:"100vh",background:"#0a0f20",color:"#e8e8f0",fontFamily:"'DM Sans',sans-serif",position:"relative",paddingBottom:"env(safe-area-inset-bottom)"},
+  glow1:{position:"fixed",top:-200,left:-200,width:600,height:600,background:"radial-gradient(circle,#2fe0a015 0%,transparent 70%)",pointerEvents:"none"},
+  glow2:{position:"fixed",bottom:-200,right:-200,width:500,height:500,background:"radial-gradient(circle,#ff5d7a10 0%,transparent 70%)",pointerEvents:"none"},
+  header:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"clamp(10px,2vw,18px) clamp(12px,3vw,28px)",borderBottom:"1px solid #243060",position:"sticky",top:0,background:"#0a0f20ee",backdropFilter:"blur(12px)",zIndex:100,flexWrap:"wrap",gap:12,className:"header-inner"},
   logo:{display:"flex",alignItems:"center",gap:12},
-  logoIcon:{fontSize:28,color:"#00e5a0"},
+  logoIcon:{fontSize:28,color:"#2fe0a0"},
   logoTitle:{fontSize:"clamp(15px,4vw,20px)",fontWeight:800,letterSpacing:-0.5,color:"#fff"},
-  logoSub:{fontSize:11,color:"#555",letterSpacing:1,textTransform:"uppercase"},
+  logoSub:{fontSize:11,color:"#7c88b3",letterSpacing:1,textTransform:"uppercase"},
   nav:{display:"flex",gap:6},
-  navBtn:{background:"transparent",border:"1px solid #1e2130",borderRadius:8,color:"#666",padding:"7px clamp(10px,2vw,18px)",cursor:"pointer",fontSize:"clamp(12px,3vw,14px)",fontWeight:500},
-  navBtnActive:{background:"#1a1e2e",borderColor:"#00e5a040",color:"#00e5a0"},
-  btnPrimary:{background:"#00e5a0",color:"#0d0f14",border:"none",borderRadius:10,padding:"8px clamp(12px,2vw,20px)",fontWeight:800,fontSize:"clamp(12px,3vw,14px)",cursor:"pointer"},
-  btnSecondary:{background:"transparent",color:"#aaa",border:"1px solid #2a2e42",borderRadius:10,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"},
-  periodBar:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px clamp(12px,3vw,28px)",borderBottom:"1px solid #1a1d28",flexWrap:"wrap",gap:12,rowGap:8},
-  togglePeriodo:{display:"flex",background:"#10131a",border:"1px solid #1e2130",borderRadius:10,padding:3,gap:3},
-  tpBtn:{background:"transparent",border:"none",borderRadius:7,padding:"7px 20px",color:"#666",fontWeight:600,fontSize:13,cursor:"pointer"},
-  tpBtnActive:{background:"#1a1e2e",color:"#00e5a0"},
+  navBtn:{background:"transparent",border:"1px solid #243060",borderRadius:8,color:"#8f9bc4",padding:"7px clamp(10px,2vw,18px)",cursor:"pointer",fontSize:"clamp(12px,3vw,14px)",fontWeight:500},
+  navBtnActive:{background:"#1c2750",borderColor:"#2fe0a040",color:"#2fe0a0"},
+  btnPrimary:{background:"#4a8dff",color:"#fff",border:"none",borderRadius:10,padding:"8px clamp(12px,2vw,20px)",fontWeight:800,fontSize:"clamp(12px,3vw,14px)",cursor:"pointer"},
+  btnSecondary:{background:"transparent",color:"#aaa",border:"1px solid #2b3870",borderRadius:10,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"},
+  periodBar:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px clamp(12px,3vw,28px)",borderBottom:"1px solid #1c2750",flexWrap:"wrap",gap:12,rowGap:8},
+  togglePeriodo:{display:"flex",background:"#121a38",border:"1px solid #243060",borderRadius:10,padding:3,gap:3},
+  tpBtn:{background:"transparent",border:"none",borderRadius:7,padding:"7px 20px",color:"#8f9bc4",fontWeight:600,fontSize:13,cursor:"pointer"},
+  tpBtnActive:{background:"#1c2750",color:"#2fe0a0"},
   navFecha:{display:"flex",alignItems:"center",gap:16},
-  monthNav:{background:"transparent",border:"none",color:"#666",fontSize:22,cursor:"pointer",padding:"0 8px"},
+  monthNav:{background:"transparent",border:"none",color:"#8f9bc4",fontSize:22,cursor:"pointer",padding:"0 8px"},
   monthLabel:{fontSize:"clamp(14px,4vw,17px)",fontWeight:700,color:"#fff",minWidth:"clamp(120px,40vw,180px)",textAlign:"center"},
-  main:{maxWidth:960,margin:"0 auto",padding:"clamp(12px,3vw,28px) clamp(10px,3vw,24px)"},
+  main:{maxWidth:640,margin:"0 auto",padding:"10px 16px 0"},
+  hero:{background:"linear-gradient(135deg,#1d4fd8,#0f2160)",borderRadius:24,padding:"16px 18px 18px",marginBottom:14,boxShadow:"0 10px 30px #1d4fd833"},
+  chip:{background:"#ffffff2e",border:"none",color:"#fff",borderRadius:16,padding:"8px 13px",fontSize:13,fontWeight:700,cursor:"pointer",minHeight:36},
+  miniStat:{flex:1,background:"#ffffff1f",borderRadius:12,padding:"8px 6px",textAlign:"center"},
+  pageTitle:{fontSize:24,fontWeight:800,color:"#fff"},
+  pillBtn:{background:"#121a38",border:"1px solid #243060",borderRadius:14,padding:"9px 16px",fontSize:14,color:"#4a8dff",fontWeight:700,cursor:"pointer",minHeight:40},
+  sqBtn:{width:46,height:46,borderRadius:14,background:"#121a38",border:"1px solid #243060",color:"#fff",fontSize:22,cursor:"pointer",flexShrink:0},
+  monthRow:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:10},
+  secHead:{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"18px 2px 10px"},
+  row:{display:"flex",alignItems:"center",gap:12,background:"#121a38",border:"1px solid #243060",borderRadius:16,padding:"13px 14px",marginBottom:10,cursor:"pointer",width:"100%",textAlign:"left",color:"#fff",fontFamily:"inherit"},
   statsGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:28},
-  card:{background:"transparent",border:"1px solid #1e2130",borderRadius:14,padding:"clamp(12px,3vw,18px) clamp(10px,2vw,16px)"},
-  cardLabel:{fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:1,marginBottom:8},
+  card:{background:"#121a38",border:"1px solid #243060",borderRadius:16,padding:"clamp(12px,3vw,18px) clamp(10px,2vw,16px)"},
+  cardLabel:{fontSize:11,color:"#7c88b3",textTransform:"uppercase",letterSpacing:1,marginBottom:8},
   cardValue:{fontSize:"clamp(16px,4vw,22px)",fontWeight:800,color:"#fff",marginBottom:4},
-  cardSub:{fontSize:12,color:"#555"},
+  cardSub:{fontSize:12,color:"#7c88b3"},
   section:{marginBottom:32},
-  secTitle:{fontSize:12,fontWeight:700,color:"#555",marginBottom:16,textTransform:"uppercase",letterSpacing:1.2},
+  secTitle:{fontSize:12,fontWeight:700,color:"#7c88b3",marginBottom:16,textTransform:"uppercase",letterSpacing:1.2},
   deportesGrid:{display:"flex",gap:12,flexWrap:"wrap"},
-  deporteCard:{background:"transparent",border:"1px solid #1e2130",borderRadius:12,padding:"14px 20px",textAlign:"center",minWidth:100},
-  chartCard:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,padding:"20px 16px"},
+  deporteCard:{background:"transparent",border:"1px solid #243060",borderRadius:12,padding:"14px 20px",textAlign:"center",minWidth:100},
+  chartCard:{background:"#121a38",border:"1px solid #243060",borderRadius:14,padding:"20px 16px"},
   chartBars:{display:"flex",alignItems:"flex-end",gap:5,height:110},
   chartCol:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},
   barWrap:{width:"100%",display:"flex",alignItems:"flex-end",justifyContent:"center",height:88},
-  tableWrap:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,overflow:"hidden"},
-  tableHead:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"12px clamp(10px,2.5vw,18px)",borderBottom:"1px solid #1e2130",fontSize:"clamp(9px,2.6vw,11px)",color:"#555",textTransform:"uppercase",letterSpacing:0.4},
+  tableWrap:{background:"#121a38",border:"1px solid #243060",borderRadius:14,overflow:"hidden"},
+  tableHead:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"12px clamp(10px,2.5vw,18px)",borderBottom:"1px solid #243060",fontSize:"clamp(9px,2.6vw,11px)",color:"#7c88b3",textTransform:"uppercase",letterSpacing:0.4},
   tableRow:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"13px clamp(10px,2.5vw,18px)",borderBottom:"1px solid #13162020",fontSize:"clamp(12px,3.4vw,14px)",cursor:"pointer"},
-  apCard:{background:"#10131a",border:"1px solid #1e2130",borderRadius:14,marginBottom:10,overflow:"hidden"},
+  apCard:{background:"#121a38",border:"1px solid #243060",borderRadius:16,marginBottom:10,overflow:"hidden"},
   apMain:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",gap:12,cursor:"pointer"},
   apLeft:{display:"flex",alignItems:"center",gap:14,flex:1,minWidth:0},
   apDesc:{fontSize:15,fontWeight:600,color:"#e8e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
-  apMeta:{fontSize:12,color:"#555",marginTop:3},
+  apMeta:{fontSize:12,color:"#7c88b3",marginTop:3},
   apRight:{display:"flex",flexDirection:"column",alignItems:"stretch",gap:6,flexShrink:0,width:92,textAlign:"center"},
   resTag:{fontSize:11,fontWeight:700,padding:"4px 0",textAlign:"center",borderRadius:6,textTransform:"uppercase",letterSpacing:0.5},
-  apDetail:{borderTop:"1px solid #1a1d28",padding:"14px 18px"},
+  apDetail:{borderTop:"1px solid #1c2750",padding:"14px 18px"},
   detailGrid:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:14},
-  actBtn:{background:"transparent",border:"1px solid #1e2130",borderRadius:8,color:"#888",padding:"6px 14px",cursor:"pointer",fontSize:13},
+  actBtn:{background:"transparent",border:"1px solid #243060",borderRadius:8,color:"#888",padding:"6px 14px",cursor:"pointer",fontSize:13},
   overlay:{position:"fixed",inset:0,background:"#000a",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
-  modal:{background:"#13162a",border:"1px solid #2a2e42",borderRadius:18,padding:"clamp(16px,4vw,28px)",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",margin:"0 8px"},
+  modal:{background:"#141d40",border:"1px solid #2b3870",borderRadius:18,padding:"clamp(16px,4vw,28px)",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",margin:"0 8px"},
   modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24},
   modalTitle:{fontSize:20,fontWeight:800,color:"#fff"},
-  closeBtn:{background:"transparent",border:"none",color:"#666",fontSize:18,cursor:"pointer"},
+  closeBtn:{background:"transparent",border:"none",color:"#8f9bc4",fontSize:18,cursor:"pointer"},
   formGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14,marginBottom:16},
   fg:{display:"flex",flexDirection:"column",gap:6},
-  label:{fontSize:12,color:"#666",fontWeight:600,textTransform:"uppercase",letterSpacing:0.8},
-  input:{background:"#0d0f14",border:"1px solid #2a2e42",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
-  select:{background:"#0d0f14",border:"1px solid #2a2e42",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
-  preview:{background:"#00e5a010",border:"1px solid #00e5a030",borderRadius:9,padding:"10px 14px",fontSize:13,color:"#aaa",marginBottom:20},
+  label:{fontSize:12,color:"#8f9bc4",fontWeight:600,textTransform:"uppercase",letterSpacing:0.8},
+  input:{background:"#0a0f20",border:"1px solid #2b3870",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
+  select:{background:"#0a0f20",border:"1px solid #2b3870",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
+  preview:{background:"#2fe0a010",border:"1px solid #2fe0a030",borderRadius:9,padding:"10px 14px",fontSize:13,color:"#aaa",marginBottom:20},
   modalFooter:{display:"flex",justifyContent:"flex-end",gap:10},
-  empty:{textAlign:"center",color:"#444",padding:"48px 0",fontSize:15,lineHeight:1.8},
-  badge:{background:"#1a1e2e",color:"#00e5a0",border:"1px solid #00e5a030",borderRadius:20,padding:"3px 12px",fontSize:13,fontWeight:700},
-  addPataBtn:{background:"#00e5a015",color:"#00e5a0",border:"1px solid #00e5a040",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"},
-  removePataBtn:{background:"transparent",color:"#ff4e6a",border:"1px solid #ff4e6a40",borderRadius:7,padding:"4px 10px",fontSize:11,cursor:"pointer",flexShrink:0,fontWeight:600},
+  empty:{textAlign:"center",color:"#5a668f",padding:"48px 0",fontSize:15,lineHeight:1.8},
+  badge:{background:"#1c2750",color:"#2fe0a0",border:"1px solid #2fe0a030",borderRadius:20,padding:"3px 12px",fontSize:13,fontWeight:700},
+  addPataBtn:{background:"#2fe0a015",color:"#2fe0a0",border:"1px solid #2fe0a040",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"},
+  removePataBtn:{background:"transparent",color:"#ff5d7a",border:"1px solid #ff5d7a40",borderRadius:7,padding:"4px 10px",fontSize:11,cursor:"pointer",flexShrink:0,fontWeight:600},
 };
 
 // ── Sub-components ──
@@ -282,27 +288,27 @@ function SC({label,value,sub,vc,bc}) {
 
 function DI({label,val,vc}) {
   return html`<div style=${{display:"flex",flexDirection:"column",gap:4}}>
-    <span style=${{fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:0.8}}>${label}</span>
+    <span style=${{fontSize:11,color:"#7c88b3",textTransform:"uppercase",letterSpacing:0.8}}>${label}</span>
     <span style=${{fontSize:15,fontWeight:700,color:vc||"#e8e8f0"}}>${val}</span>
   </div>`;
 }
 
 function DeportesGrid({data,onSelect,selected}) {
   return html`<div style=${S.section}>
-    <h2 style=${S.secTitle}>Por deporte <span style=${{color:"#444",fontSize:10,fontWeight:400,marginLeft:6}}>· toca para filtrar</span></h2>
+    <h2 style=${S.secTitle}>Por deporte <span style=${{color:"#5a668f",fontSize:10,fontWeight:400,marginLeft:6}}>· toca para filtrar</span></h2>
     <div style=${S.deportesGrid}>
       ${data.map(d => {
         const isSel = selected===d.deporte;
         return html`<div key=${d.deporte} onClick=${()=>onSelect(d.deporte)}
-          style=${{...S.deporteCard,cursor:"pointer",borderColor:isSel?"#00e5a0":"#1e2130",background:isSel?"#00e5a008":"transparent",transition:"all .15s"}}>
+          style=${{...S.deporteCard,cursor:"pointer",borderColor:isSel?"#2fe0a0":"#243060",background:isSel?"#2fe0a008":"transparent",transition:"all .15s"}}>
           <span style=${{fontSize:26}}>${iconDeporte[d.deporte]||"🎯"}</span>
           <div style=${{fontSize:13,color:isSel?"#e8e8f0":"#aaa",marginTop:6,marginBottom:4,fontWeight:isSel?700:400}}>${d.deporte}</div>
           <div style=${{fontSize:14,fontWeight:700}}>
-            <span style=${{color:"#00e5a0"}}>${d.ganadas}G</span>
+            <span style=${{color:"#2fe0a0"}}>${d.ganadas}G</span>
             <span style=${{color:"#888"}}> · </span>
-            <span style=${{color:"#ff4e6a"}}>${d.perdidas}P</span>
+            <span style=${{color:"#ff5d7a"}}>${d.perdidas}P</span>
           </div>
-          <div style=${{fontSize:11,color:"#555",marginTop:2}}>${d.total} total</div>
+          <div style=${{fontSize:11,color:"#7c88b3",marginTop:2}}>${d.total} total</div>
         </div>`;
       })}
     </div>
@@ -312,21 +318,27 @@ function DeportesGrid({data,onSelect,selected}) {
 function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   const show = open||expanded;
-  const cr = colorRes[a.resultado]||"#888";
-  const montoTxt = a.resultado==="Pendiente" ? "⏳ Pendiente" : a.resultado==="Nula" ? "Nula" : (g>0?"+":"")+fmt(g);
-  return html`<div style=${{...S.apCard,display:"flex"}}>
-    <div style=${{width:5,background:cr,flexShrink:0}}></div>
-    <div style=${{flex:1,minWidth:0}}>
-    <div style=${{padding:"13px 14px",cursor:"pointer"}} onClick=${()=>setOpen(o=>!o)}>
-      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
-        <div style=${{display:"flex",gap:8,minWidth:0,alignItems:"flex-start"}}>
-          <span style=${{fontSize:18,flexShrink:0,lineHeight:"22px"}}>${iconDeporte[a.deporte]||"🎯"}</span>
-          <div style=${{fontSize:15,fontWeight:700,color:"#e8e8f0",lineHeight:"22px",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${a.descripcion}</div>
+  const cr = colorRes[a.resultado]||"#8f9bc4";
+  const montoTxt = a.resultado==="Pendiente" ? (monto?fmt(monto):"⏳") : a.resultado==="Nula" ? "$0" : (g>0?"+":"")+fmt(g);
+  const resTxt = {Ganada:"GANADO",Perdida:"PERDIDO",Pendiente:"PENDIENTE",Nula:"NULA"}[a.resultado]||a.resultado;
+  const f = parseFecha(a.fecha);
+  return html`<div style=${S.apCard}>
+    <div style=${{display:"flex",cursor:"pointer"}} onClick=${()=>setOpen(o=>!o)}>
+      <div style=${{width:5,background:cr,flexShrink:0}}></div>
+      <div style=${{flex:1,minWidth:0,padding:"12px 12px 12px 13px"}}>
+        <div style=${{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
+          <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${iconDeporte[a.deporte]||"🎯"} ${a.descripcion}</div>
+          <div style=${{color:a.resultado==="Pendiente"?"#c9d2f0":cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px"}}>${montoTxt}</div>
         </div>
-        <div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"22px"}}>${montoTxt}</div>
+        <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"#8f9bc4"}}>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${a.tipo} · ${f.d} ${MESES_CORTO[f.m]}</span>
+          <span style=${{whiteSpace:"nowrap"}}>${a.monto}% del bank</span>
+        </div>
       </div>
-      <div style=${{fontSize:12,color:"#666",marginTop:4}}>${a.deporte} · ${a.tipo} · ${a.fecha}</div>
-      <div style=${{fontSize:12,color:"#777",marginTop:6}}>${fmtMomio(a.cuota)} · ${a.monto}% del bank${monto?" · "+fmt(monto):""}</div>
+      <div style=${{width:68,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#0e1530",borderLeft:"1px solid #243060",padding:"8px 2px"}}>
+        <b style=${{fontSize:15,color:"#fff"}}>${fmtMomio(a.cuota)}</b>
+        <span style=${{fontSize:9,fontWeight:800,color:cr,marginTop:3,letterSpacing:.3}}>${resTxt}</span>
+      </div>
     </div>
     ${show && html`<div style=${S.apDetail}>
       <div style=${S.detailGrid}>
@@ -334,172 +346,124 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
         <${DI} label="Monto" val=${fmt(monto||0)}/>
         <${DI} label="Momio" val=${fmtMomio(a.cuota)}/>
         <${DI} label="Retorno" val=${fmt((monto||0)*momioToDec(a.cuota))}/>
-        <${DI} label="Ganancia" val=${(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#00e5a0":"#ff4e6a"}/>
+        <${DI} label="Ganancia" val=${(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#2fe0a0":"#ff5d7a"}/>
       </div>
       ${a.tipo==="Parlay/Combinada" && a.patas && a.patas.length>0 && html`
         <div style=${{marginBottom:14}}>
-          <div style=${{fontSize:11,color:"#555",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Patas del parlay</div>
+          <div style=${{fontSize:11,color:"#7c88b3",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Patas del parlay</div>
           <div style=${{display:"flex",flexDirection:"column",gap:6}}>
             ${a.patas.map((p,i) => {
               const dep = typeof p==="object"?p.deporte:"";
               const desc = typeof p==="object"?p.desc:p;
               if(!desc) return null;
-              return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"#0d0f1480",borderRadius:7,padding:"6px 10px"}}>
-                <span style=${{fontSize:12,color:"#00e5a0",fontWeight:700,minWidth:18}}>${i+1}.</span>
+              return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"#0a0f2080",borderRadius:8,padding:"7px 10px"}}>
+                <span style=${{fontSize:12,color:"#4a8dff",fontWeight:700,minWidth:18}}>${i+1}.</span>
                 ${dep && html`<span style=${{fontSize:12}}>${iconDeporte[dep]||"🎯"}</span>`}
-                ${dep && html`<span style=${{fontSize:11,color:"#666",flexShrink:0}}>${dep}</span>`}
-                <span style=${{fontSize:13,color:"#ccc"}}>${desc}</span>
+                <span style=${{fontSize:13,color:"#dfe5ff"}}>${desc}</span>
               </div>`;
             })}
           </div>
         </div>
       `}
-      ${editable && React.createElement("div", {style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}},
-        React.createElement("div", {style:{display:"flex",gap:8,flexWrap:"wrap"}},
-          ["Ganada","Perdida","Pendiente","Nula"].map(r => React.createElement("button", {
-            key:r,
-            onClick:()=>onToggle(r),
-            style:{fontSize:12,border:"1px solid",borderRadius:7,padding:"5px 12px",cursor:"pointer",fontWeight:600,
-              background:a.resultado===r?bgRes[r]:"transparent",
-              color:a.resultado===r?colorRes[r]:"#666",
-              borderColor:a.resultado===r?colorRes[r]:"#333"}
-          }, r))
-        ),
-        React.createElement("div", {style:{display:"flex",gap:8}},
-          React.createElement("button", {onClick:onEdit, style:S.actBtn}, "✏️ Editar"),
-          React.createElement("button", {onClick:onDelete, style:{...S.actBtn,color:"#ff4e6a"}}, "🗑️")
-        )
-      )}
+      ${editable && html`<div style=${{display:"flex",flexDirection:"column",gap:10}}>
+        <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+          ${["Ganada","Perdida","Pendiente","Nula"].map(r=>html`<button key=${r} onClick=${()=>onToggle(r)}
+            style=${{fontSize:12,border:"1px solid",borderRadius:10,padding:"10px 0",cursor:"pointer",fontWeight:700,minHeight:42,
+              background:a.resultado===r?bgRes[r]:"transparent",color:a.resultado===r?colorRes[r]:"#8f9bc4",borderColor:a.resultado===r?colorRes[r]:"#2b3870"}}>${r}</button>`)}
+        </div>
+        <div style=${{display:"flex",gap:8}}>
+          <button onClick=${onEdit} style=${{...S.actBtn,flex:1,minHeight:42}}>✏️ Editar</button>
+          <button onClick=${onDelete} style=${{...S.actBtn,minHeight:42,color:"#ff5d7a",padding:"6px 18px"}}>🗑️</button>
+        </div>
+      </div>`}
     </div>`}
-    </div>
   </div>`;
 }
 
 
 // ── Calendario mensual ──
-function CalendarioMes({apuestas, todas, mes, ano, bank}) {
+function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR}) {
   const vistas = todas||apuestas;
-  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
+  const [sel, setSel] = useState(null);
+  useEffect(()=>{ setSel(null); },[mes,ano]);
 
-  const primerDia = new Date(ano, mes, 1).getDay(); // 0=Dom
+  const offset = (new Date(ano, mes, 1).getDay()+6)%7; // semana empieza en lunes
   const diasEnMes = new Date(ano, mes+1, 0).getDate();
+  const delMes = (lista,dia) => lista.filter(a=>{ const {y,m,d}=parseFecha(a.fecha); return y===ano&&m===mes&&d===dia; });
+  const gan = a => { const m=apMonto(a,bank); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  // Calcular neto por día
-  const netosPorDia = {};
-  vistas.forEach(a => {
-    const {y,m,d} = parseFecha(a.fecha);
-    if(m===mes && y===ano && a.resultado!=="Pendiente") {
-      const m = apMonto(a,bank);
-      const g = a.resultado==="Ganada" ? m*momioToDec(a.cuota)-m : a.resultado==="Perdida" ? -m : 0;
-      netosPorDia[d] = (netosPorDia[d]||0) + g;
-    }
-  });
+  const netos = {};
+  vistas.forEach(a=>{ const {y,m,d}=parseFecha(a.fecha); if(y===ano&&m===mes&&a.resultado!=="Pendiente") netos[d]=(netos[d]||0)+gan(a); });
 
-  // Apuestas del día seleccionado
-  const apuestasDia = diaSeleccionado
-    ? vistas.filter(a => { const {y,m,d}=parseFecha(a.fecha); return d===diaSeleccionado&&m===mes&&y===ano; })
-    : [];
-
-  const dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-
-  // Total ganadas/perdidas del mes
   const totalG = apuestas.filter(a=>a.resultado==="Ganada").length;
   const totalP = apuestas.filter(a=>a.resultado==="Perdida").length;
-  const totalPen = apuestas.filter(a=>a.resultado==="Pendiente").length;
-  const profit = apuestas.filter(a=>a.resultado!=="Pendiente").reduce((s,a)=>{
-    const m=apMonto(a,bank);
-    return s + (a.resultado==="Ganada" ? m*momioToDec(a.cuota)-m : a.resultado==="Perdida" ? -m : 0);
-  },0);
+  const profit = apuestas.reduce((s,a)=>s+gan(a),0);
 
-  const fmtK = n => {
-    const abs = Math.abs(n);
-    if(abs>=1000) return (n<0?"-":"+")+"\$"+(abs/1000).toFixed(abs%1000===0?0:1)+"K";
-    return (n<0?"-":"+")+"\$"+Math.round(abs);
-  };
+  const fmtK = n => { const abs=Math.abs(n); const sg=n<0?"-":"+";
+    if(abs>=1000) return sg+"$"+(abs/1000).toFixed(abs>=10000?0:1).replace(/\.0$/,"")+"K";
+    return sg+"$"+Math.round(abs); };
+  const hoy = new Date();
+  const apsSel = sel ? delMes(vistas,sel) : [];
+  const netoSel = sel ? delMes(apuestas,sel).reduce((s,a)=>s+gan(a),0) : 0;
+  const diaNombre = sel ? ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(ano,mes,sel).getDay()] : "";
 
-  return html`<div style=${{marginBottom:32}}>
-    <h2 style=${{fontSize:12,fontWeight:700,color:"#555",marginBottom:16,textTransform:"uppercase",letterSpacing:1.2}}>Calendario</h2>
-    <div style=${{background:"#10131a",border:"1px solid #1e2130",borderRadius:16,padding:"20px 16px"}}>
-
-      <!-- Header días semana -->
-      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:4,marginBottom:8}}>
-        ${dias.map(d=>html`<div key=${d} style=${{textAlign:"center",fontSize:11,color:"#555",fontWeight:600,padding:"4px 0"}}>${d}</div>`)}
-      </div>
-
-      <!-- Grid días -->
-      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:4}}>
-        <!-- Espacios vacíos al inicio -->
-        ${Array(primerDia).fill(0).map((_,i)=>html`<div key=${"empty-"+i}/>`)}
-
-        <!-- Días del mes -->
-        ${Array(diasEnMes).fill(0).map((_,i)=>{
-          const dia = i+1;
-          const neto = netosPorDia[dia];
-          const tieneApuestas = vistas.some(a=>{const {y,m,d}=parseFecha(a.fecha);return d===dia&&m===mes&&y===ano;});
-          const isSelected = diaSeleccionado===dia;
-          const isHoy = new Date().getDate()===dia && new Date().getMonth()===mes && new Date().getFullYear()===ano;
-
-          let bg = "#13162a";
-          let borderColor = isSelected?"#00e5a0":"#1e2130";
-          if(neto!==undefined) {
-            bg = neto>=0 ? (isSelected?"#00e5a030":"#00e5a015") : (isSelected?"#ff4e6a30":"#ff4e6a15");
-            borderColor = neto>=0 ? "#00e5a040" : "#ff4e6a40";
-          }
-
-          return html`<div key=${dia}
-            onClick=${()=>tieneApuestas?setDiaSeleccionado(isSelected?null:dia):null}
-            style=${{
-              background:bg,
-              border:"1px solid "+borderColor,
-              borderRadius:10,
-              padding:"8px 4px",
-              textAlign:"center",
-              cursor:tieneApuestas?"pointer":"default",
-              minHeight:56,
-              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
-              transition:"all .15s",
-              opacity:(tieneApuestas&&!apuestas.some(a=>{const {y,m,d}=parseFecha(a.fecha);return d===dia&&m===mes&&y===ano;}))?.45:1
-            }}>
-            <div style=${{fontSize:12,color:isHoy?"#00e5a0":tieneApuestas?"#e8e8f0":"#444",fontWeight:isHoy?800:500}}>${dia}</div>
-            ${neto!==undefined && html`<div style=${{fontSize:10,fontWeight:700,color:neto>=0?"#00e5a0":"#ff4e6a"}}>${fmtK(neto)}</div>`}
-            ${tieneApuestas&&neto===undefined && html`<div style=${{fontSize:10,color:"#f5c842"}}>⏳</div>`}
-          </div>`;
-        })}
-      </div>
-
-      <!-- Record y profit -->
-      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:16,paddingTop:14,borderTop:"1px solid #1e2130",flexWrap:"wrap",gap:8}}>
-        <div>
-          <div style=${{fontSize:11,color:"#555",marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Record</div>
-          <div style=${{fontSize:20,fontWeight:800,color:"#e8e8f0"}}>${totalG}-${totalP}${totalPen>0?"-"+totalPen:""}</div>
-        </div>
-        <div style=${{textAlign:"right"}}>
-          <div style=${{fontSize:11,color:"#555",marginBottom:4,textTransform:"uppercase",letterSpacing:0.8}}>Profit</div>
-          <div style=${{fontSize:20,fontWeight:800,color:profit>=0?"#00e5a0":"#ff4e6a"}}>${profit>=0?"+":""}${fmt(profit)}</div>
-        </div>
-      </div>
-
-      <!-- Detalle día seleccionado -->
-      ${diaSeleccionado && apuestasDia.length>0 && html`<div style=${{marginTop:14,paddingTop:14,borderTop:"1px solid #1e2130"}}>
-        <div style=${{fontSize:12,color:"#00e5a0",fontWeight:700,marginBottom:10,textTransform:"uppercase",letterSpacing:0.8}}>
-          ${diaSeleccionado} de ${MESES[mes]}
-        </div>
-        ${apuestasDia.map(a=>{
-          const mp = apMonto(a,bank);
-          const g = a.resultado==="Ganada"?mp*momioToDec(a.cuota)-mp:a.resultado==="Perdida"?-mp:0;
-          return html`<div key=${a.id} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #1e213040"}}>
-            <div>
-              <div style=${{fontSize:13,color:"#e8e8f0",fontWeight:600}}>${a.descripcion}</div>
-              <div style=${{fontSize:11,color:"#555",marginTop:2}}>${a.deporte} · ${a.tipo} · Momio: ${fmtMomio(a.cuota)}</div>
-            </div>
-            <div style=${{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-              <div style=${{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:5,background:bgRes[a.resultado],color:colorRes[a.resultado]}}>${a.resultado}</div>
-              <div style=${{fontSize:13,fontWeight:700,color:g>0?"#00e5a0":g<0?"#ff4e6a":"#aaa"}}>${g>0?"+":""}${fmt(g!==0?g:mp)}</div>
-            </div>
-          </div>`;
-        })}
-      </div>`}
+  return html`<div>
+    <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"6px 0 14px"}}>
+      <h1 style=${S.pageTitle}>Calendario</h1>
+      <button onClick=${onHoy} style=${S.pillBtn}>Hoy</button>
     </div>
+    <div style=${S.monthRow}>
+      <button style=${S.sqBtn} onClick=${onPrev} aria-label="Mes anterior">‹</button>
+      <b style=${{fontSize:18,color:"#fff"}}>${MESES[mes]} ${ano}</b>
+      <button style=${S.sqBtn} onClick=${onNext} aria-label="Mes siguiente">›</button>
+    </div>
+    <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5,marginBottom:5}}>
+      ${["L","M","M","J","V","S","D"].map((d,i)=>html`<div key=${i} style=${{textAlign:"center",fontSize:12,color:"#8f9bc4",fontWeight:700}}>${d}</div>`)}
+    </div>
+    <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5}}>
+      ${Array(offset).fill(0).map((_,i)=>html`<div key=${"e"+i}/>`)}
+      ${Array(diasEnMes).fill(0).map((_,i)=>{
+        const dia=i+1;
+        const lista=delMes(vistas,dia);
+        const tiene=lista.length>0;
+        const cuenta=delMes(apuestas,dia).length>0;
+        const neto=netos[dia];
+        const esHoy=hoy.getDate()===dia&&hoy.getMonth()===mes&&hoy.getFullYear()===ano;
+        const col = neto===undefined ? null : neto>=0 ? "#2fe0a0" : "#ff5d7a";
+        return html`<button key=${dia} onClick=${()=>tiene&&setSel(dia)}
+          style=${{height:54,borderRadius:12,padding:"6px 0 0",fontFamily:"inherit",cursor:tiene?"pointer":"default",
+            background:col?col+"24":"#121a38",border:sel===dia?"2px solid #4a8dff":esHoy?"2px solid #4a8dff88":"1px solid #243060",
+            opacity:tiene&&!cuenta?.45:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0}}>
+          <span style=${{fontSize:14,fontWeight:esHoy?800:600,color:tiene||esHoy?"#fff":"#5a668f"}}>${dia}</span>
+          ${col && html`<span style=${{fontSize:10,fontWeight:800,color:col,whiteSpace:"nowrap"}}>${fmtK(neto)}</span>`}
+          ${tiene&&!col && html`<span style=${{fontSize:10}}>⏳</span>`}
+        </button>`;
+      })}
+    </div>
+    <div style=${{display:"flex",justifyContent:"center",gap:16,fontSize:12,color:"#8f9bc4",marginTop:12,flexWrap:"wrap"}}>
+      <span><span style=${{color:"#2fe0a0"}}>●</span> Ganó</span>
+      <span><span style=${{color:"#ff5d7a"}}>●</span> Perdió</span>
+      <span>⏳ Pendiente</span>
+      <span>Toca un día para ver sus picks</span>
+    </div>
+    <div style=${{display:"flex",gap:8,marginTop:14}}>
+      ${[[(profit>=0?"+":"")+fmt(profit),"Del mes",profit>=0?"#2fe0a0":"#ff5d7a"],[totalG+" ✓","Ganados","#2fe0a0"],[totalP+" ✕","Perdidos","#ff5d7a"]].map(([v,l,c])=>html`
+        <div key=${l} style=${{flex:1,background:"#121a38",border:"1px solid #243060",borderRadius:14,padding:"11px 6px",textAlign:"center"}}>
+          <b style=${{fontSize:16,color:c}}>${v}</b><div style=${{fontSize:11,color:"#8f9bc4",marginTop:3}}>${l}</div>
+        </div>`)}
+    </div>
+    ${sel && html`<div style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setSel(null)}>
+      <div onClick=${e=>e.stopPropagation()} style=${{background:"#141d40",borderTop:"1px solid #2b3870",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"75vh",overflowY:"auto",padding:"10px 16px calc(20px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
+        <div style=${{width:44,height:5,borderRadius:3,background:"#2b3870",margin:"0 auto 12px"}}></div>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:10}}>
+          <b style=${{fontSize:18,color:"#fff"}}>${diaNombre} ${sel} de ${MESES[mes].toLowerCase()}</b>
+          <b style=${{fontSize:16,color:netoSel>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${(netoSel>=0?"+":"")+fmt(netoSel)}</b>
+        </div>
+        ${apsSel.slice().reverse().map(a=>renderAR(a,false))}
+        <div style=${{fontSize:12,color:"#8f9bc4",textAlign:"center",marginTop:4}}>${apsSel.length} ${apsSel.length===1?"pick":"picks"} este día</div>
+        <button onClick=${()=>setSel(null)} style=${{...S.btnSecondary,width:"100%",marginTop:12,minHeight:46}}>Cerrar</button>
+      </div>
+    </div>`}
   </div>`;
 }
 
@@ -510,7 +474,10 @@ function App() {
   const [form,setForm] = useState(initialForm);
   const [editId,setEditId] = useState(null);
   const [modal,setModal] = useState(false);
-  const [vistaActual,setVistaActual] = useState("dashboard");
+  const [vistaActual,setVistaActual] = useState("inicio");
+  const [verTodasAno,setVerTodasAno] = useState(false);
+  const [notisGuia,setNotisGuia] = useState(false);
+  const [notisCopiado,setNotisCopiado] = useState(false);
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
@@ -520,7 +487,6 @@ function App() {
   const yaInstalada = window.navigator.standalone===true || (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches);
   const mostrarInstalar = !yaInstalada && (esIOS || esAndroid);
   const instalarApp = async () => { if(promptInstalar){ promptInstalar.prompt(); try{await promptInstalar.userChoice;}catch(e){} setPromptInstalar(null); } else setInstalarGuia(true); };
-  const [periodoVista,setPeriodoVista] = useState("mensual");
   const [mesSeleccionado,setMesSeleccionado] = useState(new Date().getMonth());
   const [anoSeleccionado,setAnoSeleccionado] = useState(new Date().getFullYear());
   const [deleteConfirm,setDeleteConfirm] = useState(null);
@@ -616,6 +582,7 @@ function App() {
   const guardarBankModal = () => {
     const val = Number(bmInput)||0;
     if(!(val>0)) { setBmError("Escribe tu bank (mayor a 0)"); return; }
+    if(isAdmin){ setBankroll(val); setBankModal(false); return; }
     let ini = "";
     if(bmModo==="hoy") ini = hoyISO;
     if(bmModo==="otro") { if(!bmFecha){ setBmError("Elige el día de inicio"); return; } ini = bmFecha; }
@@ -655,6 +622,7 @@ function App() {
     }
     return {racha,tipo};
   },[apuestasMes]);
+  const formaReciente = useMemo(()=>apuestas.filter(cuentaAp).filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10),[apuestas,...dep]);
   const statsAnual = useMemo(()=>calcStats(apuestasAno,bankDe),[apuestasAno,...dep]);
 
   const momioPromedio = useMemo(()=>{
@@ -687,12 +655,12 @@ function App() {
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
   const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
-  const subtitulo = {fontSize:11,letterSpacing:1,color:"#666",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
+  const subtitulo = {fontSize:11,letterSpacing:1,color:"#8f9bc4",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMes.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
     ${apuestasMes.slice().reverse().map(a=>renderAR(a,exp))}
     ${apuestasAntes.length>0 && html`<div>
-      <div style=${subtitulo}>Antes de empezar <span style=${{background:"#2a2e42",color:"#aab",borderRadius:6,padding:"2px 6px",fontSize:9,marginLeft:6}}>NO SUMA</span></div>
+      <div style=${subtitulo}>Antes de empezar <span style=${{background:"#2b3870",color:"#aab",borderRadius:6,padding:"2px 6px",fontSize:9,marginLeft:6}}>NO SUMA</span></div>
       <div style=${{opacity:.45}}>${apuestasAntes.slice().reverse().map(a=>renderAR(a,exp))}</div>
     </div>`}`;
 
@@ -738,7 +706,7 @@ function App() {
       const momioStr = Number(nueva.cuota)>0?"+"+nueva.cuota:String(nueva.cuota);
       enviarNotificacion(
         "🎯 Nuevo pick — AlexPicks",
-        nueva.descripcion+" | "+nueva.deporte+" | Momio: "+momioStr+" | "+nueva.monto+"u = "+fmt(apMonto(nueva,bankrollMes))
+        nueva.descripcion+" | "+nueva.deporte+" | Momio: "+momioStr+" | "+nueva.monto+"% = "+fmt(apMonto(nueva,bankrollMes))
       );
     }
     setModal(false);
@@ -771,250 +739,247 @@ function App() {
   const prevMes = () => { if(mesSeleccionado===0){setMesSeleccionado(11);setAnoSeleccionado(y=>y-1);}else setMesSeleccionado(m=>m-1); };
   const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
 
-  if(cargando) return html`<div style=${{minHeight:"100vh",background:"#0d0f14",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-    <div style=${{fontSize:40,color:"#00e5a0"}}>◈</div>
-    <div style=${{color:"#555",fontSize:14}}>Conectando...</div>
+  if(cargando) return html`<div style=${{minHeight:"100vh",background:"#0a0f20",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+    <div style=${{fontSize:40,color:"#2fe0a0"}}>◈</div>
+    <div style=${{color:"#7c88b3",fontSize:14}}>Conectando...</div>
   </div>`;
 
+  const vista = vistaActual;
+  const irA = v => { setVistaActual(v); window.scrollTo(0,0); };
+  const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
+  const sinBank = usaBankPropio && !bankrollMes;
+  const pctMes = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
+  const fmtSigno = n => (n>=0?"+":"")+fmt(n);
+  const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
+  const chipTxt = !user ? "Entrar" : bankrollMes>0 ? fmt(bankrollMes+stats.neto)+" ✎" : "Poner bank ＋";
+  const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
+
   return html`<div style=${S.root}>
-    <div style=${S.glow1}/><div style=${S.glow2}/>
-
-    <!-- Header -->
-    <header style=${S.header}>
-      <div style=${S.logo}>
-        <span style=${S.logoIcon}>◈</span>
-        <div>
-          <div style=${S.logoTitle}>Registro de Apuestas</div>
-          <div style=${S.logoSub}>Control de apuestas</div>
-        </div>
-      </div>
-      <nav className="nav-top" style=${S.nav}>
-        ${[["dashboard","Dashboard"],["apuestas","Mis Apuestas"]].map(([v,l])=>html`
-          <button key=${v} onClick=${()=>setVistaActual(v)} style=${{...S.navBtn,...(vistaActual===v?S.navBtnActive:{})}}>${l}</button>
-        `)}
-      </nav>
-      <div style=${{display:"flex",gap:8,alignItems:"center"}}>
-        ${!user
-          ? html`<button onClick=${loginGoogle} style=${{...S.btnSecondary,fontSize:13,display:"flex",alignItems:"center",gap:6}}>
-              <span style=${{fontWeight:800,color:"#4285f4"}}>G</span> Entrar con Google</button>`
-          : html`<div style=${{display:"flex",alignItems:"center",gap:8}}>
-              ${user.photoURL
-                ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:28,height:28,borderRadius:"50%",border:isAdmin?"2px solid #00e5a0":"1px solid #2a2e42"}} title=${user.email}/>`
-                : html`<span style=${{fontSize:12,color:"#aaa"}}>${(user.displayName||user.email||"").split(" ")[0]}</span>`}
-              ${isAdmin && html`<button className="nueva-top" onClick=${()=>openModal()} style=${S.btnPrimary}>+ Nueva apuesta</button>`}
-              <button className="salir-top" onClick=${()=>auth.signOut()} style=${{...S.btnSecondary,fontSize:12,padding:"8px 12px"}}>Salir</button>
-            </div>`
-        }
-      </div>
-    </header>
-
-    <div className="tabbar">
-      <button className=${vistaActual==="dashboard"?"on":""} onClick=${()=>setVistaActual("dashboard")}><span>▦</span>Dashboard</button>
-      <button className=${vistaActual==="apuestas"?"on":""} onClick=${()=>setVistaActual("apuestas")}><span>☰</span>Apuestas</button>
-      ${isAdmin && html`<button className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">+</button>`}
-      <button className=${periodoVista==="anual"?"on":""} onClick=${()=>setPeriodoVista(p=>p==="anual"?"mensual":"anual")}><span>◔</span>${periodoVista==="anual"?"Mensual":"Anual"}</button>
-      ${user
-        ? html`<button onClick=${()=>auth.signOut()}><span>⎋</span>Salir</button>`
-        : html`<button onClick=${loginGoogle}><span>G</span>Entrar</button>`}
-    </div>
-
-    ${isAdmin && html`<div className="nueva-bottom">
-      <button onClick=${()=>openModal()} style=${{...S.btnPrimary,width:"100%",padding:"15px",fontSize:16,borderRadius:14,boxShadow:"0 8px 24px #00000080"}}>+ Nueva apuesta</button>
-    </div>`}
-
-    ${mostrarInstalar && html`<div style=${{margin:"10px 14px 0",background:"#00e5a012",border:"1px solid #00e5a040",borderRadius:14,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
-      <img src="icon-192.png" style=${{width:36,height:36,borderRadius:9}}/>
-      <div style=${{flex:1,minWidth:0,fontSize:12,lineHeight:1.3}}><b style=${{fontSize:13}}>Instala AlexPicks</b><br/><span style=${{color:"#9aa"}}>Ábrela como app desde tu pantalla de inicio</span></div>
-      <button onClick=${instalarApp} style=${{...S.btnPrimary,padding:"8px 12px",fontSize:12,flexShrink:0}}>Instalar</button>
-    </div>`}
-    ${instalarGuia && html`<div style=${S.overlay} onClick=${()=>setInstalarGuia(false)}>
-      <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
-        <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Agregar a pantalla de inicio</div>
-        ${(esIOS?[["1","Abre esta página en Safari o Chrome (no dentro de otra app)."],["2","Toca el botón Compartir ⬆︎ del navegador."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]]:[["1","Toca el menú ⋮ de Chrome (arriba a la derecha)."],["2","Elige “Instalar app” o “Agregar a pantalla de inicio”."],["3","Confirma con “Instalar” o “Agregar”."]]).map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#00e5a0",color:"#06130d",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
-        <div style=${{fontSize:12,color:"#888",margin:"4px 0 12px"}}>Después, abre AlexPicks desde el nuevo ícono. Tendrás que iniciar sesión otra vez dentro de la app.</div>
-        <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%"}}>Entendido</button>
-      </div>
-    </div>`}
-
-    <!-- Period bar -->
-    <div style=${{...S.periodBar,flexDirection:"column",alignItems:"center",gap:10}}>
-      <div style=${S.togglePeriodo}>
-        <button onClick=${()=>setPeriodoVista("mensual")} style=${{...S.tpBtn,...(periodoVista==="mensual"?S.tpBtnActive:{})}}>Mensual</button>
-        <button onClick=${()=>setPeriodoVista("anual")} style=${{...S.tpBtn,...(periodoVista==="anual"?S.tpBtnActive:{})}}>Anual</button>
-      </div>
-      ${periodoVista==="mensual"
-        ? html`<div style=${{...S.navFecha,justifyContent:"center"}}>
-            <button style=${S.monthNav} onClick=${prevMes}>‹</button>
-            <span style=${S.monthLabel}>${MESES[mesSeleccionado]} ${anoSeleccionado}</span>
-            <button style=${S.monthNav} onClick=${nextMes}>›</button>
-          </div>`
-        : html`<div style=${{...S.navFecha,justifyContent:"center"}}>
-            <button style=${S.monthNav} onClick=${()=>setAnoSeleccionado(y=>y-1)}>‹</button>
-            <span style=${S.monthLabel}>${anoSeleccionado}</span>
-            <button style=${S.monthNav} onClick=${()=>setAnoSeleccionado(y=>y+1)}>›</button>
-          </div>`
-      }
-    </div>
 
     <main style=${S.main}>
 
-      <!-- MENSUAL DASHBOARD -->
-      ${periodoVista==="mensual" && vistaActual==="dashboard" && html`<div>
-        ${usaBankPropio && !bankrollMes && html`<div style=${{maxWidth:780,margin:"0 auto 16px auto",background:"#f5c84215",border:"1px solid #f5c84240",color:"#f5c842",borderRadius:12,padding:"12px 14px",fontSize:13,lineHeight:1.4,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-          <span style=${{flex:1,minWidth:200}}>No registraste bank en ${MESES[mesSeleccionado]}. Los montos de abajo son estimados con tu bank de otro mes y no suman al anual.</span>
-          <button onClick=${abrirBankModal} style=${{...S.btnPrimary,flexShrink:0}}>Poner mi bank</button>
-        </div>`}
-        <div style=${{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:14,marginBottom:32,maxWidth:780,margin:"0 auto 32px auto"}}>
-          <div style=${{...S.card,cursor:"pointer",borderColor:editingBank?"#00e5a060":"#1e2130"}}
-            onClick=${()=>{ if(!puedeEditarBank){ loginGoogle(); return; } if(usaBankPropio){ abrirBankModal(); return; } setEditingBank(true);setBankInput(bankrollMes?String(bankrollMes):"");}}>
-            <div style=${S.cardLabel}>${usaBankPropio?"Tu bank del mes":"Bank del mes"}</div>
-            ${editingBank
-              ? html`<input autoFocus style=${{...S.input,fontSize:18,fontWeight:800,padding:"4px 8px"}} type="number"
-                  value=${bankInput} placeholder="0"
-                  onInput=${e=>setBankInput(e.target.value)}
-                  onBlur=${()=>{setBankroll(bankInput);setEditingBank(false);}}
-                  onKeyDown=${e=>{if(e.key==="Enter"){setBankroll(bankInput);setEditingBank(false);}}}/>`
-              : html`<div style=${{...S.cardValue,color:bankrollMes?"#fff":"#333"}}>${bankrollMes?fmt(bankrollMes):(puedeEditarBank?"— Editar":"Entra para poner tu bank")}</div>`
-            }
-            ${bankrollMes>0&&!editingBank&&!usaBankPropio && html`<div style=${{fontSize:11,color:stats.neto>=0?"#00e5a0":"#ff4e6a",marginTop:4}}>
-              ${stats.neto>=0?"+":""}${fmt(stats.neto)} (${((stats.neto/bankrollMes)*100).toFixed(1)}%)
-            </div>`}
-            ${!bankrollMes&&!editingBank && html`<div style=${S.cardSub}>MXN presupuestado</div>`}
-            ${usaBankPropio&&bankrollMes>0 && html`<div style=${{fontSize:11,color:"#888",marginTop:4}}>${iniciosUser[bankKey]?"Cuentas desde el "+fmtDia(iniciosUser[bankKey]):"Cuentas desde el día 1"} · <span style=${{color:"#00e5a0"}}>Cambiar</span></div>`}
-          </div>
-          ${bankrollMes>0 && html`<${SC} label=${usaBankPropio?"Tu bank actual":"Bank actual"} value=${fmt(bankrollMes+stats.neto)} sub=${"Inicio: "+fmt(bankrollMes)} vc=${stats.neto>=0?"#00e5a0":"#ff4e6a"} bc=${stats.neto>=0?"#00e5a040":"#ff4e6a40"}/>`}
-          ${simNeto!==null && html`<div style=${{...S.card,border:"1px dashed #f5c84270",background:"#f5c84208"}}>
-            <div style=${{...S.cardLabel,color:"#f5c842"}}>Si hubieras empezado el día 1 tendrías <span style=${{background:"#f5c84225",color:"#f5c842",borderRadius:6,padding:"2px 6px",fontSize:9,marginLeft:4}}>SIMULACIÓN</span></div>
-            <div style=${{...S.cardValue,color:"#f5c842"}}>${fmt(bankrollMes+simNeto)}</div>
-            <div style=${S.cardSub}>${(simNeto>=0?"+":"")+fmt(simNeto)} en el mes (${((simNeto/bankrollMes)*100).toFixed(1)}%) · con tu bank de ${fmt(bankrollMes)}</div>
-          </div>`}
-          ${!(usaBankPropio&&!bankrollMes) && html`<${SC} label="Balance Neto" value=${(stats.neto>=0?"+":"")+fmt(stats.neto)} sub="Este mes" vc=${stats.neto>=0?"#00e5a0":"#ff4e6a"} bc=${stats.neto>=0?"#00e5a040":"#ff4e6a40"}/>`}
-          <${SC} label="Efectividad" value=${stats.efectividad+"%"} sub=${stats.ganadas+"G · "+stats.perdidas+"P · "+stats.pendientes+"⏳"+(stats.nulas>0?" · "+stats.nulas+"N":"")} vc=${stats.efectividad>=50?"#00e5a0":"#ff4e6a"}/>
-          <div style=${{...S.card,borderColor:rachaActual.tipo==="Ganada"?"#00e5a040":rachaActual.tipo==="Perdida"?"#ff4e6a40":"#1e2130"}}>
-            <div style=${S.cardLabel}>Racha actual</div>
-            <div style=${{...S.cardValue,color:rachaActual.tipo==="Ganada"?"#00e5a0":rachaActual.tipo==="Perdida"?"#ff4e6a":"#555"}}>
-              ${rachaActual.racha>0?rachaActual.racha+"":"—"}
-              ${rachaActual.tipo==="Ganada"?" 🔥":rachaActual.tipo==="Perdida"?" 🥶":""}
-            </div>
-            <div style=${S.cardSub}>${rachaActual.tipo==="Ganada"?"Ganadas seguidas":rachaActual.tipo==="Perdida"?"Perdidas seguidas":"Sin apuestas"}</div>
-          </div>
-          <${SC} label="Momio promedio" value=${momioPromedioMes!==null?(momioPromedioMes>0?"+"+momioPromedioMes:String(momioPromedioMes)):"—"} sub="Este mes" vc="#e8e8f0"/>
-        </div>
-        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe}/>
-        ${porDeporteMes.length>0 && html`<${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>`}
-        ${deporteFiltro && html`<div style=${{...S.section,marginTop:-8}}>
-          <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <h2 style=${{...S.secTitle,marginBottom:0,color:"#00e5a0"}}>${iconDeporte[deporteFiltro]||"🎯"} ${deporteFiltro}</h2>
-            <button onClick=${()=>setDeporteFiltro(null)} style=${{background:"transparent",border:"1px solid #2a2e42",borderRadius:7,color:"#666",padding:"4px 12px",fontSize:12,cursor:"pointer"}}>✕ Cerrar</button>
-          </div>
-          ${apuestasMes.filter(a=>a.deporte===deporteFiltro).length===0
-            ? html`<div style=${S.empty}>No hay apuestas de este deporte este mes.</div>`
-            : [...apuestasMes].reverse().filter(a=>a.deporte===deporteFiltro).map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded editable=${modoEdicion}/>`)
-          }
-        </div>`}
-        <div style=${S.section}>
-          <h2 style=${S.secTitle}>Apuestas del mes</h2>
-          ${apuestasMesTodas.length===0
-            ? html`<div style=${S.empty}>No hay apuestas este mes.<br/>¡Agrega tu primera!</div>`
-            : renderLista(false)
-          }
-        </div>
+      ${mostrarInstalar && vista==="inicio" && html`<div style=${{background:"#4a8dff18",border:"1px solid #4a8dff55",borderRadius:16,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+        <img src="icon-192.png" style=${{width:38,height:38,borderRadius:10}}/>
+        <div style=${{flex:1,minWidth:0,fontSize:12,lineHeight:1.3}}><b style=${{fontSize:14}}>Instala AlexPicks</b><br/><span style=${{color:"#8f9bc4"}}>Ábrela como app desde tu pantalla de inicio</span></div>
+        <button onClick=${instalarApp} style=${{...S.btnPrimary,padding:"10px 14px",fontSize:13,flexShrink:0,minHeight:40}}>Instalar</button>
       </div>`}
 
-      <!-- MENSUAL APUESTAS -->
-      ${periodoVista==="mensual" && vistaActual==="apuestas" && html`<div style=${S.section}>
-        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <h2 style=${{...S.secTitle,marginBottom:0}}>Apuestas — ${MESES[mesSeleccionado]}</h2>
-          <span style=${S.badge}>${apuestasMes.length}</span>
+      <!-- INICIO -->
+      ${vista==="inicio" && html`<div>
+        <div style=${S.hero}>
+          <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+            <b style=${{fontSize:19,letterSpacing:.3,color:"#fff"}}>ALEX<span style=${{color:"#9ec1ff"}}>PICKS</span></b>
+            <button onClick=${tocarChip} style=${S.chip}>${chipTxt}</button>
+          </div>
+          <div style=${{display:"flex",alignItems:"center",gap:6,marginTop:14}}>
+            <button onClick=${prevMes} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes anterior">‹</button>
+            <span style=${{fontSize:12,opacity:.9,letterSpacing:.5,fontWeight:700}}>${sinBank?"RESULTADO":"GANANCIA"} DE ${MESES[mesSeleccionado].toUpperCase()}${anoSeleccionado!==new Date().getFullYear()?" "+anoSeleccionado:""}</span>
+            <button onClick=${nextMes} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes siguiente">›</button>
+          </div>
+          <div style=${{fontSize:38,fontWeight:900,letterSpacing:-1,color:"#fff",lineHeight:1.1,marginTop:2}}>
+            ${fmtSigno(stats.neto)}
+            ${pctMes!==null && html` <span style=${{fontSize:15,fontWeight:700,color:pctMes>=0?"#bff5dc":"#ffc4cf"}}>${pctMes>=0?"▲":"▼"} ${Math.abs(pctMes).toFixed(1)}%</span>`}
+            ${sinBank && html` <span style=${{fontSize:13,fontWeight:600,opacity:.8}}>estimado</span>`}
+          </div>
+          ${usaBankPropio&&bankrollMes>0 && html`<button onClick=${abrirBankModal} style=${{background:"none",border:"none",color:"#dfe7ff",fontSize:12,padding:"6px 0 0",cursor:"pointer",fontFamily:"inherit"}}>${iniciosUser[bankKey]?"Cuentas desde el "+fmtDia(iniciosUser[bankKey]):"Cuentas desde el día 1"} · <b style=${{color:"#9ec1ff"}}>Cambiar</b></button>`}
+          <div style=${{display:"flex",gap:8,marginTop:12}}>
+            ${[[stats.efectividad+"%","Acierto"],[rachaActual.racha>0?(rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha:"—","Racha"],[String(stats.total),"Picks"],[momioPromedioMes!==null?fmtMomio(momioPromedioMes):"—","Momio prom."]].map(([v,l])=>html`
+              <div key=${l} style=${S.miniStat}><b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2}}>${l}</div></div>`)}
+          </div>
+        </div>
+
+        ${sinBank && html`<div style=${{background:"#121a38",border:"1px solid #4a8dff55",borderRadius:16,padding:"12px 14px",marginBottom:12,fontSize:13,lineHeight:1.4,color:"#dfe5ff"}}>
+          No registraste bank en ${MESES[mesSeleccionado]}. Los montos son estimados con tu bank de otro mes y no suman al anual.
+          <button onClick=${abrirBankModal} style=${{...S.btnPrimary,width:"100%",marginTop:10,minHeight:44}}>Poner mi bank</button>
+        </div>`}
+
+        ${simNeto!==null && html`<div style=${{background:"#121a38",border:"1px dashed #f5c84270",borderRadius:16,padding:"12px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <span style=${{fontSize:12,color:"#8f9bc4",lineHeight:1.35}}>Si hubieras empezado el día 1 tendrías</span>
+          <b style=${{color:"#f5c842",fontSize:16,whiteSpace:"nowrap"}}>${fmt(bankrollMes+simNeto)}</b>
+        </div>`}
+
+        ${formaReciente.length>0 && html`<div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,margin:"4px 2px 4px",flexWrap:"wrap"}}>
+          <span style=${{fontSize:11,color:"#8f9bc4",fontWeight:700,letterSpacing:.5}}>FORMA RECIENTE</span>
+          <div style=${{display:"flex",gap:4}}>
+            ${formaReciente.map((a,i)=>html`<span key=${i} title=${a.descripcion} style=${{width:24,height:24,borderRadius:"50%",background:a.resultado==="Ganada"?"#2fe0a0":"#ff5d7a",color:"#06101f",fontSize:12,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>${a.resultado==="Ganada"?"✓":"✕"}</span>`)}
+          </div>
+        </div>`}
+
+        <div style=${S.secHead}>
+          <b style=${{fontSize:18,color:"#fff"}}>Picks de ${MESES[mesSeleccionado].toLowerCase()}</b>
+          <span style=${S.badge}>${apuestasMesTodas.length}</span>
         </div>
         ${apuestasMesTodas.length===0
-          ? html`<div style=${S.empty}>No hay apuestas este mes.</div>`
-          : renderLista(true)
-        }
+          ? html`<div style=${S.empty}>No hay picks este mes.${isAdmin?html`<br/>Toca ＋ para agregar el primero.`:""}</div>`
+          : renderLista(false)}
       </div>`}
 
-      <!-- ANUAL DASHBOARD -->
-      ${periodoVista==="anual" && vistaActual==="dashboard" && html`<div>
-        <div style=${S.statsGrid}>
-          <${SC} label="Balance anual" value=${(statsAnual.neto>=0?"+":"")+fmt(statsAnual.neto)} sub=${String(anoSeleccionado)} vc=${statsAnual.neto>=0?"#00e5a0":"#ff4e6a"} bc=${statsAnual.neto>=0?"#00e5a040":"#ff4e6a40"}/>
-          <${SC} label="Efectividad" value=${statsAnual.efectividad+"%"} sub=${statsAnual.ganadas+"G · "+statsAnual.perdidas+"P"+(statsAnual.nulas>0?" · "+statsAnual.nulas+"N":"")} vc=${statsAnual.efectividad>=50?"#00e5a0":"#ff4e6a"}/>
-          <${SC} label="Total ganado" value=${"+"+fmt(statsAnual.ganancia)} sub=${statsAnual.ganadas+" ganadoras"} vc="#00e5a0"/>
-          <${SC} label="Apuestas" value=${statsAnual.total} sub=${statsAnual.pendientes+" pendientes"}/>
-          <${SC} label="Momio promedio" value=${momioPromedio!==null?(momioPromedio>0?"+"+momioPromedio:String(momioPromedio)):"—"} sub="Todas las apuestas" vc="#e8e8f0"/>
+      <!-- CALENDARIO -->
+      ${vista==="calendario" && html`<div>
+        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${prevMes} onNext=${nextMes} onHoy=${irHoy} renderAR=${renderAR}/>
+        ${porDeporteMes.length>0 && html`<div style=${{marginTop:22}}>
+          <${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>
+          ${deporteFiltro && html`<div style=${{marginTop:-16,marginBottom:20}}>
+            <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <b style=${{color:"#fff",fontSize:16}}>${iconDeporte[deporteFiltro]||"🎯"} ${deporteFiltro}</b>
+              <button onClick=${()=>setDeporteFiltro(null)} style=${S.pillBtn}>✕ Cerrar</button>
+            </div>
+            ${[...apuestasMes].reverse().filter(a=>a.deporte===deporteFiltro).map(a=>renderAR(a,false))}
+          </div>`}
+        </div>`}
+      </div>`}
+
+      <!-- ANUAL -->
+      ${vista==="anual" && html`<div>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"6px 0 14px",gap:10}}>
+          <h1 style=${S.pageTitle}>Anual</h1>
+          <div style=${{display:"flex",alignItems:"center",gap:8}}>
+            <button style=${{...S.sqBtn,width:40,height:40}} onClick=${()=>setAnoSeleccionado(y=>y-1)} aria-label="Año anterior">‹</button>
+            <b style=${{fontSize:17,color:"#fff"}}>${anoSeleccionado}</b>
+            <button style=${{...S.sqBtn,width:40,height:40}} onClick=${()=>setAnoSeleccionado(y=>y+1)} aria-label="Año siguiente">›</button>
+          </div>
+        </div>
+        <div style=${{...S.hero,padding:"16px 18px"}}>
+          <div style=${{fontSize:12,opacity:.9,letterSpacing:.5,fontWeight:700}}>BALANCE ${anoSeleccionado}</div>
+          <div style=${{fontSize:34,fontWeight:900,letterSpacing:-1,color:"#fff",marginTop:2}}>${fmtSigno(statsAnual.neto)}</div>
+          <div style=${{display:"flex",gap:8,marginTop:12}}>
+            ${[[statsAnual.efectividad+"%","Acierto"],[statsAnual.ganadas+"-"+statsAnual.perdidas,"Récord"],[String(statsAnual.total),"Picks"],[momioPromedio!==null?fmtMomio(momioPromedio):"—","Momio prom."]].map(([v,l])=>html`
+              <div key=${l} style=${S.miniStat}><b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2}}>${l}</div></div>`)}
+          </div>
         </div>
         <div style=${S.section}>
-          <h2 style=${S.secTitle}>Balance mensual — ${anoSeleccionado}</h2>
+          <h2 style=${S.secTitle}>Balance por mes</h2>
           <div style=${S.chartCard}>
             <div style=${S.chartBars}>
               ${datosPorMes.map((d,i)=>{
                 const h=Math.round((Math.abs(d.neto)/maxNeto)*84);
                 const isPos=d.neto>=0;
-                return html`<div key=${d.mes} style=${S.chartCol} onClick=${()=>{setMesSeleccionado(i);setPeriodoVista("mensual");}}>
+                return html`<div key=${d.mes} style=${S.chartCol} onClick=${()=>{setMesSeleccionado(i);irA("inicio");}}>
                   <div style=${S.barWrap}>
                     ${d.neto!==0
-                      ? html`<div style=${{width:"100%",height:h+"px",minHeight:4,background:isPos?"#00e5a0":"#ff4e6a",borderRadius:4,opacity:i===mesSeleccionado?1:0.55}} title=${MESES[i]+": "+fmt(d.neto)}/>`
-                      : html`<div style=${{width:"100%",height:"2px",background:"#1e2130",borderRadius:2}}/>`
-                    }
+                      ? html`<div style=${{width:"100%",height:h+"px",minHeight:4,background:isPos?"#2fe0a0":"#ff5d7a",borderRadius:4,opacity:i===mesSeleccionado?1:0.6}}/>`
+                      : html`<div style=${{width:"100%",height:"2px",background:"#243060",borderRadius:2}}/>`}
                   </div>
-                  <div style=${{fontSize:9,color:i===mesSeleccionado?"#e8e8f0":"#555",fontWeight:i===mesSeleccionado?700:400,marginTop:4}}>${d.mes}</div>
-                  ${d.total>0 && html`<div style=${{fontSize:8,color:isPos?"#00e5a070":"#ff4e6a70",textAlign:"center"}}>${isPos?"+":""}${Math.round(d.neto/1000*10)/10}k</div>`}
+                  <div style=${{fontSize:10,color:i===mesSeleccionado?"#fff":"#8f9bc4",fontWeight:i===mesSeleccionado?800:500,marginTop:4}}>${d.mes}</div>
                 </div>`;
               })}
             </div>
-            <div style=${{display:"flex",gap:16,fontSize:11,color:"#555",marginTop:12,flexWrap:"wrap",alignItems:"center"}}>
-              <span style=${{color:"#00e5a0"}}>■ Ganancia</span>
-              <span style=${{color:"#ff4e6a"}}>■ Pérdida</span>
-              <span>· Clic en un mes para ver detalle</span>
-            </div>
+            <div style=${{fontSize:12,color:"#8f9bc4",marginTop:12,textAlign:"center"}}>Toca un mes para verlo</div>
           </div>
         </div>
         <div style=${S.section}>
           <h2 style=${S.secTitle}>Resumen por mes</h2>
-          <div style=${S.tableWrap}>
-            <div className="tbl-grid" style=${S.tableHead}>
-              ${["Mes","Tot.","G","P","Inv.","Balance"].map(h=>html`<span key=${h}>${h}</span>`)}
+          ${datosPorMes.map((d,i)=>d.total>0 && html`<button key=${i} style=${S.row} onClick=${()=>{setMesSeleccionado(i);irA("inicio");}}>
+            <div style=${{flex:1,minWidth:0}}>
+              <b style=${{fontSize:15}}>${MESES[i]}</b>
+              <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>${d.total} picks · ${d.ganadas}G · ${d.perdidas}P · ${d.efectividad}%</div>
             </div>
-            ${datosPorMes.map((d,i)=>d.total>0 && html`
-              <div key=${i} className="tbl-grid" style=${S.tableRow} onClick=${()=>{setMesSeleccionado(i);setPeriodoVista("mensual");}}>
-                <span style=${{color:"#e8e8f0",fontWeight:600}}>${MESES[i]}</span>
-                <span style=${{color:"#888"}}>${d.total}</span>
-                <span style=${{color:"#00e5a0"}}>${d.ganadas}</span>
-                <span style=${{color:"#ff4e6a"}}>${d.perdidas}</span>
-                <span style=${{color:"#888"}}>${fmt(d.invertido)}</span>
-                <span style=${{color:d.neto>=0?"#00e5a0":"#ff4e6a",fontWeight:700}}>${d.neto>=0?"+":""}${fmt(d.neto)}</span>
-              </div>
-            `)}
-            ${datosPorMes.every(d=>d.total===0) && html`<div style=${S.empty}>No hay apuestas en ${anoSeleccionado}.</div>`}
-          </div>
+            <b style=${{fontSize:16,color:d.neto>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${fmtSigno(d.neto)}</b>
+            <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+          </button>`)}
+          ${datosPorMes.every(d=>d.total===0) && html`<div style=${S.empty}>No hay picks en ${anoSeleccionado}.</div>`}
         </div>
         ${porDeporteAno.length>0 && html`<div style=${S.section}>
-          <h2 style=${S.secTitle}>Por deporte — ${anoSeleccionado}</h2>
-          <div style=${S.deportesGrid}>
-            ${porDeporteAno.map(d=>html`<div key=${d.deporte} style=${{...S.deporteCard,minWidth:130}}>
-              <span style=${{fontSize:26}}>${iconDeporte[d.deporte]}</span>
-              <div style=${{fontSize:13,color:"#aaa",marginTop:6,marginBottom:4}}>${d.deporte}</div>
-              <div style=${{fontSize:14,fontWeight:700}}><span style=${{color:"#00e5a0"}}>${d.ganadas}G</span><span style=${{color:"#888"}}> · </span><span style=${{color:"#ff4e6a"}}>${d.perdidas}P</span></div>
-              <div style=${{fontSize:13,fontWeight:700,color:d.neto>=0?"#00e5a0":"#ff4e6a",marginTop:6}}>${d.neto>=0?"+":""}${fmt(d.neto)}</div>
-              <div style=${{fontSize:11,color:"#555",marginTop:2}}>${d.total} total</div>
-            </div>`)}
-          </div>
+          <h2 style=${S.secTitle}>Por deporte</h2>
+          ${porDeporteAno.map(d=>html`<div key=${d.deporte} style=${{...S.row,cursor:"default"}}>
+            <span style=${{fontSize:24}}>${iconDeporte[d.deporte]||"🎯"}</span>
+            <div style=${{flex:1,minWidth:0}}>
+              <b style=${{fontSize:15}}>${d.deporte}</b>
+              <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>${d.total} picks · <span style=${{color:"#2fe0a0"}}>${d.ganadas}G</span> · <span style=${{color:"#ff5d7a"}}>${d.perdidas}P</span></div>
+            </div>
+            <b style=${{fontSize:15,color:d.neto>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${fmtSigno(d.neto)}</b>
+          </div>`)}
+        </div>`}
+        ${apuestasAno.length>0 && html`<div style=${S.section}>
+          <button onClick=${()=>setVerTodasAno(v=>!v)} style=${{...S.row,justifyContent:"space-between"}}>
+            <b style=${{fontSize:15}}>Todos los picks de ${anoSeleccionado} (${apuestasAno.length})</b>
+            <span style=${{color:"#4a8dff",fontWeight:700}}>${verTodasAno?"Ocultar":"Ver"}</span>
+          </button>
+          ${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}
         </div>`}
       </div>`}
 
-      <!-- ANUAL APUESTAS -->
-      ${periodoVista==="anual" && vistaActual==="apuestas" && html`<div style=${S.section}>
-        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <h2 style=${{...S.secTitle,marginBottom:0}}>Todas las apuestas — ${anoSeleccionado}</h2>
-          <span style=${S.badge}>${apuestasAno.length}</span>
-        </div>
-        ${apuestasAno.length===0
-          ? html`<div style=${S.empty}>No hay apuestas en ${anoSeleccionado}.</div>`
-          : [...apuestasAno].reverse().map(a=>html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded editable=${modoEdicion}/>`)
-        }
+      <!-- MÁS -->
+      ${vista==="mas" && html`<div>
+        <h1 style=${{...S.pageTitle,margin:"6px 0 16px"}}>Más</h1>
+        ${user
+          ? html`<div style=${{...S.row,cursor:"default"}}>
+              ${user.photoURL
+                ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:42,height:42,borderRadius:"50%",border:"2px solid #4a8dff"}}/>`
+                : html`<span style=${{fontSize:28}}>👤</span>`}
+              <div style=${{flex:1,minWidth:0}}>
+                <b style=${{fontSize:15}}>${user.displayName||"Mi perfil"}</b>
+                <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3,overflow:"hidden",textOverflow:"ellipsis"}}>${user.email}${isAdmin?" · Admin":""}</div>
+              </div>
+            </div>`
+          : html`<button onClick=${loginGoogle} style=${S.row}>
+              <span style=${{fontSize:24,fontWeight:800,color:"#4285f4",width:28,textAlign:"center"}}>G</span>
+              <div style=${{flex:1}}><b style=${{fontSize:15}}>Entrar con Google</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Para poner tu propio bank y ver tus ganancias</div></div>
+              <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+            </button>`}
+
+        ${user && html`<button onClick=${abrirBankModal} style=${S.row}>
+          <span style=${{fontSize:24}}>💰</span>
+          <div style=${{flex:1,minWidth:0}}>
+            <b style=${{fontSize:15}}>${usaBankPropio?"Mi bank":"Bank"} de ${MESES[mesSeleccionado].toLowerCase()}</b>
+            <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>${bankrollMes>0
+              ? fmt(bankrollMes)+" al inicio · ahora "+fmt(bankrollMes+stats.neto)+(usaBankPropio?" · "+(iniciosUser[bankKey]?"desde el "+fmtDia(iniciosUser[bankKey]):"desde el día 1"):"")
+              : "Sin registrar · toca para ponerlo"}</div>
+          </div>
+          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+        </button>`}
+
+        ${!yaInstalada && html`<button onClick=${instalarApp} style=${S.row}>
+          <span style=${{fontSize:24}}>📲</span>
+          <div style=${{flex:1}}><b style=${{fontSize:15}}>Instalar la app</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Agrégala a tu pantalla de inicio</div></div>
+          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+        </button>`}
+
+        <button onClick=${()=>setNotisGuia(true)} style=${S.row}>
+          <span style=${{fontSize:24}}>🔔</span>
+          <div style=${{flex:1}}><b style=${{fontSize:15}}>Notificaciones</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Aviso en tu celular con cada pick nuevo</div></div>
+          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+        </button>
+
+        ${user && html`<button onClick=${()=>auth.signOut()} style=${{...S.row,color:"#ff5d7a"}}>
+          <span style=${{fontSize:22}}>⎋</span>
+          <b style=${{fontSize:15,flex:1}}>Cerrar sesión</b>
+        </button>`}
       </div>`}
 
     </main>
     <div className="nueva-spacer"></div>
+
+    <nav className="tabbar">
+      <div className="tabbar-in">
+        <button className=${vista==="inicio"?"on":""} onClick=${()=>irA("inicio")}><span className="ic">🏠</span>Inicio</button>
+        <button className=${vista==="calendario"?"on":""} onClick=${()=>irA("calendario")}><span className="ic">📅</span>Calendario</button>
+        ${isAdmin && html`<button className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">＋</button>`}
+        <button className=${vista==="anual"?"on":""} onClick=${()=>irA("anual")}><span className="ic">📊</span>Anual</button>
+        <button className=${vista==="mas"?"on":""} onClick=${()=>irA("mas")}><span className="ic">☰</span>Más</button>
+      </div>
+    </nav>
+
+    ${instalarGuia && html`<div style=${S.overlay} onClick=${()=>setInstalarGuia(false)}>
+      <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
+        <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Agregar a pantalla de inicio</div>
+        ${(esIOS?[["1","Abre esta página en Safari o Chrome (no dentro de otra app)."],["2","Toca el botón Compartir ⬆︎ del navegador."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]]:[["1","Toca el menú ⋮ de Chrome (arriba a la derecha)."],["2","Elige “Instalar app” o “Agregar a pantalla de inicio”."],["3","Confirma con “Instalar” o “Agregar”."]]).map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#4a8dff",color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
+        <div style=${{fontSize:12,color:"#8f9bc4",margin:"4px 0 12px"}}>Después, abre AlexPicks desde el nuevo ícono. Tendrás que iniciar sesión otra vez dentro de la app.</div>
+        <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Entendido</button>
+      </div>
+    </div>`}
+
+    ${notisGuia && html`<div style=${S.overlay} onClick=${()=>setNotisGuia(false)}>
+      <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
+        <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Recibir avisos de picks</div>
+        ${[["1","Descarga la app gratis “ntfy” (App Store o Play Store)."],["2","Ábrela y toca ＋ para suscribirte a un tema."],["3","Escribe este tema exactamente:"]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#4a8dff",color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
+        <button onClick=${()=>{ try{ navigator.clipboard.writeText(NTFY_TOPIC); setNotisCopiado(true); setTimeout(()=>setNotisCopiado(false),2000);}catch(e){} }}
+          style=${{width:"100%",background:"#0a0f20",border:"1px dashed #4a8dff",borderRadius:12,padding:"12px",color:"#fff",fontFamily:"monospace",fontSize:14,cursor:"pointer",marginBottom:6,wordBreak:"break-all"}}>${NTFY_TOPIC}</button>
+        <div style=${{fontSize:12,color:notisCopiado?"#2fe0a0":"#8f9bc4",textAlign:"center",marginBottom:14}}>${notisCopiado?"✓ Copiado":"Toca para copiar"}</div>
+        <a href=${NTFY_URL} target="_blank" rel="noopener" style=${{display:"block",textAlign:"center",fontSize:13,color:"#4a8dff",marginBottom:14}}>O ábrelo en el navegador</a>
+        <button onClick=${()=>setNotisGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Listo</button>
+      </div>
+    </div>`}
 
     <!-- Modal nueva/editar -->
     ${modal && html`<div style=${S.overlay} onClick=${()=>setModal(false)}>
@@ -1050,9 +1015,9 @@ function App() {
                 </div>
                 <div style=${{display:"flex",flexDirection:"column",gap:10}}>
                   ${form.patas.map((p,i)=>html`
-                    <div key=${i} style=${{background:"#0d0f14",border:"1px solid #1e2130",borderRadius:10,padding:"10px 12px"}}>
+                    <div key=${i} style=${{background:"#0a0f20",border:"1px solid #243060",borderRadius:10,padding:"10px 12px"}}>
                       <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                        <span style=${{fontSize:12,color:"#00e5a0",fontWeight:700}}>Leg ${i+1}</span>
+                        <span style=${{fontSize:12,color:"#2fe0a0",fontWeight:700}}>Leg ${i+1}</span>
                         <button onClick=${()=>setForm(f=>({...f,patas:f.patas.filter((_,j)=>j!==i)}))} style=${S.removePataBtn}>✕ Eliminar</button>
                       </div>
                       <div style=${{display:"flex",gap:8,flexDirection:"column"}}>
@@ -1070,13 +1035,13 @@ function App() {
           <div style=${S.fg}>
             <label style=${S.label}>Porcentaje del bank (%)</label>
             <input style=${S.input} type="number" value=${form.monto} onInput=${e=>setForm(f=>({...f,monto:e.target.value}))} placeholder="2" min="0" step="0.5"/>
-            ${bankrollMes>0 && html`<div style=${{fontSize:11,color:"#00e5a0",marginTop:4}}>= ${fmt((Number(form.monto)||0)/100*bankrollMes)} MXN</div>`}
+            ${bankrollMes>0 && html`<div style=${{fontSize:11,color:"#2fe0a0",marginTop:4}}>= ${fmt((Number(form.monto)||0)/100*bankrollMes)} MXN</div>`}
           </div>
           <div style=${S.fg}>
             <label style=${S.label}>Momio (americano)</label>
             <div style=${{display:"flex",gap:8}}>
               <button type="button" onClick=${()=>setForm(f=>{const d=String(f.cuota).replace(/[^0-9]/g,"");const neg=String(f.cuota).trim().startsWith("-");return{...f,cuota:(neg?"+":"-")+d};})}
-                style=${{...S.btnSecondary,padding:"0 16px",fontSize:20,fontWeight:800,flexShrink:0,color:String(form.cuota).trim().startsWith("-")?"#ff4e6a":"#00e5a0"}}>${String(form.cuota).trim().startsWith("-")?"−":"+"}</button>
+                style=${{...S.btnSecondary,padding:"0 16px",fontSize:20,fontWeight:800,flexShrink:0,color:String(form.cuota).trim().startsWith("-")?"#ff5d7a":"#2fe0a0"}}>${String(form.cuota).trim().startsWith("-")?"−":"+"}</button>
               <input style=${{...S.input,flex:1,minWidth:0}} type="text" inputMode="numeric" value=${form.cuota} onInput=${e=>setForm(f=>({...f,cuota:e.target.value}))} onBlur=${e=>{const v=e.target.value.trim();if(v&&!v.startsWith("-")&&!v.startsWith("+"))setForm(f=>({...f,cuota:"+"+v}));}} placeholder="-110 o +150"/>
             </div>
           </div>
@@ -1094,10 +1059,10 @@ function App() {
         ${form.monto&&form.cuota&&momioToDec(form.cuota)>0 && html`<div style=${S.preview}>
           Momio: <span style=${{color:"#fff",fontWeight:700}}>${fmtMomio(form.cuota)}</span>
           ${bankrollMes>0 && (()=>{ const st=(Number(form.monto)||0)/100*bankrollMes; return html`<span><span style=${{marginLeft:12}}>· Ganancia potencial: </span>
-          <span style=${{color:"#00e5a0",fontWeight:700}}>${fmt(st*momioToDec(form.cuota)-st)}</span>
-          <span style=${{color:"#666",marginLeft:12}}>Retorno: ${fmt(st*momioToDec(form.cuota))}</span></span>`; })()}
+          <span style=${{color:"#2fe0a0",fontWeight:700}}>${fmt(st*momioToDec(form.cuota)-st)}</span>
+          <span style=${{color:"#8f9bc4",marginLeft:12}}>Retorno: ${fmt(st*momioToDec(form.cuota))}</span></span>`; })()}
         </div>`}
-        ${formError && html`<div style=${{color:"#ff4e6a",fontSize:13,marginBottom:12,padding:"8px 12px",background:"#ff4e6a15",borderRadius:8,border:"1px solid #ff4e6a30"}}>⚠️ ${formError}</div>`}
+        ${formError && html`<div style=${{color:"#ff5d7a",fontSize:13,marginBottom:12,padding:"8px 12px",background:"#ff5d7a15",borderRadius:8,border:"1px solid #ff5d7a30"}}>⚠️ ${formError}</div>`}
         <div style=${S.modalFooter}>
           <button onClick=${()=>setModal(false)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${guardar} style=${S.btnPrimary}>Guardar</button>
@@ -1109,17 +1074,17 @@ function App() {
     ${bankModal && html`<div style=${S.overlay} onClick=${()=>setBankModal(false)}>
       <div style=${{...S.modal,maxWidth:380}} onClick=${e=>e.stopPropagation()}>
         <div style=${S.modalHeader}>
-          <h2 style=${S.modalTitle}>Tu bank de ${MESES[mesSeleccionado].toLowerCase()}</h2>
+          <h2 style=${S.modalTitle}>${isAdmin?"Bank":"Tu bank"} de ${MESES[mesSeleccionado].toLowerCase()}</h2>
           <button onClick=${()=>setBankModal(false)} style=${S.closeBtn}>✕</button>
         </div>
-        <p style=${{color:"#888",fontSize:13,marginBottom:14,lineHeight:1.4}}>Escribe cuánto tienes y desde qué día cuentas los picks.</p>
+        <p style=${{color:"#8f9bc4",fontSize:13,marginBottom:14,lineHeight:1.4}}>${isAdmin?"Con cuánto empiezas el mes. Lo ven todos los que no han iniciado sesión.":"Escribe cuánto tienes y desde qué día cuentas los picks."}</p>
         <input style=${{...S.input,marginBottom:14}} type="number" inputMode="numeric" placeholder="Bank en MXN" value=${bmInput} onInput=${e=>setBmInput(e.target.value)}/>
-        ${[["dia1","Desde el día 1 del mes"],...(esMesActual?[["hoy","Desde hoy ("+fmtDia(hoyISO)+")"]]:[]),["otro","Elegir otro día"]].map(([v,l])=>html`
-          <div key=${v} onClick=${()=>setBmModo(v)} style=${{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",borderRadius:10,marginBottom:8,cursor:"pointer",fontSize:14,border:"1px solid "+(bmModo===v?"#00e5a0":"#2a2e42"),background:bmModo===v?"#00e5a010":"transparent"}}>
-            <span style=${{width:14,height:14,borderRadius:"50%",border:"2px solid "+(bmModo===v?"#00e5a0":"#556"),background:bmModo===v?"#00e5a0":"transparent",flexShrink:0}}></span>${l}
+        ${!isAdmin && [["dia1","Desde el día 1 del mes"],...(esMesActual?[["hoy","Desde hoy ("+fmtDia(hoyISO)+")"]]:[]),["otro","Elegir otro día"]].map(([v,l])=>html`
+          <div key=${v} onClick=${()=>setBmModo(v)} style=${{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",borderRadius:10,marginBottom:8,cursor:"pointer",fontSize:14,border:"1px solid "+(bmModo===v?"#4a8dff":"#2b3870"),background:bmModo===v?"#4a8dff18":"transparent"}}>
+            <span style=${{width:14,height:14,borderRadius:"50%",border:"2px solid "+(bmModo===v?"#4a8dff":"#556"),background:bmModo===v?"#4a8dff":"transparent",flexShrink:0}}></span>${l}
           </div>`)}
         ${bmModo==="otro" && html`<input style=${{...S.input,marginBottom:8}} type="date" min=${mesPrefijo+"-01"} max=${mesPrefijo+"-"+String(new Date(anoSeleccionado,mesSeleccionado+1,0).getDate()).padStart(2,"0")} value=${bmFecha} onChange=${e=>setBmFecha(e.target.value)}/>`}
-        ${bmError && html`<div style=${{color:"#ff4e6a",fontSize:13,margin:"4px 0 8px"}}>⚠️ ${bmError}</div>`}
+        ${bmError && html`<div style=${{color:"#ff5d7a",fontSize:13,margin:"4px 0 8px"}}>⚠️ ${bmError}</div>`}
         <div style=${{...S.modalFooter,marginTop:12}}>
           <button onClick=${()=>setBankModal(false)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${guardarBankModal} style=${S.btnPrimary}>Guardar bank</button>
@@ -1131,13 +1096,13 @@ function App() {
     ${deleteConfirm && html`<div style=${S.overlay} onClick=${()=>setDeleteConfirm(null)}>
       <div style=${{...S.modal,maxWidth:360}} onClick=${e=>e.stopPropagation()}>
         <div style=${S.modalHeader}>
-          <h2 style=${{...S.modalTitle,color:"#ff4e6a"}}>Eliminar apuesta</h2>
+          <h2 style=${{...S.modalTitle,color:"#ff5d7a"}}>Eliminar apuesta</h2>
           <button onClick=${()=>setDeleteConfirm(null)} style=${S.closeBtn}>✕</button>
         </div>
         <p style=${{color:"#aaa",marginBottom:24}}>¿Estás seguro? Esta acción no se puede deshacer.</p>
         <div style=${S.modalFooter}>
           <button onClick=${()=>setDeleteConfirm(null)} style=${S.btnSecondary}>Cancelar</button>
-          <button onClick=${()=>eliminar(deleteConfirm)} style=${{...S.btnPrimary,background:"#ff4e6a"}}>Eliminar</button>
+          <button onClick=${()=>eliminar(deleteConfirm)} style=${{...S.btnPrimary,background:"#ff5d7a"}}>Eliminar</button>
         </div>
       </div>
     </div>`}
