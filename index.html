@@ -14,12 +14,13 @@
   <script src="https://unpkg.com/htm@3/dist/htm.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{background:#0a0f20;color:#e8e8f0;font-family:'DM Sans',sans-serif}
+    :root{--bg:#0a0f20;--card:#121a38;--card2:#141d40;--card3:#0e1530;--br:#243060;--br2:#2b3870;--mu:#8f9bc4;--mu2:#7c88b3;--mu3:#5a668f;--ac:#4a8dff;--ac2:#9ec1ff;--onac:#fff;--g1:#1d4fd8;--g2:#0f2160}
+    body{background:var(--bg);color:#e8e8f0;font-family:'DM Sans',sans-serif}
     input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{opacity:1}
-    select option{background:#141d40;color:#e8e8f0}
+    select option{background:var(--card2);color:#e8e8f0}
     ::-webkit-scrollbar{width:6px}
-    ::-webkit-scrollbar-track{background:#0a0f20}
-    ::-webkit-scrollbar-thumb{background:#2b3870;border-radius:3px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:var(--br2);border-radius:3px}
     input,select,button{font-family:'DM Sans',sans-serif}
     /* Safe area for iPhone notch/home bar */
     body { padding-top: env(safe-area-inset-top); }
@@ -51,13 +52,13 @@
     .tbl-grid>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     button{-webkit-tap-highlight-color:transparent}
     /* Barra inferior (todas las pantallas) */
-    .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:90;background:#121a38f2;border-top:1px solid #243060;padding:8px 6px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:90;background:color-mix(in srgb,var(--card) 95%,transparent);border-top:1px solid var(--br);padding:8px 6px calc(8px + env(safe-area-inset-bottom));backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     .tabbar-in{display:flex;max-width:560px;margin:0 auto;justify-content:space-around;align-items:flex-start}
-    .tabbar button{flex:1;min-width:0;min-height:50px;background:none;border:none;color:#8f9bc4;font-size:11px;font-weight:600;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0;cursor:pointer}
+    .tabbar button{flex:1;min-width:0;min-height:50px;background:none;border:none;color:var(--mu);font-size:11px;font-weight:600;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0;cursor:pointer}
     .tabbar button .ic{font-size:22px;line-height:26px;filter:grayscale(1);opacity:.75}
-    .tabbar button.on{color:#4a8dff;font-weight:800}
+    .tabbar button.on{color:var(--ac);font-weight:800}
     .tabbar button.on .ic{filter:none;opacity:1}
-    .tabbar .plus{flex:0 0 auto;width:60px;height:60px;min-height:60px;border-radius:50%;background:#4a8dff;color:#fff;font-size:32px;font-weight:400;margin:-30px 4px 0;border:4px solid #0a0f20;box-shadow:0 6px 18px #4a8dff66;justify-content:center;padding:0}
+    .tabbar .plus{flex:0 0 auto;width:60px;height:60px;min-height:60px;border-radius:50%;background:var(--ac);color:var(--onac);font-size:32px;font-weight:400;margin:-30px 4px 0;border:4px solid var(--bg);box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 40%,transparent);justify-content:center;padding:0}
     .nueva-spacer{height:calc(112px + env(safe-area-inset-bottom))}
     /* Mobile (≤600px) */
     @media(max-width:600px){
@@ -175,7 +176,26 @@ const iconDeporte = {Fútbol:"⚽",Béisbol:"⚾",Basquetbol:"🏀",Americano:"�
 const colorRes = {Ganada:"#2fe0a0",Perdida:"#ff5d7a",Pendiente:"#888",Nula:"#f5c842"};
 const bgRes = {Ganada:"#2fe0a020",Perdida:"#ff5d7a20",Pendiente:"#88888820",Nula:"#f5c84220"};
 
-const fmt = n => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
+const fmtReal = n => new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(n);
+// "Ocultar montos": los pesos se ven como $••• y los resultados en % del bank
+let OCULTAR = false;
+const fmt = n => OCULTAR ? "$•••" : fmtReal(n);
+const fmtPct = n => (n>=0?"+":"-")+Math.abs(n).toFixed(1)+"%";
+// Resultado de una apuesta en % del bank (no depende del bank)
+const gPct = a => { const m=Number(a.monto)||0; return a.resultado==="Ganada"?m*(momioToDec(a.cuota)-1):a.resultado==="Perdida"?-m:0; };
+const sumPct = lista => lista.reduce((s,a)=>s+gPct(a),0);
+// Paletas de color
+const TEMAS = {
+  azul:   {nombre:"Azul eléctrico", bg:"#0a0f20",card:"#121a38",card2:"#141d40",card3:"#0e1530",br:"#243060",br2:"#2b3870",mu:"#8f9bc4",mu2:"#7c88b3",mu3:"#5a668f",ac:"#4a8dff",ac2:"#9ec1ff",onac:"#fff",g1:"#1d4fd8",g2:"#0f2160"},
+  violeta:{nombre:"Lima y violeta", bg:"#0f0b1e",card:"#1a1433",card2:"#1e1740",card3:"#140f2a",br:"#2f2559",br2:"#3a2e6b",mu:"#9a90c4",mu2:"#857bb0",mu3:"#5f5689",ac:"#c4f82a",ac2:"#c4f82a",onac:"#14102a",g1:"#3a1f8f",g2:"#1a1040"},
+  dorado: {nombre:"Negro y oro",    bg:"#0c0a0a",card:"#1a1414",card2:"#201818",card3:"#140f0f",br:"#3a2a26",br2:"#4a3430",mu:"#b39f94",mu2:"#9c8a80",mu3:"#6e5f58",ac:"#e8b84a",ac2:"#f3d27a",onac:"#1a1200",g1:"#8a1428",g2:"#2a0a10"},
+  fucsia: {nombre:"Fucsia y noche", bg:"#0b0d1f",card:"#161a36",card2:"#1b1f40",card3:"#10132a",br:"#2b3160",br2:"#363d72",mu:"#9aa0c8",mu2:"#848ab3",mu3:"#5c628c",ac:"#ff3d9a",ac2:"#ff9ccc",onac:"#fff",g1:"#b0136a",g2:"#1a1446"},
+  naranja:{nombre:"Naranja y marino",bg:"#08121f",card:"#10213a",card2:"#142844",card3:"#0b1a2e",br:"#1f3a5f",br2:"#2a4a72",mu:"#8fa6c4",mu2:"#7a90b0",mu3:"#56698a",ac:"#ff8a1f",ac2:"#ffbe7a",onac:"#1a0d00",g1:"#e0631a",g2:"#0c2848"},
+  menta:  {nombre:"Menta y negro",  bg:"#0a0f0e",card:"#121c1a",card2:"#162321",card3:"#0e1614",br:"#22362f",br2:"#2c443c",mu:"#8fb3a8",mu2:"#7a9d93",mu3:"#56756c",ac:"#3ff0c0",ac2:"#9ff7de",onac:"#04140f",g1:"#0f8a6a",g2:"#08201a"},
+};
+const aplicarTema = k => { const t=TEMAS[k]||TEMAS.azul; const r=document.documentElement.style; Object.keys(t).forEach(c=>{ if(c!=="nombre") r.setProperty("--"+c,t[c]); }); };
+const leerPrefs = () => { let p={}; try{ p=JSON.parse(localStorage.getItem("prefs")||"{}")||{}; if(!p.momio && localStorage.getItem("formatoMomio")) p.momio=localStorage.getItem("formatoMomio"); }catch(e){} return p; };
+aplicarTema(leerPrefs().tema);
 // Formato de momio elegido por el usuario (americano o decimal); se actualiza en cada render de App
 let MOMIO_DEC = false;
 const fmtMomio = m => { const n=Number(m); if(!n) return ""; if(MOMIO_DEC) return momioToDec(n).toFixed(2); return n>0?`+${n}`:`${n}`; };
@@ -201,82 +221,82 @@ const calcStats = (lista, bank) => {
   const perdido = per.reduce((s,a)=>s+apMonto(a,bank),0);
   const neto = ganancia-perdido;
   const tot = gan.length+per.length;
-  return {ganadas:gan.length,perdidas:per.length,pendientes:pen.length,nulas:nul.length,invertido,ganancia,perdido,neto,efectividad:tot>0?Math.round(gan.length/tot*100):0,total:lista.length};
+  return {ganadas:gan.length,perdidas:per.length,pendientes:pen.length,nulas:nul.length,invertido,ganancia,perdido,neto,pct:sumPct(lista),efectividad:tot>0?Math.round(gan.length/tot*100):0,total:lista.length};
 };
 
 const initialForm = {deporte:"",tipo:"",descripcion:"",patas:[{deporte:"",desc:""},{deporte:"",desc:""}],monto:"",cuota:"",resultado:"Pendiente",fecha:new Date().toISOString().slice(0,10)};
 
 const S = {
-  root:{minHeight:"100vh",background:"#0a0f20",color:"#e8e8f0",fontFamily:"'DM Sans',sans-serif",position:"relative",paddingBottom:"env(safe-area-inset-bottom)"},
+  root:{minHeight:"100vh",background:"var(--bg)",color:"#e8e8f0",fontFamily:"'DM Sans',sans-serif",position:"relative",paddingBottom:"env(safe-area-inset-bottom)"},
   glow1:{position:"fixed",top:-200,left:-200,width:600,height:600,background:"radial-gradient(circle,#2fe0a015 0%,transparent 70%)",pointerEvents:"none"},
   glow2:{position:"fixed",bottom:-200,right:-200,width:500,height:500,background:"radial-gradient(circle,#ff5d7a10 0%,transparent 70%)",pointerEvents:"none"},
-  header:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"clamp(10px,2vw,18px) clamp(12px,3vw,28px)",borderBottom:"1px solid #243060",position:"sticky",top:0,background:"#0a0f20ee",backdropFilter:"blur(12px)",zIndex:100,flexWrap:"wrap",gap:12,className:"header-inner"},
+  header:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"clamp(10px,2vw,18px) clamp(12px,3vw,28px)",borderBottom:"1px solid var(--br)",position:"sticky",top:0,background:"color-mix(in srgb,var(--bg) 93%,transparent)",backdropFilter:"blur(12px)",zIndex:100,flexWrap:"wrap",gap:12,className:"header-inner"},
   logo:{display:"flex",alignItems:"center",gap:12},
   logoIcon:{fontSize:28,color:"#2fe0a0"},
   logoTitle:{fontSize:"clamp(15px,4vw,20px)",fontWeight:800,letterSpacing:-0.5,color:"#fff"},
-  logoSub:{fontSize:11,color:"#7c88b3",letterSpacing:1,textTransform:"uppercase"},
+  logoSub:{fontSize:11,color:"var(--mu2)",letterSpacing:1,textTransform:"uppercase"},
   nav:{display:"flex",gap:6},
-  navBtn:{background:"transparent",border:"1px solid #243060",borderRadius:8,color:"#8f9bc4",padding:"7px clamp(10px,2vw,18px)",cursor:"pointer",fontSize:"clamp(12px,3vw,14px)",fontWeight:500},
-  navBtnActive:{background:"#1c2750",borderColor:"#2fe0a040",color:"#2fe0a0"},
-  btnPrimary:{background:"#4a8dff",color:"#fff",border:"none",borderRadius:10,padding:"8px clamp(12px,2vw,20px)",fontWeight:800,fontSize:"clamp(12px,3vw,14px)",cursor:"pointer"},
-  btnSecondary:{background:"transparent",color:"#aaa",border:"1px solid #2b3870",borderRadius:10,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"},
-  periodBar:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px clamp(12px,3vw,28px)",borderBottom:"1px solid #1c2750",flexWrap:"wrap",gap:12,rowGap:8},
-  togglePeriodo:{display:"flex",background:"#121a38",border:"1px solid #243060",borderRadius:10,padding:3,gap:3},
-  tpBtn:{background:"transparent",border:"none",borderRadius:7,padding:"7px 20px",color:"#8f9bc4",fontWeight:600,fontSize:13,cursor:"pointer"},
-  tpBtnActive:{background:"#1c2750",color:"#2fe0a0"},
+  navBtn:{background:"transparent",border:"1px solid var(--br)",borderRadius:8,color:"var(--mu)",padding:"7px clamp(10px,2vw,18px)",cursor:"pointer",fontSize:"clamp(12px,3vw,14px)",fontWeight:500},
+  navBtnActive:{background:"var(--card3)",borderColor:"#2fe0a040",color:"#2fe0a0"},
+  btnPrimary:{background:"var(--ac)",color:"var(--onac)",border:"none",borderRadius:10,padding:"8px clamp(12px,2vw,20px)",fontWeight:800,fontSize:"clamp(12px,3vw,14px)",cursor:"pointer"},
+  btnSecondary:{background:"transparent",color:"#aaa",border:"1px solid var(--br2)",borderRadius:10,padding:"10px 20px",fontWeight:600,fontSize:14,cursor:"pointer"},
+  periodBar:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px clamp(12px,3vw,28px)",borderBottom:"1px solid var(--card3)",flexWrap:"wrap",gap:12,rowGap:8},
+  togglePeriodo:{display:"flex",background:"var(--card)",border:"1px solid var(--br)",borderRadius:10,padding:3,gap:3},
+  tpBtn:{background:"transparent",border:"none",borderRadius:7,padding:"7px 20px",color:"var(--mu)",fontWeight:600,fontSize:13,cursor:"pointer"},
+  tpBtnActive:{background:"var(--card3)",color:"#2fe0a0"},
   navFecha:{display:"flex",alignItems:"center",gap:16},
-  monthNav:{background:"transparent",border:"none",color:"#8f9bc4",fontSize:22,cursor:"pointer",padding:"0 8px"},
+  monthNav:{background:"transparent",border:"none",color:"var(--mu)",fontSize:22,cursor:"pointer",padding:"0 8px"},
   monthLabel:{fontSize:"clamp(14px,4vw,17px)",fontWeight:700,color:"#fff",minWidth:"clamp(120px,40vw,180px)",textAlign:"center"},
   main:{maxWidth:640,margin:"0 auto",padding:"10px 16px 0"},
-  hero:{background:"linear-gradient(135deg,#1d4fd8,#0f2160)",borderRadius:24,padding:"16px 18px 18px",marginBottom:14,boxShadow:"0 10px 30px #1d4fd833"},
+  hero:{background:"linear-gradient(135deg,var(--g1),var(--g2))",borderRadius:24,padding:"16px 18px 18px",marginBottom:14,boxShadow:"0 10px 30px color-mix(in srgb,var(--g1) 20%,transparent)"},
   chip:{background:"#ffffff2e",border:"none",color:"#fff",borderRadius:16,padding:"8px 13px",fontSize:13,fontWeight:700,cursor:"pointer",minHeight:36},
   miniStat:{flex:1,background:"#ffffff1f",borderRadius:12,padding:"8px 6px",textAlign:"center"},
   pageTitle:{fontSize:24,fontWeight:800,color:"#fff"},
-  pillBtn:{background:"#121a38",border:"1px solid #243060",borderRadius:14,padding:"9px 16px",fontSize:14,color:"#4a8dff",fontWeight:700,cursor:"pointer",minHeight:40},
-  sqBtn:{width:46,height:46,borderRadius:14,background:"#121a38",border:"1px solid #243060",color:"#fff",fontSize:22,cursor:"pointer",flexShrink:0},
+  pillBtn:{background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:"9px 16px",fontSize:14,color:"var(--ac)",fontWeight:700,cursor:"pointer",minHeight:40},
+  sqBtn:{width:46,height:46,borderRadius:14,background:"var(--card)",border:"1px solid var(--br)",color:"#fff",fontSize:22,cursor:"pointer",flexShrink:0},
   monthRow:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,gap:10},
   secHead:{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"18px 2px 10px"},
-  row:{display:"flex",alignItems:"center",gap:12,background:"#121a38",border:"1px solid #243060",borderRadius:16,padding:"13px 14px",marginBottom:10,cursor:"pointer",width:"100%",textAlign:"left",color:"#fff",fontFamily:"inherit"},
+  row:{display:"flex",alignItems:"center",gap:12,background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:"13px 14px",marginBottom:10,cursor:"pointer",width:"100%",textAlign:"left",color:"#fff",fontFamily:"inherit"},
   statsGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:12,marginBottom:28},
-  card:{background:"#121a38",border:"1px solid #243060",borderRadius:16,padding:"clamp(12px,3vw,18px) clamp(10px,2vw,16px)"},
-  cardLabel:{fontSize:11,color:"#7c88b3",textTransform:"uppercase",letterSpacing:1,marginBottom:8},
+  card:{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:"clamp(12px,3vw,18px) clamp(10px,2vw,16px)"},
+  cardLabel:{fontSize:11,color:"var(--mu2)",textTransform:"uppercase",letterSpacing:1,marginBottom:8},
   cardValue:{fontSize:"clamp(16px,4vw,22px)",fontWeight:800,color:"#fff",marginBottom:4},
-  cardSub:{fontSize:12,color:"#7c88b3"},
+  cardSub:{fontSize:12,color:"var(--mu2)"},
   section:{marginBottom:32},
-  secTitle:{fontSize:12,fontWeight:700,color:"#7c88b3",marginBottom:16,textTransform:"uppercase",letterSpacing:1.2},
+  secTitle:{fontSize:12,fontWeight:700,color:"var(--mu2)",marginBottom:16,textTransform:"uppercase",letterSpacing:1.2},
   deportesGrid:{display:"flex",gap:12,flexWrap:"wrap"},
-  deporteCard:{background:"transparent",border:"1px solid #243060",borderRadius:12,padding:"14px 20px",textAlign:"center",minWidth:100},
-  chartCard:{background:"#121a38",border:"1px solid #243060",borderRadius:14,padding:"20px 16px"},
+  deporteCard:{background:"transparent",border:"1px solid var(--br)",borderRadius:12,padding:"14px 20px",textAlign:"center",minWidth:100},
+  chartCard:{background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:"20px 16px"},
   chartBars:{display:"flex",alignItems:"flex-end",gap:5,height:110},
   chartCol:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"},
   barWrap:{width:"100%",display:"flex",alignItems:"flex-end",justifyContent:"center",height:88},
-  tableWrap:{background:"#121a38",border:"1px solid #243060",borderRadius:14,overflow:"hidden"},
-  tableHead:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"12px clamp(10px,2.5vw,18px)",borderBottom:"1px solid #243060",fontSize:"clamp(9px,2.6vw,11px)",color:"#7c88b3",textTransform:"uppercase",letterSpacing:0.4},
+  tableWrap:{background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,overflow:"hidden"},
+  tableHead:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"12px clamp(10px,2.5vw,18px)",borderBottom:"1px solid var(--br)",fontSize:"clamp(9px,2.6vw,11px)",color:"var(--mu2)",textTransform:"uppercase",letterSpacing:0.4},
   tableRow:{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.6fr) minmax(0,1.9fr)",gap:6,padding:"13px clamp(10px,2.5vw,18px)",borderBottom:"1px solid #13162020",fontSize:"clamp(12px,3.4vw,14px)",cursor:"pointer"},
-  apCard:{background:"#121a38",border:"1px solid #243060",borderRadius:16,marginBottom:10,overflow:"hidden"},
+  apCard:{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,marginBottom:10,overflow:"hidden"},
   apMain:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",gap:12,cursor:"pointer"},
   apLeft:{display:"flex",alignItems:"center",gap:14,flex:1,minWidth:0},
   apDesc:{fontSize:15,fontWeight:600,color:"#e8e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
-  apMeta:{fontSize:12,color:"#7c88b3",marginTop:3},
+  apMeta:{fontSize:12,color:"var(--mu2)",marginTop:3},
   apRight:{display:"flex",flexDirection:"column",alignItems:"stretch",gap:6,flexShrink:0,width:92,textAlign:"center"},
   resTag:{fontSize:11,fontWeight:700,padding:"4px 0",textAlign:"center",borderRadius:6,textTransform:"uppercase",letterSpacing:0.5},
-  apDetail:{borderTop:"1px solid #1c2750",padding:"14px 18px"},
+  apDetail:{borderTop:"1px solid var(--card3)",padding:"14px 18px"},
   detailGrid:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:14},
-  actBtn:{background:"transparent",border:"1px solid #243060",borderRadius:8,color:"#888",padding:"6px 14px",cursor:"pointer",fontSize:13},
+  actBtn:{background:"transparent",border:"1px solid var(--br)",borderRadius:8,color:"#888",padding:"6px 14px",cursor:"pointer",fontSize:13},
   overlay:{position:"fixed",inset:0,background:"#000a",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
-  modal:{background:"#141d40",border:"1px solid #2b3870",borderRadius:18,padding:"clamp(16px,4vw,28px)",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",margin:"0 8px"},
+  modal:{background:"var(--card2)",border:"1px solid var(--br2)",borderRadius:18,padding:"clamp(16px,4vw,28px)",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",margin:"0 8px"},
   modalHeader:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24},
   modalTitle:{fontSize:20,fontWeight:800,color:"#fff"},
-  closeBtn:{background:"transparent",border:"none",color:"#8f9bc4",fontSize:18,cursor:"pointer"},
+  closeBtn:{background:"transparent",border:"none",color:"var(--mu)",fontSize:18,cursor:"pointer"},
   formGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14,marginBottom:16},
   fg:{display:"flex",flexDirection:"column",gap:6},
-  label:{fontSize:12,color:"#8f9bc4",fontWeight:600,textTransform:"uppercase",letterSpacing:0.8},
-  input:{background:"#0a0f20",border:"1px solid #2b3870",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
-  select:{background:"#0a0f20",border:"1px solid #2b3870",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
+  label:{fontSize:12,color:"var(--mu)",fontWeight:600,textTransform:"uppercase",letterSpacing:0.8},
+  input:{background:"var(--bg)",border:"1px solid var(--br2)",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
+  select:{background:"var(--bg)",border:"1px solid var(--br2)",borderRadius:9,padding:"10px 13px",color:"#e8e8f0",fontSize:14,outline:"none",fontFamily:"inherit",width:"100%"},
   preview:{background:"#2fe0a010",border:"1px solid #2fe0a030",borderRadius:9,padding:"10px 14px",fontSize:13,color:"#aaa",marginBottom:20},
   modalFooter:{display:"flex",justifyContent:"flex-end",gap:10},
-  empty:{textAlign:"center",color:"#5a668f",padding:"48px 0",fontSize:15,lineHeight:1.8},
-  badge:{background:"#1c2750",color:"#2fe0a0",border:"1px solid #2fe0a030",borderRadius:20,padding:"3px 12px",fontSize:13,fontWeight:700},
+  empty:{textAlign:"center",color:"var(--mu3)",padding:"48px 0",fontSize:15,lineHeight:1.8},
+  badge:{background:"var(--card3)",color:"#2fe0a0",border:"1px solid #2fe0a030",borderRadius:20,padding:"3px 12px",fontSize:13,fontWeight:700},
   addPataBtn:{background:"#2fe0a015",color:"#2fe0a0",border:"1px solid #2fe0a040",borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"},
   removePataBtn:{background:"transparent",color:"#ff5d7a",border:"1px solid #ff5d7a40",borderRadius:7,padding:"4px 10px",fontSize:11,cursor:"pointer",flexShrink:0,fontWeight:600},
 };
@@ -292,19 +312,19 @@ function SC({label,value,sub,vc,bc}) {
 
 function DI({label,val,vc}) {
   return html`<div style=${{display:"flex",flexDirection:"column",gap:4}}>
-    <span style=${{fontSize:11,color:"#7c88b3",textTransform:"uppercase",letterSpacing:0.8}}>${label}</span>
+    <span style=${{fontSize:11,color:"var(--mu2)",textTransform:"uppercase",letterSpacing:0.8}}>${label}</span>
     <span style=${{fontSize:15,fontWeight:700,color:vc||"#e8e8f0"}}>${val}</span>
   </div>`;
 }
 
 function DeportesGrid({data,onSelect,selected}) {
   return html`<div style=${S.section}>
-    <h2 style=${S.secTitle}>Por deporte <span style=${{color:"#5a668f",fontSize:10,fontWeight:400,marginLeft:6}}>· toca para filtrar</span></h2>
+    <h2 style=${S.secTitle}>Por deporte <span style=${{color:"var(--mu3)",fontSize:10,fontWeight:400,marginLeft:6}}>· toca para filtrar</span></h2>
     <div style=${S.deportesGrid}>
       ${data.map(d => {
         const isSel = selected===d.deporte;
         return html`<div key=${d.deporte} onClick=${()=>onSelect(d.deporte)}
-          style=${{...S.deporteCard,cursor:"pointer",borderColor:isSel?"#2fe0a0":"#243060",background:isSel?"#2fe0a008":"transparent",transition:"all .15s"}}>
+          style=${{...S.deporteCard,cursor:"pointer",borderColor:isSel?"#2fe0a0":"var(--br)",background:isSel?"#2fe0a008":"transparent",transition:"all .15s"}}>
           <span style=${{fontSize:26}}>${iconDeporte[d.deporte]||"🎯"}</span>
           <div style=${{fontSize:13,color:isSel?"#e8e8f0":"#aaa",marginTop:6,marginBottom:4,fontWeight:isSel?700:400}}>${d.deporte}</div>
           <div style=${{fontSize:14,fontWeight:700}}>
@@ -312,7 +332,7 @@ function DeportesGrid({data,onSelect,selected}) {
             <span style=${{color:"#888"}}> · </span>
             <span style=${{color:"#ff5d7a"}}>${d.perdidas}P</span>
           </div>
-          <div style=${{fontSize:11,color:"#7c88b3",marginTop:2}}>${d.total} total</div>
+          <div style=${{fontSize:11,color:"var(--mu2)",marginTop:2}}>${d.total} total</div>
         </div>`;
       })}
     </div>
@@ -322,8 +342,10 @@ function DeportesGrid({data,onSelect,selected}) {
 function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   const show = open||expanded;
-  const cr = colorRes[a.resultado]||"#8f9bc4";
-  const montoTxt = a.resultado==="Pendiente" ? (monto?fmt(monto):"⏳") : a.resultado==="Nula" ? "$0" : (g>0?"+":"")+fmt(g);
+  const cr = colorRes[a.resultado]||"var(--mu)";
+  const montoTxt = OCULTAR
+    ? (a.resultado==="Pendiente" ? a.monto+"%" : a.resultado==="Nula" ? "0%" : fmtPct(gPct(a)))
+    : (a.resultado==="Pendiente" ? (monto?fmt(monto):"⏳") : a.resultado==="Nula" ? "$0" : (g>0?"+":"")+fmt(g));
   const resTxt = {Ganada:"GANADO",Perdida:"PERDIDO",Pendiente:"PENDIENTE",Nula:"NULA"}[a.resultado]||a.resultado;
   const f = parseFecha(a.fecha);
   return html`<div style=${S.apCard}>
@@ -334,12 +356,12 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
           <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${iconDeporte[a.deporte]||"🎯"} ${a.descripcion}</div>
           <div style=${{color:a.resultado==="Pendiente"?"#c9d2f0":cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px"}}>${montoTxt}</div>
         </div>
-        <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"#8f9bc4"}}>
+        <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"var(--mu)"}}>
           <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${a.tipo} · ${f.d} ${MESES_CORTO[f.m]}</span>
           <span style=${{whiteSpace:"nowrap"}}>${a.monto}% del bank</span>
         </div>
       </div>
-      <div style=${{width:68,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"#0e1530",borderLeft:"1px solid #243060",padding:"8px 2px"}}>
+      <div style=${{width:68,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"var(--card3)",borderLeft:"1px solid var(--br)",padding:"8px 2px"}}>
         <b style=${{fontSize:15,color:"#fff"}}>${fmtMomio(a.cuota)}</b>
         <span style=${{fontSize:9,fontWeight:800,color:cr,marginTop:3,letterSpacing:.3}}>${resTxt}</span>
       </div>
@@ -350,18 +372,18 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
         <${DI} label="Monto" val=${fmt(monto||0)}/>
         <${DI} label="Momio" val=${fmtMomio(a.cuota)}/>
         <${DI} label="Retorno" val=${fmt((monto||0)*momioToDec(a.cuota))}/>
-        <${DI} label="Ganancia" val=${(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#2fe0a0":"#ff5d7a"}/>
+        <${DI} label="Ganancia" val=${OCULTAR?fmtPct(gPct(a)):(g>=0?"+":"")+fmt(g)} vc=${g>=0?"#2fe0a0":"#ff5d7a"}/>
       </div>
       ${a.tipo==="Parlay/Combinada" && a.patas && a.patas.length>0 && html`
         <div style=${{marginBottom:14}}>
-          <div style=${{fontSize:11,color:"#7c88b3",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Patas del parlay</div>
+          <div style=${{fontSize:11,color:"var(--mu2)",textTransform:"uppercase",letterSpacing:0.8,marginBottom:8}}>Patas del parlay</div>
           <div style=${{display:"flex",flexDirection:"column",gap:6}}>
             ${a.patas.map((p,i) => {
               const dep = typeof p==="object"?p.deporte:"";
               const desc = typeof p==="object"?p.desc:p;
               if(!desc) return null;
-              return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"#0a0f2080",borderRadius:8,padding:"7px 10px"}}>
-                <span style=${{fontSize:12,color:"#4a8dff",fontWeight:700,minWidth:18}}>${i+1}.</span>
+              return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"color-mix(in srgb,var(--bg) 50%,transparent)",borderRadius:8,padding:"7px 10px"}}>
+                <span style=${{fontSize:12,color:"var(--ac)",fontWeight:700,minWidth:18}}>${i+1}.</span>
                 ${dep && html`<span style=${{fontSize:12}}>${iconDeporte[dep]||"🎯"}</span>`}
                 <span style=${{fontSize:13,color:"#dfe5ff"}}>${desc}</span>
               </div>`;
@@ -373,7 +395,7 @@ function AR({a,onEdit,onDelete,onToggle,g,expanded,editable,monto}) {
         <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
           ${["Ganada","Perdida","Pendiente","Nula"].map(r=>html`<button key=${r} onClick=${()=>onToggle(r)}
             style=${{fontSize:12,border:"1px solid",borderRadius:10,padding:"10px 0",cursor:"pointer",fontWeight:700,minHeight:42,
-              background:a.resultado===r?bgRes[r]:"transparent",color:a.resultado===r?colorRes[r]:"#8f9bc4",borderColor:a.resultado===r?colorRes[r]:"#2b3870"}}>${r}</button>`)}
+              background:a.resultado===r?bgRes[r]:"transparent",color:a.resultado===r?colorRes[r]:"var(--mu)",borderColor:a.resultado===r?colorRes[r]:"var(--br2)"}}>${r}</button>`)}
         </div>
         <div style=${{display:"flex",gap:8}}>
           <button onClick=${onEdit} style=${{...S.actBtn,flex:1,minHeight:42}}>✏️ Editar</button>
@@ -396,19 +418,20 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
   const delMes = (lista,dia) => lista.filter(a=>{ const {y,m,d}=parseFecha(a.fecha); return y===ano&&m===mes&&d===dia; });
   const gan = a => { const m=apMonto(a,bank); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const netos = {};
-  vistas.forEach(a=>{ const {y,m,d}=parseFecha(a.fecha); if(y===ano&&m===mes&&a.resultado!=="Pendiente") netos[d]=(netos[d]||0)+gan(a); });
+  const netos = {}, pcts = {};
+  vistas.forEach(a=>{ const {y,m,d}=parseFecha(a.fecha); if(y===ano&&m===mes&&a.resultado!=="Pendiente"){ netos[d]=(netos[d]||0)+gan(a); pcts[d]=(pcts[d]||0)+gPct(a); } });
 
   const totalG = apuestas.filter(a=>a.resultado==="Ganada").length;
   const totalP = apuestas.filter(a=>a.resultado==="Perdida").length;
   const profit = apuestas.reduce((s,a)=>s+gan(a),0);
+  const profitPct = sumPct(apuestas);
 
-  const fmtK = n => { const abs=Math.abs(n); const sg=n<0?"-":"+";
+  const fmtK = n => { if(OCULTAR) return "•••"; const abs=Math.abs(n); const sg=n<0?"-":"+";
     if(abs>=1000) return sg+"$"+(abs/1000).toFixed(abs>=10000?0:1).replace(/\.0$/,"")+"K";
     return sg+"$"+Math.round(abs); };
   const hoy = new Date();
   const apsSel = sel ? delMes(vistas,sel) : [];
-  const netoSel = sel ? delMes(apuestas,sel).reduce((s,a)=>s+gan(a),0) : 0;
+  const netoSel = sel ? (OCULTAR ? sumPct(delMes(apuestas,sel)) : delMes(apuestas,sel).reduce((s,a)=>s+gan(a),0)) : 0;
   const diaNombre = sel ? ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(ano,mes,sel).getDay()] : "";
 
   return html`<div>
@@ -422,7 +445,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
       <button style=${S.sqBtn} onClick=${onNext} aria-label="Mes siguiente">›</button>
     </div>
     <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5,marginBottom:5}}>
-      ${["L","M","M","J","V","S","D"].map((d,i)=>html`<div key=${i} style=${{textAlign:"center",fontSize:12,color:"#8f9bc4",fontWeight:700}}>${d}</div>`)}
+      ${["L","M","M","J","V","S","D"].map((d,i)=>html`<div key=${i} style=${{textAlign:"center",fontSize:12,color:"var(--mu)",fontWeight:700}}>${d}</div>`)}
     </div>
     <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5}}>
       ${Array(offset).fill(0).map((_,i)=>html`<div key=${"e"+i}/>`)}
@@ -433,38 +456,38 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
         const cuenta=delMes(apuestas,dia).length>0;
         const neto=netos[dia];
         const esHoy=hoy.getDate()===dia&&hoy.getMonth()===mes&&hoy.getFullYear()===ano;
-        const col = neto===undefined ? null : neto>=0 ? "#2fe0a0" : "#ff5d7a";
+        const col = neto===undefined ? null : (OCULTAR?pcts[dia]:neto)>=0 ? "#2fe0a0" : "#ff5d7a";
         return html`<button key=${dia} onClick=${()=>tiene&&setSel(dia)}
           style=${{height:54,borderRadius:12,padding:"6px 0 0",fontFamily:"inherit",cursor:tiene?"pointer":"default",
-            background:col?col+"24":"#121a38",border:sel===dia?"2px solid #4a8dff":esHoy?"2px solid #4a8dff88":"1px solid #243060",
+            background:col?col+"24":"var(--card)",border:sel===dia?"2px solid var(--ac)":esHoy?"2px solid color-mix(in srgb,var(--ac) 53%,transparent)":"1px solid var(--br)",
             opacity:tiene&&!cuenta?.45:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0}}>
-          <span style=${{fontSize:14,fontWeight:esHoy?800:600,color:tiene||esHoy?"#fff":"#5a668f"}}>${dia}</span>
-          ${col && html`<span style=${{fontSize:10,fontWeight:800,color:col,whiteSpace:"nowrap"}}>${fmtK(neto)}</span>`}
+          <span style=${{fontSize:14,fontWeight:esHoy?800:600,color:tiene||esHoy?"#fff":"var(--mu3)"}}>${dia}</span>
+          ${col && html`<span style=${{fontSize:10,fontWeight:800,color:col,whiteSpace:"nowrap"}}>${OCULTAR?fmtPct(pcts[dia]):fmtK(neto)}</span>`}
           ${tiene&&!col && html`<span style=${{fontSize:10}}>⏳</span>`}
         </button>`;
       })}
     </div>
-    <div style=${{display:"flex",justifyContent:"center",gap:16,fontSize:12,color:"#8f9bc4",marginTop:12,flexWrap:"wrap"}}>
+    <div style=${{display:"flex",justifyContent:"center",gap:16,fontSize:12,color:"var(--mu)",marginTop:12,flexWrap:"wrap"}}>
       <span><span style=${{color:"#2fe0a0"}}>●</span> Ganó</span>
       <span><span style=${{color:"#ff5d7a"}}>●</span> Perdió</span>
       <span>⏳ Pendiente</span>
       <span>Toca un día para ver sus picks</span>
     </div>
     <div style=${{display:"flex",gap:8,marginTop:14}}>
-      ${[[(profit>=0?"+":"")+fmt(profit),"Del mes",profit>=0?"#2fe0a0":"#ff5d7a"],[totalG+" ✓","Ganados","#2fe0a0"],[totalP+" ✕","Perdidos","#ff5d7a"]].map(([v,l,c])=>html`
-        <div key=${l} style=${{flex:1,background:"#121a38",border:"1px solid #243060",borderRadius:14,padding:"11px 6px",textAlign:"center"}}>
-          <b style=${{fontSize:16,color:c}}>${v}</b><div style=${{fontSize:11,color:"#8f9bc4",marginTop:3}}>${l}</div>
+      ${[[OCULTAR?fmtPct(profitPct):(profit>=0?"+":"")+fmt(profit),"Del mes",(OCULTAR?profitPct:profit)>=0?"#2fe0a0":"#ff5d7a"],[totalG+" ✓","Ganados","#2fe0a0"],[totalP+" ✕","Perdidos","#ff5d7a"]].map(([v,l,c])=>html`
+        <div key=${l} style=${{flex:1,background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:"11px 6px",textAlign:"center"}}>
+          <b style=${{fontSize:16,color:c}}>${v}</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:3}}>${l}</div>
         </div>`)}
     </div>
     ${sel && html`<div style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setSel(null)}>
-      <div onClick=${e=>e.stopPropagation()} style=${{background:"#141d40",borderTop:"1px solid #2b3870",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"75vh",overflowY:"auto",padding:"10px 16px calc(20px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
-        <div style=${{width:44,height:5,borderRadius:3,background:"#2b3870",margin:"0 auto 12px"}}></div>
+      <div onClick=${e=>e.stopPropagation()} style=${{background:"var(--card2)",borderTop:"1px solid var(--br2)",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"75vh",overflowY:"auto",padding:"10px 16px calc(20px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
+        <div style=${{width:44,height:5,borderRadius:3,background:"var(--br2)",margin:"0 auto 12px"}}></div>
         <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:10}}>
           <b style=${{fontSize:18,color:"#fff"}}>${diaNombre} ${sel} de ${MESES[mes].toLowerCase()}</b>
-          <b style=${{fontSize:16,color:netoSel>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${(netoSel>=0?"+":"")+fmt(netoSel)}</b>
+          <b style=${{fontSize:16,color:netoSel>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${OCULTAR?fmtPct(netoSel):(netoSel>=0?"+":"")+fmt(netoSel)}</b>
         </div>
         ${apsSel.slice().reverse().map(a=>renderAR(a,false))}
-        <div style=${{fontSize:12,color:"#8f9bc4",textAlign:"center",marginTop:4}}>${apsSel.length} ${apsSel.length===1?"pick":"picks"} este día</div>
+        <div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:4}}>${apsSel.length} ${apsSel.length===1?"pick":"picks"} este día</div>
         <button onClick=${()=>setSel(null)} style=${{...S.btnSecondary,width:"100%",marginTop:12,minHeight:46}}>Cerrar</button>
       </div>
     </div>`}
@@ -479,15 +502,15 @@ function dibujarResumen(o){
   const c=document.createElement("canvas"); c.width=W; c.height=H;
   const x=c.getContext("2d");
   const F=(w,s)=>`${w} ${s}px 'DM Sans','Helvetica Neue',Arial,sans-serif`;
-  const G="#2fe0a0", R="#ff5d7a";
+  const G="#2fe0a0", R="#ff5d7a", T=o.t||{g1:"#1d4fd8",g2:"#0f2160",bg:"#0a0f20",ac2:"#9ec1ff"};
   let g;
-  if(hist){ g=x.createRadialGradient(200,0,0,200,0,2000); g.addColorStop(0,"#1d4fd8"); g.addColorStop(.45,"#0f2160"); g.addColorStop(1,"#0a0f20"); }
-  else { g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#1d4fd8"); g.addColorStop(1,"#0a0f20"); }
+  if(hist){ g=x.createRadialGradient(200,0,0,200,0,2000); g.addColorStop(0,T.g1); g.addColorStop(.45,T.g2); g.addColorStop(1,T.bg); }
+  else { g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,T.g1); g.addColorStop(1,T.bg); }
   x.fillStyle=g; x.fillRect(0,0,W,H);
   x.textBaseline="alphabetic"; x.textAlign="left";
   // Encabezado
   x.font=F(800,60); x.fillStyle="#fff"; x.fillText("ALEX",P,P+60);
-  x.fillStyle="#9ec1ff"; x.fillText("PICKS",P+x.measureText("ALEX").width,P+60);
+  x.fillStyle=T.ac2; x.fillText("PICKS",P+x.measureText("ALEX").width,P+60);
   x.font=F(600,34); const mw=x.measureText(o.mes).width+56;
   x.fillStyle="rgba(255,255,255,.14)"; rr(x,W-P-mw,P+8,mw,64,32); x.fill();
   x.fillStyle="#fff"; x.textAlign="center"; x.fillText(o.mes,W-P-mw/2,P+52); x.textAlign="left";
@@ -496,8 +519,8 @@ function dibujarResumen(o){
   x.font=F(600,36); x.fillStyle="rgba(255,255,255,.8)"; x.fillText("RESULTADO DEL MES",P,y);
   const pos = o.neto>=0;
   let grande, chico="";
-  if(o.pct!==null){ grande=(o.pct>=0?"+":"-")+Math.abs(o.pct).toFixed(1)+"%"; if(o.pesos) chico=(pos?"+":"-")+fmt(Math.abs(o.neto)).replace("-","")+" MXN"; }
-  else if(o.pesos){ grande=(pos?"+":"-")+fmt(Math.abs(o.neto)).replace("-",""); }
+  if(o.pct!==null){ grande=(o.pct>=0?"+":"-")+Math.abs(o.pct).toFixed(1)+"%"; if(o.pesos) chico=(pos?"+":"-")+fmtReal(Math.abs(o.neto)).replace("-","")+" MXN"; }
+  else if(o.pesos){ grande=(pos?"+":"-")+fmtReal(Math.abs(o.neto)).replace("-",""); }
   else { grande=o.record; }
   const tg = hist?190:160;
   x.font=F(900,tg);
@@ -550,9 +573,14 @@ function App() {
   const [form,setForm] = useState(initialForm);
   const [editId,setEditId] = useState(null);
   const [modal,setModal] = useState(false);
-  const [vistaActual,setVistaActual] = useState("inicio");
-  const [momioDec,setMomioDecState] = useState(()=>{ try{ return localStorage.getItem("formatoMomio")==="decimal"; }catch(e){ return false; } });
+  const [vistaActual,setVistaActual] = useState(()=>leerPrefs().inicio==="calendario"?"calendario":"inicio");
+  const [prefs,setPrefsState] = useState(leerPrefs);
+  const momioDec = prefs.momio==="decimal";
+  const ocultar = !!prefs.ocultar;
+  const temaKey = TEMAS[prefs.tema] ? prefs.tema : "azul";
   MOMIO_DEC = momioDec;
+  OCULTAR = ocultar;
+  useEffect(()=>{ aplicarTema(temaKey); },[temaKey]);
   const cuotaAm = v => momioDec ? decToAm(v) : Number(v);
   const [verTodasAno,setVerTodasAno] = useState(false);
   const [notisGuia,setNotisGuia] = useState(false);
@@ -600,20 +628,22 @@ function App() {
     return auth.onAuthStateChanged(u=>setUser(u));
   },[]);
 
-  // Formato de momio guardado en la cuenta (para que se conserve al cambiar de teléfono)
+  // Preferencias guardadas en la cuenta (se conservan al cambiar de teléfono) y en este dispositivo
   useEffect(()=>{
     if(!user) return;
     return db.collection("usuarios").doc(user.uid).onSnapshot(snap=>{
-      const f = snap.exists && snap.data().formatoMomio;
-      if(f){ setMomioDecState(f==="decimal"); try{ localStorage.setItem("formatoMomio",f); }catch(e){} }
+      if(!snap.exists) return;
+      const d = snap.data(); const remoto = {...(d.prefs||{})};
+      if(!remoto.momio && d.formatoMomio) remoto.momio = d.formatoMomio;
+      if(!Object.keys(remoto).length) return;
+      setPrefsState(p=>{ const n={...p,...remoto}; try{ localStorage.setItem("prefs",JSON.stringify(n)); }catch(e){} return n; });
     },()=>{});
   },[user&&user.uid]);
-  const setMomioDec = dec => {
-    const f = dec?"decimal":"americano";
-    setMomioDecState(dec);
-    try{ localStorage.setItem("formatoMomio",f); }catch(e){}
-    if(user) db.collection("usuarios").doc(user.uid).set({formatoMomio:f},{merge:true}).catch(()=>{});
+  const setPref = (k,v) => {
+    setPrefsState(p=>{ const n={...p,[k]:v}; try{ localStorage.setItem("prefs",JSON.stringify(n)); }catch(e){} return n; });
+    if(user) db.collection("usuarios").doc(user.uid).set({prefs:{[k]:v}},{merge:true}).catch(()=>{});
   };
+  const setMomioDec = dec => setPref("momio", dec?"decimal":"americano");
   const isAdmin = !!user && ADMIN_EMAILS.includes((user.email||"").toLowerCase());
   const modoEdicion = isAdmin;
   const usaBankPropio = !!user && !isAdmin;
@@ -729,20 +759,20 @@ function App() {
   useEffect(()=>{
     if(vistaActual!=="compartir") return;
     let vivo=true;
-    const pct = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
+    const pct = bankrollMes>0 ? stats.neto/bankrollMes*100 : (stats.total?stats.pct:null);
     const forma = apuestasMes.filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10).map(a=>a.resultado);
     const mp = mejorPickMes;
-    const mejor = shareMejor && mp ? {texto:(iconDeporte[mp.a.deporte]||"🎯")+" "+mp.a.descripcion, valor: sharePesos ? "+"+fmt(mp.g) : (bankrollMes>0?"+"+(mp.g/bankrollMes*100).toFixed(1)+"%":fmtMomio(mp.a.cuota))} : null;
+    const mejor = shareMejor && mp ? {texto:(iconDeporte[mp.a.deporte]||"🎯")+" "+mp.a.descripcion, valor: sharePesos ? "+"+fmtReal(mp.g) : (bankrollMes>0?"+"+(mp.g/bankrollMes*100).toFixed(1)+"%":fmtMomio(mp.a.cuota))} : null;
     const racha = rachaActual.racha>0 ? (rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha : "—";
     const listo = (document.fonts&&document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     listo.then(()=>{
       if(!vivo) return;
-      const c = dibujarResumen({formato:shareFmt,mes:MESES[mesSeleccionado]+" "+anoSeleccionado,neto:stats.neto,pct,pesos:sharePesos,record:stats.ganadas+"-"+stats.perdidas,acierto:stats.efectividad,racha,forma,mejor});
+      const c = dibujarResumen({formato:shareFmt,mes:MESES[mesSeleccionado]+" "+anoSeleccionado,neto:stats.neto,pct,pesos:sharePesos,record:stats.ganadas+"-"+stats.perdidas,acierto:stats.efectividad,racha,forma,mejor,t:TEMAS[temaKey]});
       setShareImg(c.toDataURL("image/png"));
       c.toBlob(b=>{ if(b&&vivo) shareFile.current=new File([b],"alexpicks-"+MESES[mesSeleccionado].toLowerCase()+"-"+anoSeleccionado+".png",{type:"image/png"}); },"image/png");
     });
     return ()=>{ vivo=false; };
-  },[vistaActual,shareFmt,sharePesos,shareMejor,stats,bankrollMes,mesSeleccionado,anoSeleccionado,mejorPickMes,rachaActual,apuestasMes]);
+  },[vistaActual,temaKey,shareFmt,sharePesos,shareMejor,stats,bankrollMes,mesSeleccionado,anoSeleccionado,mejorPickMes,rachaActual,apuestasMes]);
   const statsAnual = useMemo(()=>calcStats(apuestasAno,bankDe),[apuestasAno,...dep]);
 
   const momioPromedio = useMemo(()=>{
@@ -767,7 +797,7 @@ function App() {
     const per=ap.filter(a=>a.resultado==="Perdida");
     const ganancia=gan.reduce((s,a)=>{ const m=apMonto(a,bankDe); return s+(m*momioToDec(a.cuota)-m); },0);
     const perdido=per.reduce((s,a)=>s+apMonto(a,bankDe),0);
-    return {deporte:d,total:ap.length,ganadas:gan.length,perdidas:per.length,neto:ganancia-perdido};
+    return {deporte:d,total:ap.length,ganadas:gan.length,perdidas:per.length,neto:ganancia-perdido,pct:sumPct(ap)};
   }).filter(d=>d.total>0),[apuestasAno,...dep]);
 
   const maxNeto = useMemo(()=>Math.max(...datosPorMes.map(d=>Math.abs(d.neto)),1),[datosPorMes]);
@@ -775,12 +805,12 @@ function App() {
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
   const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
-  const subtitulo = {fontSize:11,letterSpacing:1,color:"#8f9bc4",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
+  const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMes.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
     ${apuestasMes.slice().reverse().map(a=>renderAR(a,exp))}
     ${apuestasAntes.length>0 && html`<div>
-      <div style=${subtitulo}>Antes de empezar <span style=${{background:"#2b3870",color:"#aab",borderRadius:6,padding:"2px 6px",fontSize:9,marginLeft:6}}>NO SUMA</span></div>
+      <div style=${subtitulo}>Antes de empezar <span style=${{background:"var(--br2)",color:"#aab",borderRadius:6,padding:"2px 6px",fontSize:9,marginLeft:6}}>NO SUMA</span></div>
       <div style=${{opacity:.45}}>${apuestasAntes.slice().reverse().map(a=>renderAR(a,exp))}</div>
     </div>`}`;
 
@@ -859,9 +889,9 @@ function App() {
   const prevMes = () => { if(mesSeleccionado===0){setMesSeleccionado(11);setAnoSeleccionado(y=>y-1);}else setMesSeleccionado(m=>m-1); };
   const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
 
-  if(cargando) return html`<div style=${{minHeight:"100vh",background:"#0a0f20",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+  if(cargando) return html`<div style=${{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
     <div style=${{fontSize:40,color:"#2fe0a0"}}>◈</div>
-    <div style=${{color:"#7c88b3",fontSize:14}}>Conectando...</div>
+    <div style=${{color:"var(--mu2)",fontSize:14}}>Conectando...</div>
   </div>`;
 
   const vista = vistaActual;
@@ -871,7 +901,7 @@ function App() {
   const pctMes = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
   const fmtSigno = n => (n>=0?"+":"")+fmt(n);
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
-  const chipTxt = !user ? "Entrar" : bankrollMes>0 ? fmt(bankrollMes+stats.neto)+" ✎" : "Poner bank ＋";
+  const chipTxt = !user ? "Entrar" : bankrollMes>0 ? (ocultar?"Bank ✎":fmt(bankrollMes+stats.neto)+" ✎") : "Poner bank ＋";
   const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
   const compartirImagen = () => {
     const f = shareFile.current;
@@ -886,9 +916,9 @@ function App() {
 
     <main style=${S.main}>
 
-      ${mostrarInstalar && vista==="inicio" && html`<div style=${{background:"#4a8dff18",border:"1px solid #4a8dff55",borderRadius:16,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+      ${mostrarInstalar && vista==="inicio" && html`<div style=${{background:"color-mix(in srgb,var(--ac) 10%,transparent)",border:"1px solid color-mix(in srgb,var(--ac) 33%,transparent)",borderRadius:16,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
         <img src="icon-192.png" style=${{width:38,height:38,borderRadius:10}}/>
-        <div style=${{flex:1,minWidth:0,fontSize:12,lineHeight:1.3}}><b style=${{fontSize:14}}>Instala AlexPicks</b><br/><span style=${{color:"#8f9bc4"}}>Ábrela como app desde tu pantalla de inicio</span></div>
+        <div style=${{flex:1,minWidth:0,fontSize:12,lineHeight:1.3}}><b style=${{fontSize:14}}>Instala AlexPicks</b><br/><span style=${{color:"var(--mu)"}}>Ábrela como app desde tu pantalla de inicio</span></div>
         <button onClick=${instalarApp} style=${{...S.btnPrimary,padding:"10px 14px",fontSize:13,flexShrink:0,minHeight:40}}>Instalar</button>
       </div>`}
 
@@ -896,7 +926,7 @@ function App() {
       ${vista==="inicio" && html`<div>
         <div style=${S.hero}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-            <b style=${{fontSize:19,letterSpacing:.3,color:"#fff"}}>ALEX<span style=${{color:"#9ec1ff"}}>PICKS</span></b>
+            <b style=${{fontSize:19,letterSpacing:.3,color:"#fff"}}>ALEX<span style=${{color:"var(--ac2)"}}>PICKS</span></b>
             <button onClick=${tocarChip} style=${S.chip}>${chipTxt}</button>
           </div>
           <div style=${{display:"flex",alignItems:"center",gap:6,marginTop:14}}>
@@ -905,29 +935,29 @@ function App() {
             <button onClick=${nextMes} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes siguiente">›</button>
           </div>
           <div style=${{fontSize:38,fontWeight:900,letterSpacing:-1,color:"#fff",lineHeight:1.1,marginTop:2}}>
-            ${fmtSigno(stats.neto)}
-            ${pctMes!==null && html` <span style=${{fontSize:15,fontWeight:700,color:pctMes>=0?"#bff5dc":"#ffc4cf"}}>${pctMes>=0?"▲":"▼"} ${Math.abs(pctMes).toFixed(1)}%</span>`}
+            ${ocultar ? fmtPct(stats.pct) : fmtSigno(stats.neto)}
+            ${pctMes!==null && !ocultar && html` <span style=${{fontSize:15,fontWeight:700,color:pctMes>=0?"#bff5dc":"#ffc4cf"}}>${pctMes>=0?"▲":"▼"} ${Math.abs(pctMes).toFixed(1)}%</span>`}
             ${sinBank && html` <span style=${{fontSize:13,fontWeight:600,opacity:.8}}>estimado</span>`}
           </div>
-          ${usaBankPropio&&bankrollMes>0 && html`<button onClick=${abrirBankModal} style=${{background:"none",border:"none",color:"#dfe7ff",fontSize:12,padding:"6px 0 0",cursor:"pointer",fontFamily:"inherit"}}>${iniciosUser[bankKey]?"Cuentas desde el "+fmtDia(iniciosUser[bankKey]):"Cuentas desde el día 1"} · <b style=${{color:"#9ec1ff"}}>Cambiar</b></button>`}
+          ${usaBankPropio&&bankrollMes>0 && html`<button onClick=${abrirBankModal} style=${{background:"none",border:"none",color:"#dfe7ff",fontSize:12,padding:"6px 0 0",cursor:"pointer",fontFamily:"inherit"}}>${iniciosUser[bankKey]?"Cuentas desde el "+fmtDia(iniciosUser[bankKey]):"Cuentas desde el día 1"} · <b style=${{color:"var(--ac2)"}}>Cambiar</b></button>`}
           <div style=${{display:"flex",gap:8,marginTop:12}}>
             ${[[stats.efectividad+"%","Acierto"],[rachaActual.racha>0?(rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha:"—","Racha"],[String(stats.total),"Picks"],[momioPromedioMes!==null?fmtMomio(momioPromedioMes):"—","Momio prom."]].map(([v,l])=>html`
               <div key=${l} style=${S.miniStat}><b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2}}>${l}</div></div>`)}
           </div>
         </div>
 
-        ${sinBank && html`<div style=${{background:"#121a38",border:"1px solid #4a8dff55",borderRadius:16,padding:"12px 14px",marginBottom:12,fontSize:13,lineHeight:1.4,color:"#dfe5ff"}}>
+        ${sinBank && html`<div style=${{background:"var(--card)",border:"1px solid color-mix(in srgb,var(--ac) 33%,transparent)",borderRadius:16,padding:"12px 14px",marginBottom:12,fontSize:13,lineHeight:1.4,color:"#dfe5ff"}}>
           No registraste bank en ${MESES[mesSeleccionado]}. Los montos son estimados con tu bank de otro mes y no suman al anual.
           <button onClick=${abrirBankModal} style=${{...S.btnPrimary,width:"100%",marginTop:10,minHeight:44}}>Poner mi bank</button>
         </div>`}
 
-        ${simNeto!==null && html`<div style=${{background:"#121a38",border:"1px dashed #f5c84270",borderRadius:16,padding:"12px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-          <span style=${{fontSize:12,color:"#8f9bc4",lineHeight:1.35}}>Si hubieras empezado el día 1 tendrías</span>
+        ${simNeto!==null && html`<div style=${{background:"var(--card)",border:"1px dashed #f5c84270",borderRadius:16,padding:"12px 14px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+          <span style=${{fontSize:12,color:"var(--mu)",lineHeight:1.35}}>Si hubieras empezado el día 1 tendrías</span>
           <b style=${{color:"#f5c842",fontSize:16,whiteSpace:"nowrap"}}>${fmt(bankrollMes+simNeto)}</b>
         </div>`}
 
         ${formaReciente.length>0 && html`<div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,margin:"4px 2px 4px",flexWrap:"wrap"}}>
-          <span style=${{fontSize:11,color:"#8f9bc4",fontWeight:700,letterSpacing:.5}}>FORMA RECIENTE</span>
+          <span style=${{fontSize:11,color:"var(--mu)",fontWeight:700,letterSpacing:.5}}>FORMA RECIENTE</span>
           <div style=${{display:"flex",gap:4}}>
             ${formaReciente.map((a,i)=>html`<span key=${i} title=${a.descripcion} style=${{width:24,height:24,borderRadius:"50%",background:a.resultado==="Ganada"?"#2fe0a0":"#ff5d7a",color:"#06101f",fontSize:12,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>${a.resultado==="Ganada"?"✓":"✕"}</span>`)}
           </div>
@@ -969,7 +999,7 @@ function App() {
         </div>
         <div style=${{...S.hero,padding:"16px 18px"}}>
           <div style=${{fontSize:12,opacity:.9,letterSpacing:.5,fontWeight:700}}>BALANCE ${anoSeleccionado}</div>
-          <div style=${{fontSize:34,fontWeight:900,letterSpacing:-1,color:"#fff",marginTop:2}}>${fmtSigno(statsAnual.neto)}</div>
+          <div style=${{fontSize:34,fontWeight:900,letterSpacing:-1,color:"#fff",marginTop:2}}>${ocultar?fmtPct(statsAnual.pct):fmtSigno(statsAnual.neto)}</div>
           <div style=${{display:"flex",gap:8,marginTop:12}}>
             ${[[statsAnual.efectividad+"%","Acierto"],[statsAnual.ganadas+"-"+statsAnual.perdidas,"Récord"],[String(statsAnual.total),"Picks"],[momioPromedio!==null?fmtMomio(momioPromedio):"—","Momio prom."]].map(([v,l])=>html`
               <div key=${l} style=${S.miniStat}><b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2}}>${l}</div></div>`)}
@@ -986,13 +1016,13 @@ function App() {
                   <div style=${S.barWrap}>
                     ${d.neto!==0
                       ? html`<div style=${{width:"100%",height:h+"px",minHeight:4,background:isPos?"#2fe0a0":"#ff5d7a",borderRadius:4,opacity:i===mesSeleccionado?1:0.6}}/>`
-                      : html`<div style=${{width:"100%",height:"2px",background:"#243060",borderRadius:2}}/>`}
+                      : html`<div style=${{width:"100%",height:"2px",background:"var(--br)",borderRadius:2}}/>`}
                   </div>
-                  <div style=${{fontSize:10,color:i===mesSeleccionado?"#fff":"#8f9bc4",fontWeight:i===mesSeleccionado?800:500,marginTop:4}}>${d.mes}</div>
+                  <div style=${{fontSize:10,color:i===mesSeleccionado?"#fff":"var(--mu)",fontWeight:i===mesSeleccionado?800:500,marginTop:4}}>${d.mes}</div>
                 </div>`;
               })}
             </div>
-            <div style=${{fontSize:12,color:"#8f9bc4",marginTop:12,textAlign:"center"}}>Toca un mes para verlo</div>
+            <div style=${{fontSize:12,color:"var(--mu)",marginTop:12,textAlign:"center"}}>Toca un mes para verlo</div>
           </div>
         </div>
         <div style=${S.section}>
@@ -1000,10 +1030,10 @@ function App() {
           ${datosPorMes.map((d,i)=>d.total>0 && html`<button key=${i} style=${S.row} onClick=${()=>{setMesSeleccionado(i);irA("inicio");}}>
             <div style=${{flex:1,minWidth:0}}>
               <b style=${{fontSize:15}}>${MESES[i]}</b>
-              <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>${d.total} picks · ${d.ganadas}G · ${d.perdidas}P · ${d.efectividad}%</div>
+              <div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>${d.total} picks · ${d.ganadas}G · ${d.perdidas}P · ${d.efectividad}%</div>
             </div>
-            <b style=${{fontSize:16,color:d.neto>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${fmtSigno(d.neto)}</b>
-            <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+            <b style=${{fontSize:16,color:(ocultar?d.pct:d.neto)>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${ocultar?fmtPct(d.pct):fmtSigno(d.neto)}</b>
+            <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
           </button>`)}
           ${datosPorMes.every(d=>d.total===0) && html`<div style=${S.empty}>No hay picks en ${anoSeleccionado}.</div>`}
         </div>
@@ -1013,15 +1043,15 @@ function App() {
             <span style=${{fontSize:24}}>${iconDeporte[d.deporte]||"🎯"}</span>
             <div style=${{flex:1,minWidth:0}}>
               <b style=${{fontSize:15}}>${d.deporte}</b>
-              <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>${d.total} picks · <span style=${{color:"#2fe0a0"}}>${d.ganadas}G</span> · <span style=${{color:"#ff5d7a"}}>${d.perdidas}P</span></div>
+              <div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>${d.total} picks · <span style=${{color:"#2fe0a0"}}>${d.ganadas}G</span> · <span style=${{color:"#ff5d7a"}}>${d.perdidas}P</span></div>
             </div>
-            <b style=${{fontSize:15,color:d.neto>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${fmtSigno(d.neto)}</b>
+            <b style=${{fontSize:15,color:(ocultar?d.pct:d.neto)>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${ocultar?fmtPct(d.pct):fmtSigno(d.neto)}</b>
           </div>`)}
         </div>`}
         ${apuestasAno.length>0 && html`<div style=${S.section}>
           <button onClick=${()=>setVerTodasAno(v=>!v)} style=${{...S.row,justifyContent:"space-between"}}>
             <b style=${{fontSize:15}}>Todos los picks de ${anoSeleccionado} (${apuestasAno.length})</b>
-            <span style=${{color:"#4a8dff",fontWeight:700}}>${verTodasAno?"Ocultar":"Ver"}</span>
+            <span style=${{color:"var(--ac)",fontWeight:700}}>${verTodasAno?"Ocultar":"Ver"}</span>
           </button>
           ${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}
         </div>`}
@@ -1038,26 +1068,26 @@ function App() {
           <b style=${{fontSize:16,color:"#fff"}}>${MESES[mesSeleccionado]} ${anoSeleccionado}</b>
           <button style=${{...S.sqBtn,width:42,height:42}} onClick=${nextMes} aria-label="Mes siguiente">›</button>
         </div>
-        <div style=${{display:"flex",background:"#0a0f20",border:"1px solid #243060",borderRadius:12,padding:3,gap:3,marginBottom:14}}>
+        <div style=${{display:"flex",background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:3,gap:3,marginBottom:14}}>
           ${[["historia","Historia"],["cuadrado","Cuadrado"]].map(([v,l])=>html`<button key=${v} onClick=${()=>setShareFmt(v)}
-            style=${{flex:1,border:"none",borderRadius:9,padding:"10px 0",minHeight:44,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,background:shareFmt===v?"#4a8dff":"transparent",color:shareFmt===v?"#fff":"#8f9bc4"}}>${l}</button>`)}
+            style=${{flex:1,border:"none",borderRadius:9,padding:"10px 0",minHeight:44,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,background:shareFmt===v?"var(--ac)":"transparent",color:shareFmt===v?"var(--onac)":"var(--mu)"}}>${l}</button>`)}
         </div>
         <div style=${{display:"flex",justifyContent:"center",marginBottom:14}}>
           ${shareImg
             ? html`<img src=${shareImg} alt="Resumen del mes" style=${{width:shareFmt==="historia"?"min(68vw,300px)":"min(86vw,340px)",borderRadius:18,boxShadow:"0 12px 40px #0009"}}/>`
-            : html`<div style=${{color:"#8f9bc4",padding:40}}>Generando imagen…</div>`}
+            : html`<div style=${{color:"var(--mu)",padding:40}}>Generando imagen…</div>`}
         </div>
-        <div style=${{background:"#121a38",border:"1px solid #243060",borderRadius:16,padding:"4px 14px",marginBottom:14}}>
+        <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:"4px 14px",marginBottom:14}}>
           ${[["Mostrar pesos ($)",sharePesos,setSharePesos],...(shareFmt==="historia"?[["Mostrar mejor pick",shareMejor,setShareMejor]]:[])].map(([l,v,set])=>html`
             <button key=${l} onClick=${()=>set(!v)} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:"none",border:"none",color:"#fff",fontFamily:"inherit",fontSize:15,padding:"12px 0",cursor:"pointer"}}>
               <span>${l}</span>
-              <span style=${{width:46,height:28,borderRadius:14,background:v?"#4a8dff":"#2b3870",position:"relative",flexShrink:0,transition:"background .15s"}}>
+              <span style=${{width:46,height:28,borderRadius:14,background:v?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
                 <span style=${{position:"absolute",top:3,left:v?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span>
               </span>
             </button>`)}
         </div>
         <button onClick=${compartirImagen} disabled=${!shareImg} style=${{...S.btnPrimary,width:"100%",minHeight:52,fontSize:16,borderRadius:14}}>📤 Compartir imagen</button>
-        <div style=${{fontSize:12,color:"#8f9bc4",textAlign:"center",marginTop:8}}>Se abre el menú de tu celular para mandarla o guardarla</div>
+        <div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:8}}>Se abre el menú de tu celular para mandarla o guardarla</div>
       </div>`}
 
       <!-- MÁS -->
@@ -1066,56 +1096,89 @@ function App() {
         ${user
           ? html`<div style=${{...S.row,cursor:"default"}}>
               ${user.photoURL
-                ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:42,height:42,borderRadius:"50%",border:"2px solid #4a8dff"}}/>`
+                ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:42,height:42,borderRadius:"50%",border:"2px solid var(--ac)"}}/>`
                 : html`<span style=${{fontSize:28}}>👤</span>`}
               <div style=${{flex:1,minWidth:0}}>
                 <b style=${{fontSize:15}}>${user.displayName||"Mi perfil"}</b>
-                <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3,overflow:"hidden",textOverflow:"ellipsis"}}>${user.email}${isAdmin?" · Admin":""}</div>
+                <div style=${{fontSize:12,color:"var(--mu)",marginTop:3,overflow:"hidden",textOverflow:"ellipsis"}}>${user.email}${isAdmin?" · Admin":""}</div>
               </div>
             </div>`
           : html`<button onClick=${loginGoogle} style=${S.row}>
               <span style=${{fontSize:24,fontWeight:800,color:"#4285f4",width:28,textAlign:"center"}}>G</span>
-              <div style=${{flex:1}}><b style=${{fontSize:15}}>Entrar con Google</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Para poner tu propio bank y ver tus ganancias</div></div>
-              <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+              <div style=${{flex:1}}><b style=${{fontSize:15}}>Entrar con Google</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Para poner tu propio bank y ver tus ganancias</div></div>
+              <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
             </button>`}
 
         ${user && html`<button onClick=${abrirBankModal} style=${S.row}>
           <span style=${{fontSize:24}}>💰</span>
           <div style=${{flex:1,minWidth:0}}>
             <b style=${{fontSize:15}}>${usaBankPropio?"Mi bank":"Bank"} de ${MESES[mesSeleccionado].toLowerCase()}</b>
-            <div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>${bankrollMes>0
+            <div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>${bankrollMes>0
               ? fmt(bankrollMes)+" al inicio · ahora "+fmt(bankrollMes+stats.neto)+(usaBankPropio?" · "+(iniciosUser[bankKey]?"desde el "+fmtDia(iniciosUser[bankKey]):"desde el día 1"):"")
               : "Sin registrar · toca para ponerlo"}</div>
           </div>
-          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
         </button>`}
 
-        <button onClick=${()=>irA("compartir")} style=${S.row}>
+        <button onClick=${()=>{ setSharePesos(!ocultar); irA("compartir"); }} style=${S.row}>
           <span style=${{fontSize:24}}>📸</span>
-          <div style=${{flex:1}}><b style=${{fontSize:15}}>Compartir mi mes</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Imagen para WhatsApp o historias</div></div>
-          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+          <div style=${{flex:1}}><b style=${{fontSize:15}}>Compartir mi mes</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Imagen para WhatsApp o historias</div></div>
+          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
         </button>
 
         ${!yaInstalada && html`<button onClick=${instalarApp} style=${S.row}>
           <span style=${{fontSize:24}}>📲</span>
-          <div style=${{flex:1}}><b style=${{fontSize:15}}>Instalar la app</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Agrégala a tu pantalla de inicio</div></div>
-          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+          <div style=${{flex:1}}><b style=${{fontSize:15}}>Instalar la app</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Agrégala a tu pantalla de inicio</div></div>
+          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
         </button>`}
 
         <div style=${{...S.row,cursor:"default",flexWrap:"wrap"}}>
           <span style=${{fontSize:24}}>🎲</span>
-          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Formato de momio</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Cómo ves y escribes los momios</div></div>
-          <div style=${{display:"flex",background:"#0a0f20",border:"1px solid #243060",borderRadius:12,padding:3,gap:3,width:"100%"}}>
+          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Formato de momio</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Cómo ves y escribes los momios</div></div>
+          <div style=${{display:"flex",background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:3,gap:3,width:"100%"}}>
             ${[[false,"Americano","-110 / +150"],[true,"Decimal","1.91 / 2.50"]].map(([v,l,ej])=>html`<button key=${l} onClick=${()=>setMomioDec(v)}
-              style=${{flex:1,border:"none",borderRadius:9,padding:"9px 4px",minHeight:46,cursor:"pointer",fontFamily:"inherit",background:momioDec===v?"#4a8dff":"transparent",color:momioDec===v?"#fff":"#8f9bc4"}}>
+              style=${{flex:1,border:"none",borderRadius:9,padding:"9px 4px",minHeight:46,cursor:"pointer",fontFamily:"inherit",background:momioDec===v?"var(--ac)":"transparent",color:momioDec===v?"var(--onac)":"var(--mu)"}}>
               <b style=${{fontSize:14,display:"block"}}>${l}</b><span style=${{fontSize:11,opacity:.85}}>${ej}</span></button>`)}
+          </div>
+        </div>
+
+        <button onClick=${()=>setPref("ocultar",!ocultar)} style=${S.row}>
+          <span style=${{fontSize:24}}>🙈</span>
+          <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:15}}>Ocultar montos</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Solo porcentajes, sin pesos en pantalla</div></div>
+          <span style=${{width:46,height:28,borderRadius:14,background:ocultar?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
+            <span style=${{position:"absolute",top:3,left:ocultar?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span>
+          </span>
+        </button>
+
+        <div style=${{...S.row,cursor:"default",flexWrap:"wrap"}}>
+          <span style=${{fontSize:24}}>🎨</span>
+          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Tema</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>${TEMAS[temaKey].nombre}</div></div>
+          <div style=${{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,width:"100%"}}>
+            ${Object.keys(TEMAS).map(k=>{ const t=TEMAS[k]; const on=k===temaKey; return html`<button key=${k} onClick=${()=>setPref("tema",k)}
+              style=${{border:on?"2px solid "+t.ac:"1px solid var(--br)",borderRadius:12,padding:"8px 6px",minHeight:58,cursor:"pointer",fontFamily:"inherit",background:t.bg,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+              <span style=${{display:"flex",gap:3}}>
+                <span style=${{width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,"+t.g1+","+t.g2+")"}}></span>
+                <span style=${{width:18,height:18,borderRadius:"50%",background:t.ac}}></span>
+                <span style=${{width:18,height:18,borderRadius:"50%",background:t.card,border:"1px solid "+t.br}}></span>
+              </span>
+              <span style=${{fontSize:10,color:on?"#fff":t.mu,fontWeight:on?800:500,lineHeight:1.15}}>${t.nombre}</span>
+            </button>`; })}
+          </div>
+        </div>
+
+        <div style=${{...S.row,cursor:"default",flexWrap:"wrap"}}>
+          <span style=${{fontSize:24}}>🚀</span>
+          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Abrir la app en</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>La pantalla que ves al entrar</div></div>
+          <div style=${{display:"flex",background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:3,gap:3,width:"100%"}}>
+            ${[["inicio","🏠 Inicio"],["calendario","📅 Calendario"]].map(([v,l])=>{ const on=(prefs.inicio||"inicio")===v; return html`<button key=${v} onClick=${()=>setPref("inicio",v)}
+              style=${{flex:1,border:"none",borderRadius:9,padding:"10px 4px",minHeight:44,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,background:on?"var(--ac)":"transparent",color:on?"var(--onac)":"var(--mu)"}}>${l}</button>`; })}
           </div>
         </div>
 
         <button onClick=${()=>setNotisGuia(true)} style=${S.row}>
           <span style=${{fontSize:24}}>🔔</span>
-          <div style=${{flex:1}}><b style=${{fontSize:15}}>Notificaciones</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Aviso en tu celular con cada pick nuevo</div></div>
-          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+          <div style=${{flex:1}}><b style=${{fontSize:15}}>Notificaciones</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Aviso en tu celular con cada pick nuevo</div></div>
+          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
         </button>
 
         ${user && html`<button onClick=${()=>auth.signOut()} style=${{...S.row,color:"#ff5d7a"}}>
@@ -1140,8 +1203,8 @@ function App() {
     ${instalarGuia && html`<div style=${S.overlay} onClick=${()=>setInstalarGuia(false)}>
       <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
         <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Agregar a pantalla de inicio</div>
-        ${(esIOS?[["1","Abre esta página en Safari o Chrome (no dentro de otra app)."],["2","Toca el botón Compartir ⬆︎ del navegador."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]]:[["1","Toca el menú ⋮ de Chrome (arriba a la derecha)."],["2","Elige “Instalar app” o “Agregar a pantalla de inicio”."],["3","Confirma con “Instalar” o “Agregar”."]]).map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#4a8dff",color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
-        <div style=${{fontSize:12,color:"#8f9bc4",margin:"4px 0 12px"}}>Después, abre AlexPicks desde el nuevo ícono. Tendrás que iniciar sesión otra vez dentro de la app.</div>
+        ${(esIOS?[["1","Abre esta página en Safari o Chrome (no dentro de otra app)."],["2","Toca el botón Compartir ⬆︎ del navegador."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]]:[["1","Toca el menú ⋮ de Chrome (arriba a la derecha)."],["2","Elige “Instalar app” o “Agregar a pantalla de inicio”."],["3","Confirma con “Instalar” o “Agregar”."]]).map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"var(--ac)",color:"var(--onac)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
+        <div style=${{fontSize:12,color:"var(--mu)",margin:"4px 0 12px"}}>Después, abre AlexPicks desde el nuevo ícono. Tendrás que iniciar sesión otra vez dentro de la app.</div>
         <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Entendido</button>
       </div>
     </div>`}
@@ -1149,11 +1212,11 @@ function App() {
     ${notisGuia && html`<div style=${S.overlay} onClick=${()=>setNotisGuia(false)}>
       <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
         <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Recibir avisos de picks</div>
-        ${[["1","Descarga la app gratis “ntfy” (App Store o Play Store)."],["2","Ábrela y toca ＋ para suscribirte a un tema."],["3","Escribe este tema exactamente:"]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"#4a8dff",color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
+        ${[["1","Descarga la app gratis “ntfy” (App Store o Play Store)."],["2","Ábrela y toca ＋ para suscribirte a un tema."],["3","Escribe este tema exactamente:"]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"var(--ac)",color:"var(--onac)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
         <button onClick=${()=>{ try{ navigator.clipboard.writeText(NTFY_TOPIC); setNotisCopiado(true); setTimeout(()=>setNotisCopiado(false),2000);}catch(e){} }}
-          style=${{width:"100%",background:"#0a0f20",border:"1px dashed #4a8dff",borderRadius:12,padding:"12px",color:"#fff",fontFamily:"monospace",fontSize:14,cursor:"pointer",marginBottom:6,wordBreak:"break-all"}}>${NTFY_TOPIC}</button>
-        <div style=${{fontSize:12,color:notisCopiado?"#2fe0a0":"#8f9bc4",textAlign:"center",marginBottom:14}}>${notisCopiado?"✓ Copiado":"Toca para copiar"}</div>
-        <a href=${NTFY_URL} target="_blank" rel="noopener" style=${{display:"block",textAlign:"center",fontSize:13,color:"#4a8dff",marginBottom:14}}>O ábrelo en el navegador</a>
+          style=${{width:"100%",background:"var(--bg)",border:"1px dashed var(--ac)",borderRadius:12,padding:"12px",color:"#fff",fontFamily:"monospace",fontSize:14,cursor:"pointer",marginBottom:6,wordBreak:"break-all"}}>${NTFY_TOPIC}</button>
+        <div style=${{fontSize:12,color:notisCopiado?"#2fe0a0":"var(--mu)",textAlign:"center",marginBottom:14}}>${notisCopiado?"✓ Copiado":"Toca para copiar"}</div>
+        <a href=${NTFY_URL} target="_blank" rel="noopener" style=${{display:"block",textAlign:"center",fontSize:13,color:"var(--ac)",marginBottom:14}}>O ábrelo en el navegador</a>
         <button onClick=${()=>setNotisGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Listo</button>
       </div>
     </div>`}
@@ -1192,7 +1255,7 @@ function App() {
                 </div>
                 <div style=${{display:"flex",flexDirection:"column",gap:10}}>
                   ${form.patas.map((p,i)=>html`
-                    <div key=${i} style=${{background:"#0a0f20",border:"1px solid #243060",borderRadius:10,padding:"10px 12px"}}>
+                    <div key=${i} style=${{background:"var(--bg)",border:"1px solid var(--br)",borderRadius:10,padding:"10px 12px"}}>
                       <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
                         <span style=${{fontSize:12,color:"#2fe0a0",fontWeight:700}}>Leg ${i+1}</span>
                         <button onClick=${()=>setForm(f=>({...f,patas:f.patas.filter((_,j)=>j!==i)}))} style=${S.removePataBtn}>✕ Eliminar</button>
@@ -1239,7 +1302,7 @@ function App() {
           Momio: <span style=${{color:"#fff",fontWeight:700}}>${fmtMomio(cuotaAm(form.cuota))}</span>
           ${bankrollMes>0 && (()=>{ const st=(Number(form.monto)||0)/100*bankrollMes; return html`<span><span style=${{marginLeft:12}}>· Ganancia potencial: </span>
           <span style=${{color:"#2fe0a0",fontWeight:700}}>${fmt(st*momioToDec(cuotaAm(form.cuota))-st)}</span>
-          <span style=${{color:"#8f9bc4",marginLeft:12}}>Retorno: ${fmt(st*momioToDec(cuotaAm(form.cuota)))}</span></span>`; })()}
+          <span style=${{color:"var(--mu)",marginLeft:12}}>Retorno: ${fmt(st*momioToDec(cuotaAm(form.cuota)))}</span></span>`; })()}
         </div>`}
         ${formError && html`<div style=${{color:"#ff5d7a",fontSize:13,marginBottom:12,padding:"8px 12px",background:"#ff5d7a15",borderRadius:8,border:"1px solid #ff5d7a30"}}>⚠️ ${formError}</div>`}
         <div style=${S.modalFooter}>
@@ -1256,11 +1319,11 @@ function App() {
           <h2 style=${S.modalTitle}>${isAdmin?"Bank":"Tu bank"} de ${MESES[mesSeleccionado].toLowerCase()}</h2>
           <button onClick=${()=>setBankModal(false)} style=${S.closeBtn}>✕</button>
         </div>
-        <p style=${{color:"#8f9bc4",fontSize:13,marginBottom:14,lineHeight:1.4}}>${isAdmin?"Con cuánto empiezas el mes. Lo ven todos los que no han iniciado sesión.":"Escribe cuánto tienes y desde qué día cuentas los picks."}</p>
+        <p style=${{color:"var(--mu)",fontSize:13,marginBottom:14,lineHeight:1.4}}>${isAdmin?"Con cuánto empiezas el mes. Lo ven todos los que no han iniciado sesión.":"Escribe cuánto tienes y desde qué día cuentas los picks."}</p>
         <input style=${{...S.input,marginBottom:14}} type="number" inputMode="numeric" placeholder="Bank en MXN" value=${bmInput} onInput=${e=>setBmInput(e.target.value)}/>
         ${!isAdmin && [["dia1","Desde el día 1 del mes"],...(esMesActual?[["hoy","Desde hoy ("+fmtDia(hoyISO)+")"]]:[]),["otro","Elegir otro día"]].map(([v,l])=>html`
-          <div key=${v} onClick=${()=>setBmModo(v)} style=${{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",borderRadius:10,marginBottom:8,cursor:"pointer",fontSize:14,border:"1px solid "+(bmModo===v?"#4a8dff":"#2b3870"),background:bmModo===v?"#4a8dff18":"transparent"}}>
-            <span style=${{width:14,height:14,borderRadius:"50%",border:"2px solid "+(bmModo===v?"#4a8dff":"#556"),background:bmModo===v?"#4a8dff":"transparent",flexShrink:0}}></span>${l}
+          <div key=${v} onClick=${()=>setBmModo(v)} style=${{display:"flex",alignItems:"center",gap:10,padding:"11px 12px",borderRadius:10,marginBottom:8,cursor:"pointer",fontSize:14,border:"1px solid "+(bmModo===v?"var(--ac)":"var(--br2)"),background:bmModo===v?"color-mix(in srgb,var(--ac) 10%,transparent)":"transparent"}}>
+            <span style=${{width:14,height:14,borderRadius:"50%",border:"2px solid "+(bmModo===v?"var(--ac)":"#556"),background:bmModo===v?"var(--ac)":"transparent",flexShrink:0}}></span>${l}
           </div>`)}
         ${bmModo==="otro" && html`<input style=${{...S.input,marginBottom:8}} type="date" min=${mesPrefijo+"-01"} max=${mesPrefijo+"-"+String(new Date(anoSeleccionado,mesSeleccionado+1,0).getDate()).padStart(2,"0")} value=${bmFecha} onChange=${e=>setBmFecha(e.target.value)}/>`}
         ${bmError && html`<div style=${{color:"#ff5d7a",fontSize:13,margin:"4px 0 8px"}}>⚠️ ${bmError}</div>`}
