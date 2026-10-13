@@ -673,6 +673,7 @@ function App() {
   const [verRecorrido,setVerRecorrido] = useState(false);
   const [faqAbierta,setFaqAbierta] = useState(null);
   const [faqBusca,setFaqBusca] = useState("");
+  const [hojaMas,setHojaMas] = useState(null);
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
@@ -986,6 +987,22 @@ function App() {
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
   const chipTxt = !user ? "Entrar" : bankrollMes>0 ? (ocultar?"Bank ✎":fmt(bankrollMes+stats.neto)+" ✎") : "Poner bank ＋";
   const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
+  // Filas compactas de la pestaña Más
+  const filaMas = ({e,t,sub,val,der,onClick}) => ({e,t,sub,val,der,onClick});
+  const grupoMas = (titulo,filas) => { const fs=filas.filter(Boolean); if(!fs.length) return null; return html`<div>
+    <div style=${{fontSize:11,fontWeight:800,color:"var(--mu)",letterSpacing:1,margin:"18px 6px 7px",textTransform:"uppercase"}}>${titulo}</div>
+    <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,overflow:"hidden"}}>
+      ${fs.map((f,i)=>html`<button key=${f.t} onClick=${f.onClick} style=${{display:"flex",alignItems:"center",gap:12,width:"100%",background:"none",border:"none",borderTop:i?"1px solid var(--br)":"none",padding:"11px 14px",minHeight:54,color:"#fff",textAlign:"left",fontFamily:"inherit",cursor:"pointer"}}>
+        <span style=${{fontSize:22,width:28,textAlign:"center",flexShrink:0}}>${f.e}</span>
+        <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:15}}>${f.t}</b>${f.sub && html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${f.sub}</div>`}</div>
+        ${f.der || html`${f.val && html`<span style=${{fontSize:14,color:"var(--mu)",whiteSpace:"nowrap"}}>${f.val}</span>`}<span style=${{color:"var(--mu3)",fontSize:18,marginLeft:2}}>›</span>`}
+      </button>`)}
+    </div>
+  </div>`; };
+  const opcionHoja = (l,sub,on,onClick) => html`<button key=${l} onClick=${onClick} style=${{display:"flex",alignItems:"center",gap:12,width:"100%",background:"var(--card)",border:on?"2px solid var(--ac)":"1px solid var(--br)",borderRadius:14,padding:14,marginBottom:9,color:"#fff",textAlign:"left",fontFamily:"inherit",cursor:"pointer"}}>
+    <div style=${{flex:1}}><b style=${{fontSize:16}}>${l}</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:2}}>${sub}</div></div>
+    <span style=${{width:24,height:24,borderRadius:"50%",border:"2px solid "+(on?"var(--ac)":"var(--mu3)"),background:on?"var(--ac)":"transparent",color:"var(--onac)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,flexShrink:0}}>${on?"✓":""}</span>
+  </button>`;
   const pasosRecorrido = [
     {id:"t-chip", t:"Tu bank 💰", d:user?"Tócalo para poner o cambiar tu bank del mes. Con él se calculan tus pesos en cada pick.":"Toca aquí para entrar con Google y poner tu propio bank."},
     {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Con ‹ › cambias de mes; abajo ves acierto, racha, número de picks y momio promedio."},
@@ -1231,105 +1248,66 @@ function App() {
 
       <!-- MÁS -->
       ${vista==="mas" && html`<div>
-        <h1 style=${{...S.pageTitle,margin:"6px 0 16px"}}>Más</h1>
+        <h1 style=${{...S.pageTitle,fontSize:28,margin:"6px 0 14px"}}>Más</h1>
         ${user
-          ? html`<div style=${{...S.row,cursor:"default"}}>
+          ? html`<div style=${{...S.row,cursor:"default",marginBottom:0}}>
               ${user.photoURL
-                ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:42,height:42,borderRadius:"50%",border:"2px solid var(--ac)"}}/>`
+                ? html`<img src=${user.photoURL} referrerPolicy="no-referrer" style=${{width:46,height:46,borderRadius:"50%",border:"2px solid var(--ac)"}}/>`
                 : html`<span style=${{fontSize:28}}>👤</span>`}
               <div style=${{flex:1,minWidth:0}}>
-                <b style=${{fontSize:15}}>${user.displayName||"Mi perfil"}</b>
+                <b style=${{fontSize:16}}>${user.displayName||"Mi perfil"}</b>
                 <div style=${{fontSize:12,color:"var(--mu)",marginTop:3,overflow:"hidden",textOverflow:"ellipsis"}}>${user.email}${isAdmin?" · Admin":""}</div>
               </div>
             </div>`
-          : html`<button onClick=${loginGoogle} style=${S.row}>
+          : html`<button onClick=${loginGoogle} style=${{...S.row,marginBottom:0}}>
               <span style=${{fontSize:24,fontWeight:800,color:"#4285f4",width:28,textAlign:"center"}}>G</span>
               <div style=${{flex:1}}><b style=${{fontSize:15}}>Entrar con Google</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Para poner tu propio bank y ver tus ganancias</div></div>
               <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
             </button>`}
 
-        ${user && html`<button onClick=${abrirBankModal} style=${S.row}>
-          <span style=${{fontSize:24}}>💰</span>
-          <div style=${{flex:1,minWidth:0}}>
-            <b style=${{fontSize:15}}>${usaBankPropio?"Mi bank":"Bank"} de ${MESES[mesSeleccionado].toLowerCase()}</b>
-            <div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>${bankrollMes>0
-              ? fmt(bankrollMes)+" al inicio · ahora "+fmt(bankrollMes+stats.neto)+(usaBankPropio?" · "+(iniciosUser[bankKey]?"desde el "+fmtDia(iniciosUser[bankKey]):"desde el día 1"):"")
-              : "Sin registrar · toca para ponerlo"}</div>
-          </div>
-          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
+        ${grupoMas("Mi cuenta",[
+          user && filaMas({e:"💰",t:(usaBankPropio?"Mi bank":"Bank")+" de "+MESES[mesSeleccionado].toLowerCase(),
+            sub: bankrollMes>0 ? fmt(bankrollMes)+" al inicio · ahora "+fmt(bankrollMes+stats.neto) : "Sin registrar · toca para ponerlo",
+            onClick:abrirBankModal}),
+          filaMas({e:"📸",t:"Compartir mi mes",sub:"Imagen para WhatsApp o historias",onClick:()=>{ setSharePesos(!ocultar); irA("compartir"); }}),
+        ])}
+
+        ${grupoMas("Preferencias",[
+          filaMas({e:"🙈",t:"Ocultar montos",onClick:()=>setPref("ocultar",!ocultar),der:html`<span style=${{width:46,height:28,borderRadius:14,background:ocultar?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
+            <span style=${{position:"absolute",top:3,left:ocultar?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span></span>`}),
+          filaMas({e:"🎲",t:"Formato de momio",val:momioDec?"Decimal":"Americano",onClick:()=>setHojaMas("momio")}),
+          filaMas({e:"🚀",t:"Abrir la app en",val:prefs.inicio==="calendario"?"Calendario":"Inicio",onClick:()=>setHojaMas("inicio")}),
+          filaMas({e:"🎨",t:"Tema",onClick:()=>setHojaMas("tema"),val:html`<span style=${{display:"inline-flex",alignItems:"center",gap:6}}>
+            <span style=${{width:12,height:12,borderRadius:"50%",background:TEMAS[temaKey].g1}}></span><span style=${{width:12,height:12,borderRadius:"50%",background:TEMAS[temaKey].ac,marginLeft:-3}}></span>${TEMAS[temaKey].nombre.split(" ")[0]}</span>`}),
+        ])}
+
+        ${grupoMas("Ayuda",[
+          filaMas({e:"💡",t:"Cómo funciona",onClick:()=>{ setFaqBusca(""); setFaqAbierta(null); irA("ayuda"); }}),
+          filaMas({e:"🔔",t:"Notificaciones",onClick:()=>setNotisGuia(true)}),
+          !yaInstalada && filaMas({e:"📲",t:"Instalar la app",onClick:instalarApp}),
+        ])}
+
+        ${user && html`<button onClick=${()=>auth.signOut()} style=${{...S.row,justifyContent:"center",color:"#ff5d7a",marginTop:18}}>
+          <b style=${{fontSize:15}}>Cerrar sesión</b>
         </button>`}
 
-        <button onClick=${()=>{ setSharePesos(!ocultar); irA("compartir"); }} style=${S.row}>
-          <span style=${{fontSize:24}}>📸</span>
-          <div style=${{flex:1}}><b style=${{fontSize:15}}>Compartir mi mes</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Imagen para WhatsApp o historias</div></div>
-          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
-        </button>
-
-        ${!yaInstalada && html`<button onClick=${instalarApp} style=${S.row}>
-          <span style=${{fontSize:24}}>📲</span>
-          <div style=${{flex:1}}><b style=${{fontSize:15}}>Instalar la app</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Agrégala a tu pantalla de inicio</div></div>
-          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
-        </button>`}
-
-        <div style=${{...S.row,cursor:"default",flexWrap:"wrap"}}>
-          <span style=${{fontSize:24}}>🎲</span>
-          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Formato de momio</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Cómo ves y escribes los momios</div></div>
-          <div style=${{display:"flex",background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:3,gap:3,width:"100%"}}>
-            ${[[false,"Americano","-110 / +150"],[true,"Decimal","1.91 / 2.50"]].map(([v,l,ej])=>html`<button key=${l} onClick=${()=>setMomioDec(v)}
-              style=${{flex:1,border:"none",borderRadius:9,padding:"9px 4px",minHeight:46,cursor:"pointer",fontFamily:"inherit",background:momioDec===v?"var(--ac)":"transparent",color:momioDec===v?"var(--onac)":"var(--mu)"}}>
-              <b style=${{fontSize:14,display:"block"}}>${l}</b><span style=${{fontSize:11,opacity:.85}}>${ej}</span></button>`)}
+        ${hojaMas && html`<div style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setHojaMas(null)}>
+          <div onClick=${e=>e.stopPropagation()} style=${{background:"var(--card2)",borderTop:"1px solid var(--br2)",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"85vh",overflowY:"auto",padding:"10px 16px calc(24px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
+            <div style=${{width:44,height:5,borderRadius:3,background:"var(--br2)",margin:"0 auto 14px"}}></div>
+            <b style=${{fontSize:19,color:"#fff",display:"block",marginBottom:14}}>${{momio:"Formato de momio",inicio:"Abrir la app en",tema:"Tema"}[hojaMas]}</b>
+            ${hojaMas==="momio" && [["americano","Americano","-110 / +150"],["decimal","Decimal","1.91 / 2.50"]].map(([v,l,s])=>opcionHoja(l,s,(momioDec?"decimal":"americano")===v,()=>{ setMomioDec(v==="decimal"); setHojaMas(null); }))}
+            ${hojaMas==="inicio" && [["inicio","🏠 Inicio","Tu resumen del mes y los picks"],["calendario","📅 Calendario","Tus resultados día por día"]].map(([v,l,s])=>opcionHoja(l,s,(prefs.inicio||"inicio")===v,()=>{ setPref("inicio",v); setHojaMas(null); }))}
+            ${hojaMas==="tema" && html`<div style=${{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
+              ${Object.keys(TEMAS).map(k=>{ const t=TEMAS[k]; const on=k===temaKey; return html`<button key=${k} onClick=${()=>setPref("tema",k)}
+                style=${{border:on?"2px solid "+t.ac:"1px solid "+t.br,borderRadius:16,overflow:"hidden",background:t.bg,padding:0,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                <div style=${{height:56,background:"linear-gradient(135deg,"+t.g1+","+t.bg+")",position:"relative"}}>
+                  <span style=${{position:"absolute",right:10,bottom:10,width:22,height:22,borderRadius:"50%",background:t.ac}}></span>
+                </div>
+                <div style=${{padding:"9px 10px",fontSize:13,fontWeight:on?800:500,color:on?"#fff":t.mu}}>${on?"✓ ":""}${t.nombre}</div>
+              </button>`; })}
+            </div>`}
           </div>
-        </div>
-
-        <button onClick=${()=>setPref("ocultar",!ocultar)} style=${S.row}>
-          <span style=${{fontSize:24}}>🙈</span>
-          <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:15}}>Ocultar montos</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Solo porcentajes, sin pesos en pantalla</div></div>
-          <span style=${{width:46,height:28,borderRadius:14,background:ocultar?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
-            <span style=${{position:"absolute",top:3,left:ocultar?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span>
-          </span>
-        </button>
-
-        <div style=${{...S.row,cursor:"default",flexWrap:"wrap"}}>
-          <span style=${{fontSize:24}}>🎨</span>
-          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Tema</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>${TEMAS[temaKey].nombre}</div></div>
-          <div style=${{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,width:"100%"}}>
-            ${Object.keys(TEMAS).map(k=>{ const t=TEMAS[k]; const on=k===temaKey; return html`<button key=${k} onClick=${()=>setPref("tema",k)}
-              style=${{border:on?"2px solid "+t.ac:"1px solid var(--br)",borderRadius:12,padding:"8px 6px",minHeight:58,cursor:"pointer",fontFamily:"inherit",background:t.bg,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
-              <span style=${{display:"flex",gap:3}}>
-                <span style=${{width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg,"+t.g1+","+t.g2+")"}}></span>
-                <span style=${{width:18,height:18,borderRadius:"50%",background:t.ac}}></span>
-                <span style=${{width:18,height:18,borderRadius:"50%",background:t.card,border:"1px solid "+t.br}}></span>
-              </span>
-              <span style=${{fontSize:10,color:on?"#fff":t.mu,fontWeight:on?800:500,lineHeight:1.15}}>${t.nombre}</span>
-            </button>`; })}
-          </div>
-        </div>
-
-        <div style=${{...S.row,cursor:"default",flexWrap:"wrap"}}>
-          <span style=${{fontSize:24}}>🚀</span>
-          <div style=${{flex:1,minWidth:150}}><b style=${{fontSize:15}}>Abrir la app en</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>La pantalla que ves al entrar</div></div>
-          <div style=${{display:"flex",background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:3,gap:3,width:"100%"}}>
-            ${[["inicio","🏠 Inicio"],["calendario","📅 Calendario"]].map(([v,l])=>{ const on=(prefs.inicio||"inicio")===v; return html`<button key=${v} onClick=${()=>setPref("inicio",v)}
-              style=${{flex:1,border:"none",borderRadius:9,padding:"10px 4px",minHeight:44,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,background:on?"var(--ac)":"transparent",color:on?"var(--onac)":"var(--mu)"}}>${l}</button>`; })}
-          </div>
-        </div>
-
-        <button onClick=${()=>{ setFaqBusca(""); setFaqAbierta(null); irA("ayuda"); }} style=${S.row}>
-          <span style=${{fontSize:24}}>💡</span>
-          <div style=${{flex:1}}><b style=${{fontSize:15}}>Cómo funciona</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Tutorial, recorrido y preguntas frecuentes</div></div>
-          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
-        </button>
-
-        <button onClick=${()=>setNotisGuia(true)} style=${S.row}>
-          <span style=${{fontSize:24}}>🔔</span>
-          <div style=${{flex:1}}><b style=${{fontSize:15}}>Notificaciones</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Aviso en tu celular con cada pick nuevo</div></div>
-          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
-        </button>
-
-        ${user && html`<button onClick=${()=>auth.signOut()} style=${{...S.row,color:"#ff5d7a"}}>
-          <span style=${{fontSize:22}}>⎋</span>
-          <b style=${{fontSize:15,flex:1}}>Cerrar sesión</b>
-        </button>`}
+        </div>`}
       </div>`}
 
     </main>
