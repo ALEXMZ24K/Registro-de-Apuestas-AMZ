@@ -1144,7 +1144,12 @@ function App() {
   const cambiarResultado = (id,resultado) => {
     const ap=apuestas.find(a=>a.id===id);
     if(!ap?._docId) return;
-    db.collection("apuestas").doc(ap._docId).update({resultado});
+    const cambios = {resultado};
+    // Parlay ganado → todas sus patas ganaron: las que estén vacías se marcan ✓
+    if(resultado==="Ganada" && (ap.tipo==="Parlay/Combinada"||ap.tipo==="Freebet") && Array.isArray(ap.patas) && ap.patas.length){
+      cambios.patas = ap.patas.map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; if(o.desc&&String(o.desc).trim()&&!o.res) o.res="G"; return o; });
+    }
+    db.collection("apuestas").doc(ap._docId).update(cambios);
     if(resultado==="Ganada"||resultado==="Perdida"||resultado==="Nula") {
       const emoji = resultado==="Ganada"?"✅":resultado==="Nula"?"🔄":"❌";
       const m = apMonto(ap,bankrollMes);
