@@ -649,6 +649,28 @@ function Recorrido({pasos,onClose}) {
   </div>`;
 }
 
+// ── Número que sube contando (de 0 al valor, o del valor anterior al nuevo) ──
+function Contador({valor, formato, dur=800}) {
+  const [v,setV] = useState(0);
+  const desde = useRef(0);
+  useEffect(()=>{
+    const fin = Number(valor)||0;
+    const reducir = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(reducir){ setV(fin); desde.current=fin; return; }
+    const ini = desde.current, t0 = performance.now();
+    let raf;
+    const paso = t => {
+      const p = Math.min(1,(t-t0)/dur), e = 1-Math.pow(1-p,3);
+      const x = ini+(fin-ini)*e;
+      setV(x); desde.current = x;
+      if(p<1) raf = requestAnimationFrame(paso);
+    };
+    raf = requestAnimationFrame(paso);
+    return ()=>cancelAnimationFrame(raf);
+  },[valor]);
+  return formato(v);
+}
+
 // ── Main App ──
 function App() {
   const [apuestas,setApuestas] = useState([]);
@@ -1064,7 +1086,7 @@ function App() {
             <button onClick=${nextMes} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes siguiente">›</button>
           </div>
           <div style=${{fontSize:38,fontWeight:900,letterSpacing:-1,color:"#fff",lineHeight:1.1,marginTop:2}}>
-            ${ocultar ? fmtPct(stats.pct) : fmtSigno(stats.neto)}
+            ${ocultar ? html`<${Contador} valor=${stats.pct} formato=${fmtPct}/>` : html`<${Contador} valor=${stats.neto} formato=${n=>fmtSigno(Math.round(n)||0)}/>`}
             ${pctMes!==null && !ocultar && html` <span style=${{fontSize:15,fontWeight:700,color:pctMes>=0?"#bff5dc":"#ffc4cf"}}>${pctMes>=0?"▲":"▼"} ${Math.abs(pctMes).toFixed(1)}%</span>`}
             ${sinBank && html` <span style=${{fontSize:13,fontWeight:600,opacity:.8}}>estimado</span>`}
           </div>
@@ -1130,7 +1152,7 @@ function App() {
         </div>
         <div style=${{...S.hero,padding:"16px 18px"}}>
           <div style=${{fontSize:12,opacity:.9,letterSpacing:.5,fontWeight:700}}>BALANCE ${anoSeleccionado}</div>
-          <div style=${{fontSize:34,fontWeight:900,letterSpacing:-1,color:"#fff",marginTop:2}}>${ocultar?fmtPct(statsAnual.pct):fmtSigno(statsAnual.neto)}</div>
+          <div style=${{fontSize:34,fontWeight:900,letterSpacing:-1,color:"#fff",marginTop:2}}>${ocultar ? html`<${Contador} valor=${statsAnual.pct} formato=${fmtPct}/>` : html`<${Contador} valor=${statsAnual.neto} formato=${n=>fmtSigno(Math.round(n)||0)}/>`}</div>
           <div style=${{display:"flex",gap:8,marginTop:12}}>
             ${[[statsAnual.efectividad+"%","Acierto"],[statsAnual.ganadas+"-"+statsAnual.perdidas,"Récord"],[String(statsAnual.total),"Picks"],[momioPromedio!==null?fmtMomio(momioPromedio):"—","Momio prom."]].map(([v,l])=>html`
               <div key=${l} style=${S.miniStat}><b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2}}>${l}</div></div>`)}
