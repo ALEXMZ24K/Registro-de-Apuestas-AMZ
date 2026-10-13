@@ -74,6 +74,11 @@
     .entrar #t-picks>*:nth-child(6){animation-delay:.2s}
     .entrar #t-picks>*:nth-child(n+7){animation-delay:.24s}
     @media(prefers-reduced-motion:reduce){.entrar>*,.entrar #t-picks>*{animation:none}}
+    /* Siluetas de carga con brillo */
+    .sk{display:block;border-radius:7px;background:linear-gradient(90deg,var(--card3) 0%,var(--br) 45%,var(--card3) 90%);background-size:250% 100%;animation:skBrillo 1.3s ease-in-out infinite}
+    .sk-claro{background:linear-gradient(90deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.24) 45%,rgba(255,255,255,.10) 90%);background-size:250% 100%}
+    @keyframes skBrillo{from{background-position:100% 0}to{background-position:-50% 0}}
+    @media(prefers-reduced-motion:reduce){.sk{animation:none}}
     .nueva-spacer{height:calc(112px + env(safe-area-inset-bottom))}
     /* Mobile (≤600px) */
     @media(max-width:600px){
@@ -1016,9 +1021,40 @@ function App() {
   const prevMes = () => { if(mesSeleccionado===0){setMesSeleccionado(11);setAnoSeleccionado(y=>y-1);}else setMesSeleccionado(m=>m-1); };
   const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
 
-  if(cargando) return html`<div style=${{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-    <div style=${{fontSize:40,color:"#2fe0a0"}}>◈</div>
-    <div style=${{color:"var(--mu2)",fontSize:14}}>Conectando...</div>
+  // Pantalla de carga: siluetas de la app que brillan mientras llegan los picks
+  if(cargando) return html`<div style=${S.root}>
+    <main style=${S.main}>
+      <div style=${{...S.hero,boxShadow:"none"}}>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <b style=${{fontSize:19,letterSpacing:.3,color:"#fff"}}>ALEX<span style=${{color:"var(--ac2)"}}>PICKS</span></b>
+          <span className="sk sk-claro" style=${{width:110,height:36,borderRadius:16}}></span>
+        </div>
+        <span className="sk sk-claro" style=${{width:170,height:14,marginTop:20}}></span>
+        <span className="sk sk-claro" style=${{width:210,height:40,marginTop:10,borderRadius:10}}></span>
+        <div style=${{display:"flex",gap:8,marginTop:14}}>
+          ${[0,1,2,3].map(i=>html`<span key=${i} className="sk sk-claro" style=${{flex:1,height:52,borderRadius:12}}></span>`)}
+        </div>
+      </div>
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"4px 2px 18px"}}>
+        <span className="sk" style=${{width:110,height:12}}></span>
+        <div style=${{display:"flex",gap:4}}>${[...Array(8)].map((_,i)=>html`<span key=${i} className="sk" style=${{width:24,height:24,borderRadius:"50%"}}></span>`)}</div>
+      </div>
+      <span className="sk" style=${{width:160,height:20,marginBottom:14}}></span>
+      ${[0,1,2,3,4].map(i=>html`<div key=${i} style=${{...S.apCard,display:"flex",alignItems:"stretch",height:76,opacity:1-i*.15}}>
+        <div style=${{width:5,background:"var(--br)"}}></div>
+        <div style=${{flex:1,padding:"14px 13px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style=${{display:"flex",justifyContent:"space-between"}}><span className="sk" style=${{width:"55%",height:16}}></span><span className="sk" style=${{width:64,height:16}}></span></div>
+          <div style=${{display:"flex",justifyContent:"space-between"}}><span className="sk" style=${{width:"38%",height:11}}></span><span className="sk" style=${{width:70,height:11}}></span></div>
+        </div>
+        <div style=${{width:68,background:"var(--card3)",borderLeft:"1px solid var(--br)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:7}}>
+          <span className="sk" style=${{width:38,height:14}}></span><span className="sk" style=${{width:46,height:9}}></span>
+        </div>
+      </div>`)}
+    </main>
+    <div className="nueva-spacer"></div>
+    <nav className="tabbar"><div className="tabbar-in">
+      ${[["🏠","Inicio"],["📅","Calendario"],["📊","Anual"],["☰","Más"]].map(([ic,t],i)=>html`<button key=${t} className=${i===0?"on":""} disabled><span className="ic">${ic}</span>${t}</button>`)}
+    </div></nav>
   </div>`;
 
   const vista = vistaActual;
