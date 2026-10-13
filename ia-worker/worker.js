@@ -74,12 +74,12 @@ export default {
         model: env.MODELO || MODELO,
         max_tokens: 1024,
         tools: [HERRAMIENTA],
-        tool_choice: { type: "tool", name: "registrar_apuesta" },
+        tool_choice: { type: "auto" },
         messages: [{ role: "user", content: [
           { type: "image", source: { type: "base64", media_type: mediaType, data: image } },
           { type: "text", text:
 `Es una captura de un boleto de apuestas deportivas de México (por ejemplo Playdoit). Hoy es ${hoy}.
-Extrae los datos y llama a registrar_apuesta. Reglas:
+Extrae los datos y SIEMPRE responde llamando a la herramienta registrar_apuesta. Reglas:
 - "Ganancia Total" o "Pago" es lo que se cobra en total (incluye lo apostado); va en pago_total.
 - Un SGP / Same Game Parlay / combinada cuenta como "Parlay/Combinada" y cada selección es una pata.
 - NFL/fútbol americano → "Americano"; NCAA football → "Americano Colegial"; NBA → "Basquetbol"; NCAA basketball → "Basquetbol Colegial"; MLB → "Béisbol"; soccer/Liga MX → "Fútbol".
