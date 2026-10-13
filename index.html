@@ -394,6 +394,7 @@ const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
 
 function AR({a,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
+  useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
   const show = open||expanded;
   const cr = colorRes[a.resultado]||"var(--mu)";
   const montoTxtBase = OCULTAR
@@ -442,7 +443,7 @@ function AR({a,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g
               <div style=${{fontSize:16,fontWeight:800,color:c,marginTop:4}}>${v}</div>
             </div>`)}
         </div>`; })()}
-      ${puedeMeter && html`<button onClick=${e=>{e.stopPropagation();onMetida&&onMetida(e.currentTarget);}} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",background:"color-mix(in srgb,var(--bg) 55%,transparent)",border:"none",borderRadius:12,padding:"11px 12px",marginBottom:14,color:"#fff",fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+      ${puedeMeter && html`<button id=${"t-meti-"+a.id} onClick=${e=>{e.stopPropagation();onMetida&&onMetida(e.currentTarget);}} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",background:"color-mix(in srgb,var(--bg) 55%,transparent)",border:"none",borderRadius:12,padding:"11px 12px",marginBottom:14,color:"#fff",fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
         <div><b style=${{fontSize:15}}>${metida?"✅ La metí":"🚫 No la metí"}</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:2}}>${metida?"Apágalo si no la jugaste y no te contará":"No cuenta en tus números · préndelo si sí la metiste"}</div></div>
         <span style=${{width:48,height:28,borderRadius:14,background:metida?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
           <span style=${{position:"absolute",top:3,left:metida?23:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span>
@@ -688,17 +689,23 @@ function Recorrido({pasos,onClose}) {
   const [r,setR] = useState(null);
   const p = pasos[i];
   useEffect(()=>{
-    const el = p && document.getElementById(p.id);
+    if(!p) return;
+    let el = null, vivo = true, t = null, t2 = null;
+    const medir = () => { if(!el) return; const b=el.getBoundingClientRect(); setR({x:b.left,y:b.top,w:b.width,h:Math.min(b.height,300)}); };
+    const iniciar = () => {
+    el = document.getElementById(p.id);
     if(!el){ setR(null); return; }
-    const medir = () => { const b=el.getBoundingClientRect(); setR({x:b.left,y:b.top,w:b.width,h:Math.min(b.height,300)}); };
     const b0 = el.getBoundingClientRect();
     // Llevar el inicio del elemento cerca de arriba (para elementos largos como la lista de picks)
     const fijo = getComputedStyle(el).position==="fixed" || el.closest(".tabbar");
     if(!fijo && (b0.top<70 || b0.top+Math.min(b0.height,300)>window.innerHeight-220)) window.scrollBy(0, b0.top-110);
     medir();
-    const t=setTimeout(medir,250);
+    t=setTimeout(medir,250);
+    };
+    // Algunos pasos primero abren algo (p. ej. un pick) y esperan a que aparezca
+    if(p.antes){ p.antes(); setR(null); t2=setTimeout(()=>{ if(vivo) iniciar(); },350); } else iniciar();
     window.addEventListener("resize",medir); window.addEventListener("scroll",medir,true);
-    return ()=>{ clearTimeout(t); window.removeEventListener("resize",medir); window.removeEventListener("scroll",medir,true); };
+    return ()=>{ vivo=false; clearTimeout(t); clearTimeout(t2); window.removeEventListener("resize",medir); window.removeEventListener("scroll",medir,true); };
   },[i,p&&p.id]);
   if(!p) return null;
   const ult = i===pasos.length-1, pad=6, vh=window.innerHeight, vw=window.innerWidth;
@@ -1355,11 +1362,12 @@ function App() {
     {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Desliza de lado (o usa ‹ ›) para cambiar de mes; abajo ves acierto, racha, número de picks y momio promedio."},
     {id:"t-forma", t:"Forma reciente", d:"Tus últimos 10 picks terminados: ✓ ganado, ✕ perdido. El más nuevo va a la derecha."},
     {id:"t-picks", t:"Los picks", d:"La franja de color es el resultado y a la derecha va el momio. Toca una tarjeta para ver lo apostado, el cobro y la ganancia."},
-    ...(usaBankPropio?[{id:"t-picks", t:"¿No metiste un pick? 🚫", d:"Abre el pick y apaga el switch “La metí”. Se queda en la lista pero ya no cuenta en tu ganancia, acierto ni racha. Si te equivocas, lo vuelves a prender."}]:[]),
+    ...(()=>{ if(!usaBankPropio) return []; const pk=apuestasMesLista.slice().reverse().find(cuentaAp); if(!pk) return [];
+      return [{id:"t-meti-"+pk.id, antes:()=>window.dispatchEvent(new CustomEvent("abrir-pick",{detail:pk.id})), t:"¿No metiste un pick? 🚫", d:"Dentro de cada pick está este switch. Si no lo jugaste, apágalo: se queda en la lista pero ya no cuenta en tu ganancia, acierto ni racha. Si te equivocas, lo vuelves a prender."}]; })(),
     {id:"t-tab-cal", t:"Calendario", d:"Tus resultados día por día. Verde ganó, rojo perdió; toca un día para ver sus picks."},
     {id:"t-tab-anual", t:"Anual", d:"Cómo vas en el año: balance por mes y por deporte."},
     {id:"t-tab-mas", t:"Más", d:"Tu bank, compartir tu mes, tema de colores, ocultar montos, notificaciones y esta ayuda."},
-  ].filter(x=>document.getElementById(x.id)||vista!=="inicio");
+  ].filter(x=>x.antes||document.getElementById(x.id)||vista!=="inicio");
   const iniciarRecorrido = () => { irA("inicio"); setTimeout(()=>setVerRecorrido(true),120); };
   const FAQ = [
     ["🎯","¿Qué es AlexPicks?","Una app para seguir los picks de Alex y llevar la cuenta de lo que ganas tú con ellos, usando tu propio bank."],
