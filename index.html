@@ -15,6 +15,7 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--bg:#0a0f20;--card:#121a38;--card2:#141d40;--card3:#0e1530;--br:#243060;--br2:#2b3870;--mu:#8f9bc4;--mu2:#7c88b3;--mu3:#5a668f;--ac:#4a8dff;--ac2:#9ec1ff;--onac:#fff;--g1:#1d4fd8;--g2:#0f2160}
+    html,body{overflow-x:hidden}
     body{background:var(--bg);color:#e8e8f0;font-family:'DM Sans',sans-serif}
     input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{opacity:1}
     select option{background:var(--card2);color:#e8e8f0}
@@ -696,6 +697,7 @@ function App() {
   const [shareImg,setShareImg] = useState(null);
   const shareFile = useRef(null);
   const swipe = useRef(null);
+  const contenido = useRef(null);
   const [verTutorial,setVerTutorial] = useState(false);
   const [verRecorrido,setVerRecorrido] = useState(false);
   const [faqAbierta,setFaqAbierta] = useState(null);
@@ -1007,21 +1009,38 @@ function App() {
 
   const vista = vistaActual;
   const irA = v => { setVistaActual(v); window.scrollTo(0,0); };
-  // Deslizar de lado en Inicio y Calendario para cambiar de mes
+  // Deslizar de lado en Inicio y Calendario para cambiar de mes (la pantalla sigue al dedo)
+  const reducirMov = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const moverA = (x,op,ms) => { const el=contenido.current; if(!el) return; el.style.transition = ms?`transform ${ms}ms ease-out, opacity ${ms}ms ease-out`:"none"; el.style.transform = x?`translateX(${x}px)`:""; el.style.opacity = op===1?"":String(op); };
   const swipeIni = e => {
     swipe.current = null;
     if(vista!=="inicio" && vista!=="calendario") return;
     if(e.touches.length!==1 || e.target.closest("[data-noswipe]")) return;
     const t = e.touches[0];
     if(t.clientX<25 || t.clientX>window.innerWidth-25) return; // bordes: gesto de "atrás" del navegador
-    swipe.current = {x:t.clientX, y:t.clientY, t:Date.now()};
+    swipe.current = {x:t.clientX, y:t.clientY, t:Date.now(), modo:null, dx:0};
   };
-  const swipeFin = e => {
+  const swipeMov = e => {
+    const s0 = swipe.current; if(!s0) return;
+    const t = e.touches[0], dx = t.clientX-s0.x, dy = t.clientY-s0.y;
+    if(!s0.modo){ if(Math.abs(dx)<10 && Math.abs(dy)<10) return; s0.modo = Math.abs(dx)>Math.abs(dy)*1.2 ? "h" : "v"; }
+    if(s0.modo!=="h") return;
+    s0.dx = dx;
+    if(!reducirMov()) moverA(dx*0.85, 1-Math.min(Math.abs(dx)/700,.35), 0);
+  };
+  const swipeFin = () => {
     const s0 = swipe.current; swipe.current = null;
-    if(!s0) return;
-    const t = e.changedTouches[0], dx = t.clientX-s0.x, dy = t.clientY-s0.y;
-    if(Date.now()-s0.t>700 || Math.abs(dx)<60 || Math.abs(dx)<Math.abs(dy)*1.5) return;
-    if(dx<0) nextMes(); else prevMes();
+    if(!s0 || s0.modo!=="h") return;
+    const dx = s0.dx, rapido = Math.abs(dx)/(Date.now()-s0.t) > 0.5;
+    if(Math.abs(dx)<70 && !(rapido && Math.abs(dx)>30)){ moverA(0,1,180); return; }
+    const sig = dx<0, w = window.innerWidth;
+    if(reducirMov()){ sig?nextMes():prevMes(); moverA(0,1,0); return; }
+    moverA(sig?-w:w, 0, 160);
+    setTimeout(()=>{
+      sig?nextMes():prevMes();
+      moverA(sig?w*0.35:-w*0.35, 0, 0);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ moverA(0,1,220); setTimeout(()=>moverA(0,1,0),240); }));
+    },160);
   };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
@@ -1082,7 +1101,7 @@ function App() {
   return html`<div style=${S.root}>
 
     <main style=${S.main}>
-     <div key=${vista} className="vista-anim" onTouchStart=${swipeIni} onTouchEnd=${swipeFin}>
+     <div key=${vista} ref=${contenido} className="vista-anim" style=${{touchAction:"pan-y"}} onTouchStart=${swipeIni} onTouchMove=${swipeMov} onTouchEnd=${swipeFin} onTouchCancel=${()=>{ swipe.current=null; moverA(0,1,180); }}>
 
       ${mostrarInstalar && vista==="inicio" && html`<div style=${{background:"color-mix(in srgb,var(--ac) 10%,transparent)",border:"1px solid color-mix(in srgb,var(--ac) 33%,transparent)",borderRadius:16,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
         <img src="icon-192.png" style=${{width:38,height:38,borderRadius:10}}/>
