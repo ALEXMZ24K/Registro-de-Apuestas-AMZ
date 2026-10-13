@@ -612,7 +612,9 @@ function Recorrido({pasos,onClose}) {
     if(!el){ setR(null); return; }
     const medir = () => { const b=el.getBoundingClientRect(); setR({x:b.left,y:b.top,w:b.width,h:Math.min(b.height,300)}); };
     const b0 = el.getBoundingClientRect();
-    if(b0.top<70 || b0.bottom>window.innerHeight-200) el.scrollIntoView({block:"center",behavior:"auto"});
+    // Llevar el inicio del elemento cerca de arriba (para elementos largos como la lista de picks)
+    const fijo = getComputedStyle(el).position==="fixed" || el.closest(".tabbar");
+    if(!fijo && (b0.top<70 || b0.top+Math.min(b0.height,300)>window.innerHeight-220)) window.scrollBy(0, b0.top-110);
     medir();
     const t=setTimeout(medir,250);
     window.addEventListener("resize",medir); window.addEventListener("scroll",medir,true);
@@ -989,7 +991,6 @@ function App() {
     {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Con ‹ › cambias de mes; abajo ves acierto, racha, número de picks y momio promedio."},
     {id:"t-forma", t:"Forma reciente", d:"Tus últimos 10 picks terminados: ✓ ganado, ✕ perdido. El más nuevo va a la derecha."},
     {id:"t-picks", t:"Los picks", d:"La franja de color es el resultado y a la derecha va el momio. Toca una tarjeta para ver monto, retorno y detalle."},
-    ...(isAdmin?[{id:"t-tab-plus", t:"Nuevo pick", d:"Con el ＋ agregas un pick nuevo y les llega aviso a todos."}]:[]),
     {id:"t-tab-cal", t:"Calendario", d:"Tus resultados día por día. Verde ganó, rojo perdió; toca un día para ver sus picks."},
     {id:"t-tab-anual", t:"Anual", d:"Cómo vas en el año: balance por mes y por deporte."},
     {id:"t-tab-mas", t:"Más", d:"Tu bank, compartir tu mes, tema de colores, ocultar montos, notificaciones y esta ayuda."},
