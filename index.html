@@ -146,7 +146,7 @@ async function enviarNotificacion(titulo, cuerpo) {
 }
 
 // htm + React setup (no build step needed)
-const { useState, useMemo, useEffect } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 const html = htm.bind(React.createElement);
 
 // ── Auth ──
@@ -471,6 +471,78 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
   </div>`;
 }
 
+// ── Imagen para compartir el resumen del mes ──
+function rr(x,X,Y,w,h,r){ x.beginPath(); x.moveTo(X+r,Y); x.arcTo(X+w,Y,X+w,Y+h,r); x.arcTo(X+w,Y+h,X,Y+h,r); x.arcTo(X,Y+h,X,Y,r); x.arcTo(X,Y,X+w,Y,r); x.closePath(); }
+function dibujarResumen(o){
+  const hist = o.formato==="historia";
+  const W=1080, H=hist?1920:1080, P=80;
+  const c=document.createElement("canvas"); c.width=W; c.height=H;
+  const x=c.getContext("2d");
+  const F=(w,s)=>`${w} ${s}px 'DM Sans','Helvetica Neue',Arial,sans-serif`;
+  const G="#2fe0a0", R="#ff5d7a";
+  let g;
+  if(hist){ g=x.createRadialGradient(200,0,0,200,0,2000); g.addColorStop(0,"#1d4fd8"); g.addColorStop(.45,"#0f2160"); g.addColorStop(1,"#0a0f20"); }
+  else { g=x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#1d4fd8"); g.addColorStop(1,"#0a0f20"); }
+  x.fillStyle=g; x.fillRect(0,0,W,H);
+  x.textBaseline="alphabetic"; x.textAlign="left";
+  // Encabezado
+  x.font=F(800,60); x.fillStyle="#fff"; x.fillText("ALEX",P,P+60);
+  x.fillStyle="#9ec1ff"; x.fillText("PICKS",P+x.measureText("ALEX").width,P+60);
+  x.font=F(600,34); const mw=x.measureText(o.mes).width+56;
+  x.fillStyle="rgba(255,255,255,.14)"; rr(x,W-P-mw,P+8,mw,64,32); x.fill();
+  x.fillStyle="#fff"; x.textAlign="center"; x.fillText(o.mes,W-P-mw/2,P+52); x.textAlign="left";
+  // Resultado
+  let y = hist?(o.mejor?560:640):300;
+  x.font=F(600,36); x.fillStyle="rgba(255,255,255,.8)"; x.fillText("RESULTADO DEL MES",P,y);
+  const pos = o.neto>=0;
+  let grande, chico="";
+  if(o.pct!==null){ grande=(o.pct>=0?"+":"-")+Math.abs(o.pct).toFixed(1)+"%"; if(o.pesos) chico=(pos?"+":"-")+fmt(Math.abs(o.neto)).replace("-","")+" MXN"; }
+  else if(o.pesos){ grande=(pos?"+":"-")+fmt(Math.abs(o.neto)).replace("-",""); }
+  else { grande=o.record; }
+  const tg = hist?190:160;
+  x.font=F(900,tg);
+  while(x.measureText(grande).width>W-2*P && tg>60){ x.font=F(900,tg-=10); }
+  y += tg*0.95; x.fillStyle=o.pct===null&&!o.pesos?"#fff":(pos?G:R); x.fillText(grande,P-6,y);
+  if(chico){ y+=78; x.font=F(700,58); x.fillStyle="rgba(255,255,255,.92)"; x.fillText(chico,P,y); }
+  // Tres datos
+  y += hist?80:60;
+  const bh = hist?170:150, gap=24, bw=(W-2*P-2*gap)/3;
+  [[o.record,"Récord"],[o.acierto+"%","Acierto"],[o.racha,"Racha"]].forEach(([v,l],i)=>{
+    const bx=P+i*(bw+gap);
+    x.fillStyle="rgba(255,255,255,.1)"; rr(x,bx,y,bw,bh,34); x.fill();
+    x.textAlign="center"; x.fillStyle="#fff"; x.font=F(800,hist?62:56); x.fillText(v,bx+bw/2,y+bh*0.52);
+    x.font=F(500,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText(l,bx+bw/2,y+bh*0.82); x.textAlign="left";
+  });
+  y += bh;
+  if(hist){
+    // Últimos picks
+    if(o.forma.length){
+      y += 100; x.font=F(600,32); x.fillStyle="rgba(255,255,255,.75)"; x.fillText("ÚLTIMOS PICKS",P,y);
+      y += 30; const d=78, sp=(W-2*P-10*d)/9;
+      o.forma.forEach((r,i)=>{ const cx=P+i*(d+sp)+d/2, cy=y+d/2;
+        x.beginPath(); x.arc(cx,cy,d/2,0,Math.PI*2); x.fillStyle=r==="Ganada"?G:R; x.fill();
+        x.fillStyle="#06101f"; x.font=F(900,40); x.textAlign="center"; x.fillText(r==="Ganada"?"✓":"✕",cx,cy+14); x.textAlign="left"; });
+      y += d;
+    }
+    // Mejor pick
+    if(o.mejor){
+      y += 70; const h=190;
+      x.fillStyle="rgba(255,255,255,.09)"; rr(x,P,y,W-2*P,h,40); x.fill();
+      x.font=F(600,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText("★ MEJOR PICK",P+40,y+62);
+      x.font=F(800,46); x.fillStyle=G; x.textAlign="right"; x.fillText(o.mejor.valor,W-P-40,y+140);
+      const maxW=W-2*P-80-x.measureText(o.mejor.valor).width-30; x.textAlign="left";
+      x.font=F(700,46); x.fillStyle="#fff"; let t=o.mejor.texto;
+      if(x.measureText(t).width>maxW){ while(t.length>1&&x.measureText(t+"…").width>maxW) t=t.slice(0,-1); t+="…"; }
+      x.fillText(t,P+40,y+140);
+    }
+  }
+  // Pie
+  x.font=F(500,34); x.fillStyle="rgba(255,255,255,.7)";
+  if(hist){ x.textAlign="center"; x.fillText("Sigue mis picks · AlexPicks",W/2,H-80); }
+  else x.fillText("Sigue mis picks · AlexPicks",P,H-64);
+  return c;
+}
+
 // ── Main App ──
 function App() {
   const [apuestas,setApuestas] = useState([]);
@@ -485,6 +557,11 @@ function App() {
   const [verTodasAno,setVerTodasAno] = useState(false);
   const [notisGuia,setNotisGuia] = useState(false);
   const [notisCopiado,setNotisCopiado] = useState(false);
+  const [shareFmt,setShareFmt] = useState("historia");
+  const [sharePesos,setSharePesos] = useState(true);
+  const [shareMejor,setShareMejor] = useState(true);
+  const [shareImg,setShareImg] = useState(null);
+  const shareFile = useRef(null);
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
@@ -644,6 +721,28 @@ function App() {
     return {racha,tipo};
   },[apuestasMes]);
   const formaReciente = useMemo(()=>apuestas.filter(cuentaAp).filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10),[apuestas,...dep]);
+  const mejorPickMes = useMemo(()=>{
+    let best=null, bg=0;
+    apuestasMes.forEach(a=>{ if(a.resultado!=="Ganada") return; const m=apMonto(a,bankDe); const g=m*momioToDec(a.cuota)-m; if(!best||g>bg){best=a;bg=g;} });
+    return best?{a:best,g:bg}:null;
+  },[apuestasMes,...dep]);
+  useEffect(()=>{
+    if(vistaActual!=="compartir") return;
+    let vivo=true;
+    const pct = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
+    const forma = apuestasMes.filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10).map(a=>a.resultado);
+    const mp = mejorPickMes;
+    const mejor = shareMejor && mp ? {texto:(iconDeporte[mp.a.deporte]||"🎯")+" "+mp.a.descripcion, valor: sharePesos ? "+"+fmt(mp.g) : (bankrollMes>0?"+"+(mp.g/bankrollMes*100).toFixed(1)+"%":fmtMomio(mp.a.cuota))} : null;
+    const racha = rachaActual.racha>0 ? (rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha : "—";
+    const listo = (document.fonts&&document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    listo.then(()=>{
+      if(!vivo) return;
+      const c = dibujarResumen({formato:shareFmt,mes:MESES[mesSeleccionado]+" "+anoSeleccionado,neto:stats.neto,pct,pesos:sharePesos,record:stats.ganadas+"-"+stats.perdidas,acierto:stats.efectividad,racha,forma,mejor});
+      setShareImg(c.toDataURL("image/png"));
+      c.toBlob(b=>{ if(b&&vivo) shareFile.current=new File([b],"alexpicks-"+MESES[mesSeleccionado].toLowerCase()+"-"+anoSeleccionado+".png",{type:"image/png"}); },"image/png");
+    });
+    return ()=>{ vivo=false; };
+  },[vistaActual,shareFmt,sharePesos,shareMejor,stats,bankrollMes,mesSeleccionado,anoSeleccionado,mejorPickMes,rachaActual,apuestasMes]);
   const statsAnual = useMemo(()=>calcStats(apuestasAno,bankDe),[apuestasAno,...dep]);
 
   const momioPromedio = useMemo(()=>{
@@ -774,6 +873,14 @@ function App() {
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
   const chipTxt = !user ? "Entrar" : bankrollMes>0 ? fmt(bankrollMes+stats.neto)+" ✎" : "Poner bank ＋";
   const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
+  const compartirImagen = () => {
+    const f = shareFile.current;
+    if(f && navigator.canShare && navigator.canShare({files:[f]})){
+      navigator.share({files:[f],title:"Mi mes en AlexPicks"}).catch(()=>{});
+    } else if(shareImg){
+      const a=document.createElement("a"); a.href=shareImg; a.download=f?f.name:"alexpicks.png"; document.body.appendChild(a); a.click(); a.remove();
+    }
+  };
 
   return html`<div style=${S.root}>
 
@@ -920,6 +1027,39 @@ function App() {
         </div>`}
       </div>`}
 
+      <!-- COMPARTIR -->
+      ${vista==="compartir" && html`<div>
+        <div style=${{display:"flex",alignItems:"center",gap:8,margin:"6px 0 14px"}}>
+          <button onClick=${()=>irA("mas")} style=${{...S.sqBtn,width:42,height:42}} aria-label="Regresar">‹</button>
+          <h1 style=${{...S.pageTitle,fontSize:22}}>Compartir mi mes</h1>
+        </div>
+        <div style=${S.monthRow}>
+          <button style=${{...S.sqBtn,width:42,height:42}} onClick=${prevMes} aria-label="Mes anterior">‹</button>
+          <b style=${{fontSize:16,color:"#fff"}}>${MESES[mesSeleccionado]} ${anoSeleccionado}</b>
+          <button style=${{...S.sqBtn,width:42,height:42}} onClick=${nextMes} aria-label="Mes siguiente">›</button>
+        </div>
+        <div style=${{display:"flex",background:"#0a0f20",border:"1px solid #243060",borderRadius:12,padding:3,gap:3,marginBottom:14}}>
+          ${[["historia","Historia"],["cuadrado","Cuadrado"]].map(([v,l])=>html`<button key=${v} onClick=${()=>setShareFmt(v)}
+            style=${{flex:1,border:"none",borderRadius:9,padding:"10px 0",minHeight:44,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,background:shareFmt===v?"#4a8dff":"transparent",color:shareFmt===v?"#fff":"#8f9bc4"}}>${l}</button>`)}
+        </div>
+        <div style=${{display:"flex",justifyContent:"center",marginBottom:14}}>
+          ${shareImg
+            ? html`<img src=${shareImg} alt="Resumen del mes" style=${{width:shareFmt==="historia"?"min(68vw,300px)":"min(86vw,340px)",borderRadius:18,boxShadow:"0 12px 40px #0009"}}/>`
+            : html`<div style=${{color:"#8f9bc4",padding:40}}>Generando imagen…</div>`}
+        </div>
+        <div style=${{background:"#121a38",border:"1px solid #243060",borderRadius:16,padding:"4px 14px",marginBottom:14}}>
+          ${[["Mostrar pesos ($)",sharePesos,setSharePesos],...(shareFmt==="historia"?[["Mostrar mejor pick",shareMejor,setShareMejor]]:[])].map(([l,v,set])=>html`
+            <button key=${l} onClick=${()=>set(!v)} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:"none",border:"none",color:"#fff",fontFamily:"inherit",fontSize:15,padding:"12px 0",cursor:"pointer"}}>
+              <span>${l}</span>
+              <span style=${{width:46,height:28,borderRadius:14,background:v?"#4a8dff":"#2b3870",position:"relative",flexShrink:0,transition:"background .15s"}}>
+                <span style=${{position:"absolute",top:3,left:v?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span>
+              </span>
+            </button>`)}
+        </div>
+        <button onClick=${compartirImagen} disabled=${!shareImg} style=${{...S.btnPrimary,width:"100%",minHeight:52,fontSize:16,borderRadius:14}}>📤 Compartir imagen</button>
+        <div style=${{fontSize:12,color:"#8f9bc4",textAlign:"center",marginTop:8}}>Se abre el menú de tu celular para mandarla o guardarla</div>
+      </div>`}
+
       <!-- MÁS -->
       ${vista==="mas" && html`<div>
         <h1 style=${{...S.pageTitle,margin:"6px 0 16px"}}>Más</h1>
@@ -949,6 +1089,12 @@ function App() {
           </div>
           <span style=${{color:"#5a668f",fontSize:18}}>›</span>
         </button>`}
+
+        <button onClick=${()=>irA("compartir")} style=${S.row}>
+          <span style=${{fontSize:24}}>📸</span>
+          <div style=${{flex:1}}><b style=${{fontSize:15}}>Compartir mi mes</b><div style=${{fontSize:12,color:"#8f9bc4",marginTop:3}}>Imagen para WhatsApp o historias</div></div>
+          <span style=${{color:"#5a668f",fontSize:18}}>›</span>
+        </button>
 
         ${!yaInstalada && html`<button onClick=${instalarApp} style=${S.row}>
           <span style=${{fontSize:24}}>📲</span>
@@ -987,7 +1133,7 @@ function App() {
         <button className=${vista==="calendario"?"on":""} onClick=${()=>irA("calendario")}><span className="ic">📅</span>Calendario</button>
         ${isAdmin && html`<button className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">＋</button>`}
         <button className=${vista==="anual"?"on":""} onClick=${()=>irA("anual")}><span className="ic">📊</span>Anual</button>
-        <button className=${vista==="mas"?"on":""} onClick=${()=>irA("mas")}><span className="ic">☰</span>Más</button>
+        <button className=${vista==="mas"||vista==="compartir"?"on":""} onClick=${()=>irA("mas")}><span className="ic">☰</span>Más</button>
       </div>
     </nav>
 
