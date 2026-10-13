@@ -156,8 +156,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
-// ── ntfy.sh notifications ──
-const NTFY_TOPIC = "alexpicks-apuestas-amz-2026";
 
 // Notificación push propia de la app (vía el Worker de Cloudflare; solo admins pueden enviar)
 async function pushNotificar(tipo, title, body, tag) {
@@ -192,21 +190,6 @@ async function pushDesuscribir() {
   }catch(e){}
 }
 
-async function enviarNotificacion(titulo, cuerpo) {
-  try {
-    const url = "https://ntfy.sh/" + NTFY_TOPIC;
-    await fetch(url, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Title": encodeURIComponent(titulo),
-        "Priority": "high",
-        "Tags": "sports,moneybag",
-      },
-      body: cuerpo
-    });
-  } catch(e) { console.log("Notif error:", e); }
-}
 
 // htm + React setup (no build step needed)
 const { useState, useMemo, useEffect, useRef } = React;
@@ -881,7 +864,6 @@ function App() {
   const cuotaAm = v => momioDec ? decToAm(v) : Number(v);
   const [verTodasAno,setVerTodasAno] = useState(false);
   const [notisGuia,setNotisGuia] = useState(false);
-  const [notisCopiado,setNotisCopiado] = useState(false);
   const [shareFmt,setShareFmt] = useState("historia");
   const [sharePesos,setSharePesos] = useState(true);
   const [shareMejor,setShareMejor] = useState(true);
@@ -899,7 +881,6 @@ function App() {
   const [pushOn,setPushOn] = useState(false);
   const [pushTipos,setPushTipos] = useState(()=>{ try{ return JSON.parse(localStorage.getItem("pushTipos")||"null")||{picks:true,resultados:true}; }catch(e){ return {picks:true,resultados:true}; } });
   const [pushEstado,setPushEstado] = useState({cargando:false,msg:""});
-  const [verNtfy,setVerNtfy] = useState(false);
   useEffect(()=>{ if(!pushSoportado()) return; navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(sub=>setPushOn(!!sub && Notification.permission==="granted")).catch(()=>{}); },[]);
   const [buscaTodo,setBuscaTodo] = useState(false);
   const [ia,setIa] = useState({estado:null,msg:""});
@@ -1243,10 +1224,6 @@ function App() {
       db.collection("apuestas").add({...nueva,id:Date.now()});
       // Notificar a todos
       const momioStr = Number(nueva.cuota)>0?"+"+nueva.cuota:String(nueva.cuota);
-      enviarNotificacion(
-        "🎯 Nuevo pick — AlexPicks",
-        nueva.descripcion+" | "+nueva.deporte+" | Momio: "+momioStr+" | "+nueva.monto+"% = "+fmt(apMonto(nueva,bankrollMes))
-      );
       const esC = nueva.tipo==="Parlay/Combinada"||nueva.tipo==="Freebet";
       const nP = (nueva.patas||[]).filter(p=>p.desc&&p.desc.trim()).length;
       pushNotificar("picks",
@@ -1290,10 +1267,6 @@ function App() {
         ? Math.round(m*momioToDec(ap.cuota)-m)
         : -m;
       const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
-      enviarNotificacion(
-        emoji+" "+resultado.toUpperCase()+" — AlexPicks",
-        ap.descripcion+" | "+ap.deporte+" | "+ganStr
-      );
       const pctRes = resultado==="Ganada" ? "+"+(Number(ap.monto||0)*(momioToDec(ap.cuota)-1)).toFixed(1)+"% del bank" : resultado==="Nula" ? "Se devuelve lo apostado" : "-"+Number(ap.monto||0)+"% del bank";
       pushNotificar("resultados", emoji+" "+(resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id);
     }
@@ -1392,7 +1365,6 @@ function App() {
   const fmtSigno = n => (n>=0?"+":"")+fmt(n);
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
   const chipTxt = !user ? "Entrar" : bankrollMes>0 ? (ocultar?"Bank ✎":fmt(bankrollMes+stats.neto)+" ✎") : "Poner bank ＋";
-  const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
   const errPush = e => e.message==="PERM" ? "No diste permiso. Actívalo en Ajustes del celular → Notificaciones → AlexPicks (o en el navegador)." : e.message==="NOSOP" ? "Este navegador no soporta notificaciones." : "No se pudo conectar. Intenta de nuevo en un momento.";
   const activarPush = async (tipos=pushTipos) => {
     setPushEstado({cargando:true,msg:""});
@@ -1456,7 +1428,7 @@ function App() {
     ["❔","¿Qué pasa si no pongo bank en un mes?","Verás montos estimados con tu bank de otro mes, pero ese mes no suma a tu resultado anual hasta que pongas su bank."],
     ["🎲","¿Cómo leo el momio?","Americano: −110 significa apostar $110 para ganar $100; +150 significa ganar $150 por cada $100. En Más puedes cambiar a decimal (1.91, 2.50)."],
     ["🎨","¿Qué significan los colores?","Verde = ganado, rojo = perdido, gris = pendiente, amarillo = nula. En el calendario cada día toma el color de cómo te fue."],
-    ["🔔","¿Cómo recibo avisos de picks nuevos?","Instala la app ntfy y suscríbete al tema de AlexPicks. En Más → Notificaciones están los pasos y el tema para copiar.","notis"],
+    ["🔔","¿Cómo recibo avisos de picks nuevos?","En Más → Notificaciones toca “Activar notificaciones” y acepta el permiso. En iPhone primero agrega AlexPicks a tu pantalla de inicio y ábrela desde el ícono. Puedes elegir avisos de picks nuevos, de resultados o ambos.","notis"],
     ["📲","¿Cómo la instalo como app?","En iPhone: Compartir ⬆︎ → Agregar a pantalla de inicio. En Android: menú ⋮ → Instalar app.","instalar"],
     ["🙈","¿Puedo ocultar mis montos o cambiar colores?","Sí. En Más activa “Ocultar montos” para ver solo porcentajes y elige un Tema de colores. Se guarda en tu cuenta."],
     ["🚫","¿Y si no metí un pick?","Abre el pick y apaga el switch “La metí”. Queda como “No la metí”: se sigue viendo, pero no cuenta en tu ganancia, acierto ni racha. Si te equivocaste, lo vuelves a prender. Solo te afecta a ti."],
@@ -1822,7 +1794,7 @@ function App() {
               ${esIOS && !yaInstalada
                 ? html`En iPhone, las notificaciones solo funcionan con la app <b>agregada a tu pantalla de inicio</b>. Instálala, ábrela desde el ícono y vuelve aquí.
                     <button onClick=${instalarApp} style=${{...S.btnPrimary,width:"100%",minHeight:44,marginTop:10}}>📲 Cómo instalarla</button>`
-                : "Este navegador no soporta notificaciones. Prueba desde Chrome o Safari actualizados, o usa la opción de ntfy de abajo."}
+                : "Este navegador no soporta notificaciones. Prueba desde Chrome o Safari actualizados."}
             </div>`
           : html`<div style=${{marginBottom:14}}>
               <div style=${{fontSize:14,color:"var(--mu)",lineHeight:1.45,marginBottom:12}}>${pushOn?"Están activadas en este celular. Elige qué te avisamos:":"Recibe un aviso en este celular con cada pick nuevo y cada resultado, como cualquier app."}</div>
@@ -1837,16 +1809,6 @@ function App() {
                 : html`<button onClick=${()=>activarPush()} disabled=${pushEstado.cargando} style=${{...S.btnPrimary,width:"100%",minHeight:50,fontSize:16,borderRadius:14}}>${pushEstado.cargando?"Activando…":"🔔 Activar notificaciones"}</button>`}
               ${pushEstado.msg && html`<div style=${{fontSize:13,marginTop:10,lineHeight:1.4,color:pushEstado.msg.startsWith("⚠️")?"#ff5d7a":"#dfe5ff",textAlign:"center"}}>${pushEstado.msg}</div>`}
             </div>`}
-        <button onClick=${()=>setVerNtfy(v=>!v)} style=${{display:"flex",justifyContent:"space-between",width:"100%",background:"none",border:"none",borderTop:"1px solid var(--br)",padding:"14px 2px",color:"var(--mu)",fontFamily:"inherit",fontSize:14,cursor:"pointer"}}>
-          <span>Otra opción: app ntfy</span><span>${verNtfy?"−":"+"}</span>
-        </button>
-        ${verNtfy && html`<div>
-        ${[["1","Descarga la app gratis “ntfy” (App Store o Play Store)."],["2","Ábrela y toca ＋ para suscribirte a un tema."],["3","Escribe este tema exactamente:"]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"var(--ac)",color:"var(--onac)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
-        <button onClick=${()=>{ try{ navigator.clipboard.writeText(NTFY_TOPIC); setNotisCopiado(true); setTimeout(()=>setNotisCopiado(false),2000);}catch(e){} }}
-          style=${{width:"100%",background:"var(--bg)",border:"1px dashed var(--ac)",borderRadius:12,padding:"12px",color:"#fff",fontFamily:"monospace",fontSize:14,cursor:"pointer",marginBottom:6,wordBreak:"break-all"}}>${NTFY_TOPIC}</button>
-        <div style=${{fontSize:12,color:notisCopiado?"#2fe0a0":"var(--mu)",textAlign:"center",marginBottom:14}}>${notisCopiado?"✓ Copiado":"Toca para copiar"}</div>
-        <a href=${NTFY_URL} target="_blank" rel="noopener" style=${{display:"block",textAlign:"center",fontSize:13,color:"var(--ac)",marginBottom:14}}>O ábrelo en el navegador</a>
-        </div>`}
         <button onClick=${()=>setNotisGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Listo</button>
     </${Hoja}>`}
 
