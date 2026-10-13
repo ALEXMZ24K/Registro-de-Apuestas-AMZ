@@ -566,6 +566,83 @@ function dibujarResumen(o){
   return c;
 }
 
+// ── Cómo funciona: tutorial, recorrido y preguntas ──
+const TUTORIAL = [
+  {ic:"🎯", t:"Bienvenido a AlexPicks", d:"Aquí ves todos los picks y cuánto llevas ganado tú siguiéndolos, con tu propio bank."},
+  {ic:"💰", t:"El % es del bank", d:"Cada pick dice qué % de tu bank apostar. La app lo convierte a pesos con tu bank.", ej:true},
+  {ic:"📅", t:"Pon tu bank y tu día de inicio", d:"Entra con Google, toca el saldo de arriba y escribe tu bank del mes. Si empezaste a mitad de mes, elige desde qué día cuentan los picks."},
+  {ic:"🟢", t:"Colores y calendario", d:"Verde es ganado, rojo perdido y gris pendiente. En el calendario cada día se pinta según cómo te fue; tócalo para ver sus picks."},
+  {ic:"🔔", t:"No te pierdas un pick", d:"En Más → Notificaciones activas los avisos para que te llegue cada pick nuevo al celular."},
+];
+
+function Tutorial({onClose}) {
+  const [i,setI] = useState(0);
+  const [x0,setX0] = useState(null);
+  const s = TUTORIAL[i], ult = i===TUTORIAL.length-1;
+  const ir = n => setI(Math.max(0,Math.min(TUTORIAL.length-1,n)));
+  return html`<div style=${{position:"fixed",inset:0,zIndex:300,background:"var(--bg)",display:"flex",flexDirection:"column",padding:"calc(14px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))"}}
+    onTouchStart=${e=>setX0(e.touches[0].clientX)}
+    onTouchEnd=${e=>{ if(x0===null) return; const dx=e.changedTouches[0].clientX-x0; if(dx<-50) ir(i+1); if(dx>50) ir(i-1); setX0(null); }}>
+    <div style=${{textAlign:"right"}}><button onClick=${onClose} style=${{background:"none",border:"none",color:"var(--mu)",fontSize:15,padding:"8px 4px",cursor:"pointer",fontFamily:"inherit"}}>Saltar</button></div>
+    <div style=${{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",maxWidth:420,margin:"0 auto",width:"100%"}}>
+      <div style=${{width:150,height:150,borderRadius:"50%",background:"radial-gradient(circle,var(--g1),var(--g2))",display:"flex",alignItems:"center",justifyContent:"center",fontSize:70,boxShadow:"0 10px 40px color-mix(in srgb,var(--g1) 35%,transparent)"}}>${s.ic}</div>
+      <div style=${{fontSize:12,color:"var(--ac)",fontWeight:800,marginTop:26,letterSpacing:1}}>PASO ${i+1} DE ${TUTORIAL.length}</div>
+      <b style=${{fontSize:26,color:"#fff",marginTop:8,lineHeight:1.2}}>${s.t}</b>
+      <p style=${{fontSize:15,color:"var(--mu)",lineHeight:1.5,marginTop:10}}>${s.d}</p>
+      ${s.ej && html`<div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:14,marginTop:16,width:"100%",fontSize:14}}>
+        ${[["Tu bank","$10,000","#fff"],["Pick al 3%","= $300","#fff"],["Momio +150 · ganó","+$450","#2fe0a0"]].map(([a,b,c])=>html`<div key=${a} style=${{display:"flex",justifyContent:"space-between",padding:"4px 0",color:"var(--mu)"}}><span>${a}</span><b style=${{color:c}}>${b}</b></div>`)}
+      </div>`}
+      <div style=${{display:"flex",gap:6,marginTop:22}}>
+        ${TUTORIAL.map((_,k)=>html`<span key=${k} onClick=${()=>ir(k)} style=${{width:k===i?22:8,height:8,borderRadius:4,background:k===i?"var(--ac)":"var(--br)",transition:"width .2s",cursor:"pointer"}}></span>`)}
+      </div>
+    </div>
+    <div style=${{display:"flex",gap:10,maxWidth:420,margin:"0 auto",width:"100%"}}>
+      ${i>0 && html`<button onClick=${()=>ir(i-1)} style=${{...S.btnSecondary,flex:1,minHeight:52,borderRadius:14}}>Atrás</button>`}
+      <button onClick=${()=>ult?onClose():ir(i+1)} style=${{...S.btnPrimary,flex:2,minHeight:52,borderRadius:14,fontSize:16}}>${ult?"¡Listo!":"Siguiente"}</button>
+    </div>
+  </div>`;
+}
+
+function Recorrido({pasos,onClose}) {
+  const [i,setI] = useState(0);
+  const [r,setR] = useState(null);
+  const p = pasos[i];
+  useEffect(()=>{
+    const el = p && document.getElementById(p.id);
+    if(!el){ setR(null); return; }
+    const medir = () => { const b=el.getBoundingClientRect(); setR({x:b.left,y:b.top,w:b.width,h:Math.min(b.height,300)}); };
+    const b0 = el.getBoundingClientRect();
+    if(b0.top<70 || b0.bottom>window.innerHeight-200) el.scrollIntoView({block:"center",behavior:"auto"});
+    medir();
+    const t=setTimeout(medir,250);
+    window.addEventListener("resize",medir); window.addEventListener("scroll",medir,true);
+    return ()=>{ clearTimeout(t); window.removeEventListener("resize",medir); window.removeEventListener("scroll",medir,true); };
+  },[i,p&&p.id]);
+  if(!p) return null;
+  const ult = i===pasos.length-1, pad=6, vh=window.innerHeight, vw=window.innerWidth;
+  const abajo = r ? (r.y+r.h/2 < vh/2) : true;
+  const tipW = Math.min(320, vw-32);
+  const tipX = r ? Math.max(16, Math.min(vw-16-tipW, r.x+r.w/2-tipW/2)) : (vw-tipW)/2;
+  const tipStyle = r ? (abajo ? {top:r.y+r.h+pad+14} : {bottom:vh-r.y+pad+14}) : {top:vh/2-80};
+  return html`<div style=${{position:"fixed",inset:0,zIndex:300}} onClick=${e=>e.stopPropagation()}>
+    ${r
+      ? html`<div style=${{position:"fixed",left:r.x-pad,top:r.y-pad,width:r.w+pad*2,height:r.h+pad*2,borderRadius:18,boxShadow:"0 0 0 3px #ffd84a, 0 0 0 9999px rgba(0,0,0,.72)",transition:"all .25s",pointerEvents:"none"}}></div>`
+      : html`<div style=${{position:"fixed",inset:0,background:"rgba(0,0,0,.72)"}}></div>`}
+    <div style=${{position:"fixed",left:tipX,width:tipW,...tipStyle,background:"#fff",color:"#0a0f20",borderRadius:16,padding:16,boxShadow:"0 10px 30px #0008",transition:"all .25s"}}>
+      <div style=${{fontSize:11,fontWeight:800,color:"#3b6fd8"}}>${i+1} DE ${pasos.length}</div>
+      <b style=${{fontSize:17,display:"block",marginTop:4}}>${p.t}</b>
+      <p style=${{fontSize:14,lineHeight:1.45,marginTop:6,color:"#3a4366"}}>${p.d}</p>
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:14,gap:8}}>
+        <button onClick=${onClose} style=${{background:"none",border:"none",color:"#8a91ab",fontSize:14,padding:"8px 0",cursor:"pointer",fontFamily:"inherit"}}>${ult?"":"Saltar"}</button>
+        <div style=${{display:"flex",gap:8}}>
+          ${i>0 && html`<button onClick=${()=>setI(i-1)} style=${{background:"#eef1f8",color:"#3a4366",border:"none",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>Atrás</button>`}
+          <button onClick=${()=>ult?onClose():setI(i+1)} style=${{background:"#3b6fd8",color:"#fff",border:"none",borderRadius:10,padding:"10px 16px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>${ult?"¡Listo!":"Siguiente"}</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
 // ── Main App ──
 function App() {
   const [apuestas,setApuestas] = useState([]);
@@ -590,6 +667,10 @@ function App() {
   const [shareMejor,setShareMejor] = useState(true);
   const [shareImg,setShareImg] = useState(null);
   const shareFile = useRef(null);
+  const [verTutorial,setVerTutorial] = useState(false);
+  const [verRecorrido,setVerRecorrido] = useState(false);
+  const [faqAbierta,setFaqAbierta] = useState(null);
+  const [faqBusca,setFaqBusca] = useState("");
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
@@ -903,6 +984,31 @@ function App() {
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
   const chipTxt = !user ? "Entrar" : bankrollMes>0 ? (ocultar?"Bank ✎":fmt(bankrollMes+stats.neto)+" ✎") : "Poner bank ＋";
   const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
+  const pasosRecorrido = [
+    {id:"t-chip", t:"Tu bank 💰", d:user?"Tócalo para poner o cambiar tu bank del mes. Con él se calculan tus pesos en cada pick.":"Toca aquí para entrar con Google y poner tu propio bank."},
+    {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Con ‹ › cambias de mes; abajo ves acierto, racha, número de picks y momio promedio."},
+    {id:"t-forma", t:"Forma reciente", d:"Tus últimos 10 picks terminados: ✓ ganado, ✕ perdido. El más nuevo va a la derecha."},
+    {id:"t-picks", t:"Los picks", d:"La franja de color es el resultado y a la derecha va el momio. Toca una tarjeta para ver monto, retorno y detalle."},
+    ...(isAdmin?[{id:"t-tab-plus", t:"Nuevo pick", d:"Con el ＋ agregas un pick nuevo y les llega aviso a todos."}]:[]),
+    {id:"t-tab-cal", t:"Calendario", d:"Tus resultados día por día. Verde ganó, rojo perdió; toca un día para ver sus picks."},
+    {id:"t-tab-anual", t:"Anual", d:"Cómo vas en el año: balance por mes y por deporte."},
+    {id:"t-tab-mas", t:"Más", d:"Tu bank, compartir tu mes, tema de colores, ocultar montos, notificaciones y esta ayuda."},
+  ].filter(x=>document.getElementById(x.id)||vista!=="inicio");
+  const iniciarRecorrido = () => { irA("inicio"); setTimeout(()=>setVerRecorrido(true),120); };
+  const FAQ = [
+    ["🎯","¿Qué es AlexPicks?","Una app para seguir los picks de Alex y llevar la cuenta de lo que ganas tú con ellos, usando tu propio bank."],
+    ["💰","¿Qué es el bank?","Es el dinero que apartas para apostar en el mes. Lo pones tocando el saldo de arriba en Inicio o en Más → Bank. Cada mes tiene su propio bank; solo tú lo ves."],
+    ["📊","¿Qué significa el %?","Es la parte de tu bank que se sugiere apostar en ese pick. Con un bank de $10,000: 1% = $100, 3% = $300, 5% = $500."],
+    ["🧮","¿Cómo se calcula lo que gano?","Monto apostado × (momio decimal − 1). Ejemplo: $300 a +150 (2.50) gana $450. Si pierde, se resta lo apostado. Una nula no suma ni resta."],
+    ["📅","¿Qué es el día de inicio?","Si empezaste a seguir los picks a mitad de mes, eliges desde qué día cuentan. Los picks de antes se ven en gris y no suman a tus resultados."],
+    ["❔","¿Qué pasa si no pongo bank en un mes?","Verás montos estimados con tu bank de otro mes, pero ese mes no suma a tu resultado anual hasta que pongas su bank."],
+    ["🎲","¿Cómo leo el momio?","Americano: −110 significa apostar $110 para ganar $100; +150 significa ganar $150 por cada $100. En Más puedes cambiar a decimal (1.91, 2.50)."],
+    ["🎨","¿Qué significan los colores?","Verde = ganado, rojo = perdido, gris = pendiente, amarillo = nula. En el calendario cada día toma el color de cómo te fue."],
+    ["🔔","¿Cómo recibo avisos de picks nuevos?","Instala la app ntfy y suscríbete al tema de AlexPicks. En Más → Notificaciones están los pasos y el tema para copiar.","notis"],
+    ["📲","¿Cómo la instalo como app?","En iPhone: Compartir ⬆︎ → Agregar a pantalla de inicio. En Android: menú ⋮ → Instalar app.","instalar"],
+    ["🙈","¿Puedo ocultar mis montos o cambiar colores?","Sí. En Más activa “Ocultar montos” para ver solo porcentajes y elige un Tema de colores. Se guarda en tu cuenta."],
+    ["🔒","¿Los demás ven mi bank?","No. Tu bank, tu día de inicio y tus preferencias solo los ves tú. Los picks sí son los mismos para todos."],
+  ];
   const compartirImagen = () => {
     const f = shareFile.current;
     if(f && navigator.canShare && navigator.canShare({files:[f]})){
@@ -924,10 +1030,10 @@ function App() {
 
       <!-- INICIO -->
       ${vista==="inicio" && html`<div>
-        <div style=${S.hero}>
+        <div id="t-hero" style=${S.hero}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <b style=${{fontSize:19,letterSpacing:.3,color:"#fff"}}>ALEX<span style=${{color:"var(--ac2)"}}>PICKS</span></b>
-            <button onClick=${tocarChip} style=${S.chip}>${chipTxt}</button>
+            <button id="t-chip" onClick=${tocarChip} style=${S.chip}>${chipTxt}</button>
           </div>
           <div style=${{display:"flex",alignItems:"center",gap:6,marginTop:14}}>
             <button onClick=${prevMes} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes anterior">‹</button>
@@ -956,13 +1062,14 @@ function App() {
           <b style=${{color:"#f5c842",fontSize:16,whiteSpace:"nowrap"}}>${fmt(bankrollMes+simNeto)}</b>
         </div>`}
 
-        ${formaReciente.length>0 && html`<div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,margin:"4px 2px 4px",flexWrap:"wrap"}}>
+        ${formaReciente.length>0 && html`<div id="t-forma" style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,margin:"4px 2px 4px",flexWrap:"wrap"}}>
           <span style=${{fontSize:11,color:"var(--mu)",fontWeight:700,letterSpacing:.5}}>FORMA RECIENTE</span>
           <div style=${{display:"flex",gap:4}}>
             ${formaReciente.map((a,i)=>html`<span key=${i} title=${a.descripcion} style=${{width:24,height:24,borderRadius:"50%",background:a.resultado==="Ganada"?"#2fe0a0":"#ff5d7a",color:"#06101f",fontSize:12,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>${a.resultado==="Ganada"?"✓":"✕"}</span>`)}
           </div>
         </div>`}
 
+        <div id="t-picks">
         <div style=${S.secHead}>
           <b style=${{fontSize:18,color:"#fff"}}>Picks de ${MESES[mesSeleccionado].toLowerCase()}</b>
           <span style=${S.badge}>${apuestasMesTodas.length}</span>
@@ -970,6 +1077,7 @@ function App() {
         ${apuestasMesTodas.length===0
           ? html`<div style=${S.empty}>No hay picks este mes.${isAdmin?html`<br/>Toca ＋ para agregar el primero.`:""}</div>`
           : renderLista(false)}
+        </div>
       </div>`}
 
       <!-- CALENDARIO -->
@@ -1055,6 +1163,36 @@ function App() {
           </button>
           ${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}
         </div>`}
+      </div>`}
+
+      <!-- CÓMO FUNCIONA -->
+      ${vista==="ayuda" && html`<div>
+        <div style=${{display:"flex",alignItems:"center",gap:8,margin:"6px 0 14px"}}>
+          <button onClick=${()=>irA("mas")} style=${{...S.sqBtn,width:42,height:42}} aria-label="Regresar">‹</button>
+          <h1 style=${{...S.pageTitle,fontSize:22}}>Cómo funciona</h1>
+        </div>
+        <div style=${{display:"flex",gap:10,marginBottom:16}}>
+          <button onClick=${()=>setVerTutorial(true)} style=${{flex:1,background:"linear-gradient(135deg,var(--g1),var(--g2))",border:"none",borderRadius:16,padding:"14px 12px",color:"#fff",textAlign:"left",cursor:"pointer",fontFamily:"inherit",minHeight:92}}>
+            <div style=${{fontSize:26}}>▶️</div><b style=${{fontSize:15,display:"block",marginTop:6}}>Ver tutorial</b><span style=${{fontSize:12,opacity:.85}}>5 pasos rápidos</span>
+          </button>
+          <button onClick=${iniciarRecorrido} style=${{flex:1,background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:"14px 12px",color:"#fff",textAlign:"left",cursor:"pointer",fontFamily:"inherit",minHeight:92}}>
+            <div style=${{fontSize:26}}>🧭</div><b style=${{fontSize:15,display:"block",marginTop:6}}>Recorrido</b><span style=${{fontSize:12,color:"var(--mu)"}}>Te enseña cada parte</span>
+          </button>
+        </div>
+        <input value=${faqBusca} onInput=${e=>{setFaqBusca(e.target.value);setFaqAbierta(null);}} placeholder="🔍 Buscar una duda…"
+          style=${{...S.input,background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:"12px 14px",fontSize:15,marginBottom:12}}/>
+        ${(()=>{ const q=faqBusca.trim().toLowerCase(); const lista=FAQ.map((f,i)=>[f,i]).filter(([f])=>!q||(f[1]+" "+f[2]).toLowerCase().includes(q));
+          if(!lista.length) return html`<div style=${S.empty}>No encontré esa duda.<br/>Pregúntale directo a Alex.</div>`;
+          return lista.map(([[ic,t,d,acc],i])=>{ const on=faqAbierta===i||(q&&lista.length===1); return html`<div key=${i} style=${{background:"var(--card)",border:"1px solid "+(on?"var(--ac)":"var(--br)"),borderRadius:16,marginBottom:9,overflow:"hidden"}}>
+            <button onClick=${()=>setFaqAbierta(on?null:i)} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,width:"100%",background:"none",border:"none",color:"#fff",padding:"14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",minHeight:52}}>
+              <b style=${{fontSize:15}}>${ic} ${t}</b><span style=${{color:on?"var(--ac)":"var(--mu)",fontSize:20,flexShrink:0}}>${on?"−":"+"}</span>
+            </button>
+            ${on && html`<div style=${{padding:"0 14px 14px",fontSize:14,color:"var(--mu)",lineHeight:1.55}}>
+              ${d}
+              ${acc==="notis" && html`<button onClick=${()=>setNotisGuia(true)} style=${{...S.btnPrimary,display:"block",marginTop:10,minHeight:42}}>Ver pasos de notificaciones</button>`}
+              ${acc==="instalar" && !yaInstalada && html`<button onClick=${instalarApp} style=${{...S.btnPrimary,display:"block",marginTop:10,minHeight:42}}>Instalar ahora</button>`}
+            </div>`}
+          </div>`; }); })()}
       </div>`}
 
       <!-- COMPARTIR -->
@@ -1175,6 +1313,12 @@ function App() {
           </div>
         </div>
 
+        <button onClick=${()=>{ setFaqBusca(""); setFaqAbierta(null); irA("ayuda"); }} style=${S.row}>
+          <span style=${{fontSize:24}}>💡</span>
+          <div style=${{flex:1}}><b style=${{fontSize:15}}>Cómo funciona</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Tutorial, recorrido y preguntas frecuentes</div></div>
+          <span style=${{color:"var(--mu3)",fontSize:18}}>›</span>
+        </button>
+
         <button onClick=${()=>setNotisGuia(true)} style=${S.row}>
           <span style=${{fontSize:24}}>🔔</span>
           <div style=${{flex:1}}><b style=${{fontSize:15}}>Notificaciones</b><div style=${{fontSize:12,color:"var(--mu)",marginTop:3}}>Aviso en tu celular con cada pick nuevo</div></div>
@@ -1193,10 +1337,10 @@ function App() {
     <nav className="tabbar">
       <div className="tabbar-in">
         <button className=${vista==="inicio"?"on":""} onClick=${()=>irA("inicio")}><span className="ic">🏠</span>Inicio</button>
-        <button className=${vista==="calendario"?"on":""} onClick=${()=>irA("calendario")}><span className="ic">📅</span>Calendario</button>
-        ${isAdmin && html`<button className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">＋</button>`}
-        <button className=${vista==="anual"?"on":""} onClick=${()=>irA("anual")}><span className="ic">📊</span>Anual</button>
-        <button className=${vista==="mas"||vista==="compartir"?"on":""} onClick=${()=>irA("mas")}><span className="ic">☰</span>Más</button>
+        <button id="t-tab-cal" className=${vista==="calendario"?"on":""} onClick=${()=>irA("calendario")}><span className="ic">📅</span>Calendario</button>
+        ${isAdmin && html`<button id="t-tab-plus" className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">＋</button>`}
+        <button id="t-tab-anual" className=${vista==="anual"?"on":""} onClick=${()=>irA("anual")}><span className="ic">📊</span>Anual</button>
+        <button id="t-tab-mas" className=${vista==="mas"||vista==="compartir"||vista==="ayuda"?"on":""} onClick=${()=>irA("mas")}><span className="ic">☰</span>Más</button>
       </div>
     </nav>
 
@@ -1208,6 +1352,9 @@ function App() {
         <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Entendido</button>
       </div>
     </div>`}
+
+    ${verTutorial && html`<${Tutorial} onClose=${()=>setVerTutorial(false)}/>`}
+    ${verRecorrido && html`<${Recorrido} pasos=${pasosRecorrido} onClose=${()=>setVerRecorrido(false)}/>`}
 
     ${notisGuia && html`<div style=${S.overlay} onClick=${()=>setNotisGuia(false)}>
       <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
