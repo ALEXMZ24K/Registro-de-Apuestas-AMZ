@@ -1046,7 +1046,7 @@ function App() {
       const r = await fetch(IA_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
         body:JSON.stringify({image,mediaType:"image/jpeg",hoy:new Date().toLocaleDateString("en-CA")})});
       const d = await r.json().catch(()=>({}));
-      if(!r.ok || !d.apuesta) throw new Error(d.error||"No se pudo leer el boleto");
+      if(!r.ok || !d.apuesta) throw new Error((d.error||"No se pudo leer el boleto")+(d.detalle?" — "+d.detalle:"")+" ("+r.status+")");
       const b = d.apuesta;
       const esCombo = b.tipo==="Parlay/Combinada"||b.tipo==="Freebet";
       const patas = esCombo && b.patas && b.patas.length ? b.patas.map(p=>({deporte:DEPORTES.includes(p.deporte)?p.deporte:"",desc:p.desc||""})) : [{deporte:"",desc:""},{deporte:"",desc:""}];
