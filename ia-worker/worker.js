@@ -121,7 +121,10 @@ async function rutasPush(request, env, origin, ruta) {
     let host = ""; try { host = new URL(sub.endpoint).hostname; } catch { }
     if (!sub || !sub.keys || !sub.keys.p256dh || !sub.keys.auth || !PUSH_HOSTS.some(r => r.test(host))) return json({ error: "Suscripción inválida" }, 400, origin);
     const tipos = { picks: body.tipos?.picks !== false, resultados: body.tipos?.resultados !== false };
-    await env.PUSH.put("s:" + await sha256hex(sub.endpoint), JSON.stringify({ sub: { endpoint: sub.endpoint, keys: sub.keys }, tipos, t: Date.now() }));
+    // Perfil para personalizar los avisos de resultado (bank por mes, día de inicio y picks que no metió)
+    const pf = body.perfil || {};
+    const perfil = { admin: !!pf.admin, bancos: pf.bancos && typeof pf.bancos === "object" ? pf.bancos : {}, inicios: pf.inicios && typeof pf.inicios === "object" ? pf.inicios : {}, noMet: Array.isArray(pf.noMet) ? pf.noMet.slice(-500).map(String) : [] };
+    await env.PUSH.put("s:" + await sha256hex(sub.endpoint), JSON.stringify({ sub: { endpoint: sub.endpoint, keys: sub.keys }, tipos, perfil, t: Date.now() }));
     return json({ ok: true }, 200, origin);
   }
   if (ruta === "/desuscribir") {
@@ -130,7 +133,27 @@ async function rutasPush(request, env, origin, ruta) {
   }
   if (ruta === "/notificar") {
     if (!(await emailAdmin(request))) return json({ error: "Solo los admins pueden notificar" }, 403, origin);
-    const { tipo = "picks", title = "AlexPicks", body: texto = "", url = "./", tag } = body;
+    const { tipo = "picks", title = "AlexPicks", body: texto = "", url = "./", tag, apuesta, bankAdmin } = body;
+    // Mensaje personalizado con el dinero de cada quien (solo resultados)
+    const pesos = n => "$" + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const textoPara = reg => {
+      if (tipo !== "resultados" || !apuesta) return texto;
+      const pf = reg.perfil || {};
+      const [yy, mm] = String(apuesta.fecha || "").split("-").map(Number);
+      const clave = yy + "-" + (mm - 1);
+      const desc = apuesta.descripcion || "";
+      if (pf.noMet && pf.noMet.includes(String(apuesta.id))) return desc + " · (no la metiste)";
+      const ini = pf.inicios && pf.inicios[clave];
+      if (ini && String(apuesta.fecha) < ini) return texto;
+      const bank = Number((pf.admin ? (bankAdmin || {}) : (pf.bancos || {}))[clave]) || 0;
+      if (!(bank > 0)) return texto;
+      const monto = bank * (Number(apuesta.monto) || 0) / 100;
+      const c = Number(apuesta.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
+      if (apuesta.resultado === "Ganada") return desc + " · Ganaste +" + pesos(monto * (dec - 1));
+      if (apuesta.resultado === "Perdida") return desc + " · Perdiste -" + pesos(monto);
+      if (apuesta.resultado === "Nula") return desc + " · Se te devuelven " + pesos(monto);
+      return texto;
+    };
     const v = await llavesVapid(env);
     let cursor, claves = [];
     do { const l = await env.PUSH.list({ prefix: "s:", cursor }); claves.push(...l.keys.map(k => k.name)); cursor = l.list_complete ? null : l.cursor; } while (cursor);
@@ -138,7 +161,7 @@ async function rutasPush(request, env, origin, ruta) {
     await Promise.all(claves.map(async k => {
       const reg = await env.PUSH.get(k, "json"); if (!reg || reg.tipos?.[tipo] === false) return;
       try {
-        const r = await enviarPush(v, reg.sub, { title, body: texto, url, tag });
+        const r = await enviarPush(v, reg.sub, { title, body: textoPara(reg), url, tag });
         if (r.status === 404 || r.status === 410) { await env.PUSH.delete(k); borrados++; }
         else if (r.ok) enviados++; else fallidos++;
       } catch { fallidos++; }

@@ -158,18 +158,18 @@ const auth = firebase.auth();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 
 // Notificación push propia de la app (vía el Worker de Cloudflare; solo admins pueden enviar)
-async function pushNotificar(tipo, title, body, tag) {
+async function pushNotificar(tipo, title, body, tag, extra) {
   try {
     if(!auth.currentUser) return;
     const idToken = await auth.currentUser.getIdToken();
     await fetch(IA_URL+"/notificar",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
-      body:JSON.stringify({tipo,title,body,tag,url:"./"})});
+      body:JSON.stringify({tipo,title,body,tag,url:"./",...(extra||{})})});
   } catch(e) { console.log("Push error:", e); }
 }
 // Suscribir / desuscribir este celular a las notificaciones push
 const b64uABytes = s => { s=s.replace(/-/g,"+").replace(/_/g,"/"); s+="=".repeat((4-s.length%4)%4); const r=atob(s); return Uint8Array.from(r,c=>c.charCodeAt(0)); };
 const pushSoportado = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-async function pushSuscribir(tipos) {
+async function pushSuscribir(tipos, perfil) {
   if(!pushSoportado()) throw new Error("NOSOP");
   const perm = await Notification.requestPermission();
   if(perm!=="granted") throw new Error("PERM");
@@ -179,9 +179,19 @@ async function pushSuscribir(tipos) {
     const r = await fetch(IA_URL+"/vapid"); const {publicKey} = await r.json();
     sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64uABytes(publicKey)});
   }
-  const r2 = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos})});
+  const r2 = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos,perfil})});
   if(!r2.ok) throw new Error("SERV");
+  try{ localStorage.setItem("pushPerfil",JSON.stringify(perfil||{})); }catch(e){}
   return true;
+}
+// Actualiza el perfil (bank, inicio, no metidas) de la suscripción existente, sin pedir permisos
+async function pushActualizar(tipos, perfil) {
+  try{
+    if(!pushSoportado() || Notification.permission!=="granted") return;
+    const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if(!sub) return;
+    const r = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos,perfil})});
+    if(r.ok) localStorage.setItem("pushPerfil",JSON.stringify(perfil||{}));
+  }catch(e){}
 }
 async function pushDesuscribir() {
   try{
@@ -1046,6 +1056,16 @@ function App() {
     const {y,m}=parseFecha(a.fecha); return m===mesSeleccionado&&y===anoSeleccionado;
   }),[apuestas,mesSeleccionado,anoSeleccionado]);
   const dep = [usaBankPropio,bankrollsUser,iniciosUser,bankrolls,noMetidas];
+  // Perfil que se le pasa a las notificaciones para que el aviso de resultado diga el dinero de cada quien
+  const perfilPush = isAdmin ? {admin:true} : usaBankPropio ? {bancos:bankrollsUser, inicios:iniciosUser, noMet:Object.keys(noMetidas)} : {};
+  const perfilPushTxt = JSON.stringify(perfilPush);
+  useEffect(()=>{
+    if(!pushOn) return;
+    let prev = ""; try{ prev = localStorage.getItem("pushPerfil")||""; }catch(e){}
+    if(prev===perfilPushTxt) return;
+    const t = setTimeout(()=>pushActualizar(pushTipos, perfilPush), 1500);
+    return ()=>clearTimeout(t);
+  },[pushOn, perfilPushTxt]);
   const apuestasMesLista = useMemo(()=>apuestasMesTodas.filter(cuentaAp),[apuestasMesTodas,...dep,noMetidas]);
   const apuestasMes = useMemo(()=>apuestasMesLista.filter(a=>!noMet(a)),[apuestasMesLista,noMetidas]);
   const noMetidasMes = apuestasMesLista.length - apuestasMes.length;
@@ -1268,7 +1288,8 @@ function App() {
         : -m;
       const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
       const pctRes = resultado==="Ganada" ? "+"+(Number(ap.monto||0)*(momioToDec(ap.cuota)-1)).toFixed(1)+"% del bank" : resultado==="Nula" ? "Se devuelve lo apostado" : "-"+Number(ap.monto||0)+"% del bank";
-      pushNotificar("resultados", emoji+" "+(resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id);
+      pushNotificar("resultados", emoji+" "+(resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id,
+        {apuesta:{id:ap.id, monto:ap.monto, cuota:ap.cuota, fecha:ap.fecha, resultado, descripcion:ap.descripcion}, bankAdmin:bankrolls});
     }
   };
 
@@ -1368,7 +1389,7 @@ function App() {
   const errPush = e => e.message==="PERM" ? "No diste permiso. Actívalo en Ajustes del celular → Notificaciones → AlexPicks (o en el navegador)." : e.message==="NOSOP" ? "Este navegador no soporta notificaciones." : "No se pudo conectar. Intenta de nuevo en un momento.";
   const activarPush = async (tipos=pushTipos) => {
     setPushEstado({cargando:true,msg:""});
-    try{ await pushSuscribir(tipos); setPushOn(true); try{ localStorage.setItem("pushTipos",JSON.stringify(tipos)); }catch(e){} setPushEstado({cargando:false,msg:"✅ ¡Listo! Te llegarán avisos en este celular."}); }
+    try{ await pushSuscribir(tipos, perfilPush); setPushOn(true); try{ localStorage.setItem("pushTipos",JSON.stringify(tipos)); }catch(e){} setPushEstado({cargando:false,msg:"✅ ¡Listo! Te llegarán avisos en este celular."}); }
     catch(e){ setPushEstado({cargando:false,msg:"⚠️ "+errPush(e)}); }
   };
   const desactivarPush = async () => { setPushEstado({cargando:true,msg:""}); await pushDesuscribir(); setPushOn(false); setPushEstado({cargando:false,msg:"Notificaciones desactivadas en este celular."}); };
