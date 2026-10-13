@@ -64,6 +64,16 @@
     @keyframes vistaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .vista-anim{animation:vistaIn .22s ease-out}
     @media(prefers-reduced-motion:reduce){.vista-anim{animation:none}}
+    /* Al cambiar de mes: lo de abajo entra suave, tarjeta por tarjeta */
+    @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+    .entrar>*,.entrar #t-picks>*{animation:cardIn .4s cubic-bezier(.2,.8,.2,1) both}
+    .entrar>*:nth-child(2),.entrar #t-picks>*:nth-child(2){animation-delay:.04s}
+    .entrar>*:nth-child(3),.entrar #t-picks>*:nth-child(3){animation-delay:.08s}
+    .entrar>*:nth-child(4),.entrar #t-picks>*:nth-child(4){animation-delay:.12s}
+    .entrar #t-picks>*:nth-child(5){animation-delay:.16s}
+    .entrar #t-picks>*:nth-child(6){animation-delay:.2s}
+    .entrar #t-picks>*:nth-child(n+7){animation-delay:.24s}
+    @media(prefers-reduced-motion:reduce){.entrar>*,.entrar #t-picks>*{animation:none}}
     .nueva-spacer{height:calc(112px + env(safe-area-inset-bottom))}
     /* Mobile (≤600px) */
     @media(max-width:600px){
@@ -444,6 +454,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
       <h1 style=${S.pageTitle}>Calendario</h1>
       <button onClick=${onHoy} style=${S.pillBtn}>Hoy</button>
     </div>
+    <div data-swipe-mover>
     <div style=${S.monthRow}>
       <button style=${S.sqBtn} onClick=${onPrev} aria-label="Mes anterior">‹</button>
       <b style=${{fontSize:18,color:"#fff"}}>${MESES[mes]} ${ano}</b>
@@ -472,6 +483,8 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
         </button>`;
       })}
     </div>
+    </div>
+    <div data-swipe-fade>
     <div style=${{display:"flex",justifyContent:"center",gap:16,fontSize:12,color:"var(--mu)",marginTop:12,flexWrap:"wrap"}}>
       <span><span style=${{color:"#2fe0a0"}}>●</span> Ganó</span>
       <span><span style=${{color:"#ff5d7a"}}>●</span> Perdió</span>
@@ -483,6 +496,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
         <div key=${l} style=${{flex:1,background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:"11px 6px",textAlign:"center"}}>
           <b style=${{fontSize:16,color:c}}>${v}</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:3}}>${l}</div>
         </div>`)}
+    </div>
     </div>
     ${sel && html`<div data-noswipe style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setSel(null)}>
       <div onClick=${e=>e.stopPropagation()} style=${{background:"var(--card2)",borderTop:"1px solid var(--br2)",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"75vh",overflowY:"auto",padding:"10px 16px calc(20px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
@@ -1011,7 +1025,10 @@ function App() {
   const irA = v => { setVistaActual(v); window.scrollTo(0,0); };
   // Deslizar de lado en Inicio y Calendario para cambiar de mes (la pantalla sigue al dedo)
   const reducirMov = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const moverA = (x,op,ms) => { const el=contenido.current; if(!el) return; el.style.transition = ms?`transform ${ms}ms ease-out, opacity ${ms}ms ease-out`:"none"; el.style.transform = x?`translateX(${x}px)`:""; el.style.opacity = op===1?"":String(op); };
+  const partes = () => { const c=contenido.current; if(!c) return {mov:null,fade:[]}; return {mov:c.querySelector("[data-swipe-mover]")||c, fade:[...c.querySelectorAll("[data-swipe-fade]")]}; };
+  const estilo = (el,x,op,ms) => { if(!el) return; el.style.transition = ms?`transform ${ms}ms cubic-bezier(.2,.8,.2,1), opacity ${ms}ms ease-out`:"none"; el.style.transform = x?`translateX(${x}px)`:""; el.style.opacity = op===1?"":String(op); };
+  const moverA = (x,op,ms) => { const {mov,fade}=partes(); estilo(mov,x,op,ms); fade.forEach(f=>{ f.style.transition=ms?`opacity ${ms}ms ease-out`:"none"; f.style.opacity = x? String(Math.max(.55,1-Math.abs(x)/600)) : ""; }); };
+  const entrarSuave = () => { const {fade}=partes(); fade.forEach(f=>{ f.style.transition="none"; f.style.opacity=""; f.classList.remove("entrar"); void f.offsetWidth; f.classList.add("entrar"); setTimeout(()=>f.classList.remove("entrar"),900); }); };
   const swipeIni = e => {
     swipe.current = null;
     if(vista!=="inicio" && vista!=="calendario") return;
@@ -1033,14 +1050,23 @@ function App() {
     if(!s0 || s0.modo!=="h") return;
     const dx = s0.dx, rapido = Math.abs(dx)/(Date.now()-s0.t) > 0.5;
     if(Math.abs(dx)<70 && !(rapido && Math.abs(dx)>30)){ moverA(0,1,180); return; }
-    const sig = dx<0, w = window.innerWidth;
+    mesAnimado(dx<0);
+  };
+  // Cambiar de mes con animación (deslizar o flechas): el cuadro de arriba sale de lado y lo de abajo entra suave
+  const mesAnimado = sig => {
+    const w = window.innerWidth;
     if(reducirMov()){ sig?nextMes():prevMes(); moverA(0,1,0); return; }
-    moverA(sig?-w:w, 0, 160);
+    const {mov,fade} = partes();
+    estilo(mov, sig?-w:w, 0, 170);
+    fade.forEach(f=>{ f.style.transition="opacity 150ms ease-out"; f.style.opacity="0"; });
     setTimeout(()=>{
       sig?nextMes():prevMes();
-      moverA(sig?w*0.35:-w*0.35, 0, 0);
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{ moverA(0,1,220); setTimeout(()=>moverA(0,1,0),240); }));
-    },160);
+      estilo(mov, sig?w*0.45:-w*0.45, 0, 0);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        estilo(mov,0,1,260); setTimeout(()=>estilo(mov,0,1,0),280);
+        entrarSuave();
+      }));
+    },170);
   };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
@@ -1111,15 +1137,15 @@ function App() {
 
       <!-- INICIO -->
       ${vista==="inicio" && html`<div>
-        <div id="t-hero" style=${S.hero}>
+        <div id="t-hero" data-swipe-mover style=${S.hero}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
             <b style=${{fontSize:19,letterSpacing:.3,color:"#fff"}}>ALEX<span style=${{color:"var(--ac2)"}}>PICKS</span></b>
             <button id="t-chip" onClick=${tocarChip} style=${S.chip}>${chipTxt}</button>
           </div>
           <div style=${{display:"flex",alignItems:"center",gap:6,marginTop:14}}>
-            <button onClick=${prevMes} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes anterior">‹</button>
+            <button onClick=${()=>mesAnimado(false)} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes anterior">‹</button>
             <span style=${{fontSize:12,opacity:.9,letterSpacing:.5,fontWeight:700}}>${sinBank?"RESULTADO":"GANANCIA"} DE ${MESES[mesSeleccionado].toUpperCase()}${anoSeleccionado!==new Date().getFullYear()?" "+anoSeleccionado:""}</span>
-            <button onClick=${nextMes} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes siguiente">›</button>
+            <button onClick=${()=>mesAnimado(true)} style=${{background:"none",border:"none",color:"#fff",fontSize:20,padding:"0 6px",cursor:"pointer",minHeight:32}} aria-label="Mes siguiente">›</button>
           </div>
           <div style=${{fontSize:38,fontWeight:900,letterSpacing:-1,color:"#fff",lineHeight:1.1,marginTop:2}}>
             ${ocultar ? html`<${Contador} valor=${stats.pct} formato=${fmtPct}/>` : html`<${Contador} valor=${stats.neto} formato=${n=>fmtSigno(Math.round(n)||0)}/>`}
@@ -1133,6 +1159,7 @@ function App() {
           </div>
         </div>
 
+        <div data-swipe-fade>
         ${sinBank && html`<div style=${{background:"var(--card)",border:"1px solid color-mix(in srgb,var(--ac) 33%,transparent)",borderRadius:16,padding:"12px 14px",marginBottom:12,fontSize:13,lineHeight:1.4,color:"#dfe5ff"}}>
           No registraste bank en ${MESES[mesSeleccionado]}. Los montos son estimados con tu bank de otro mes y no suman al anual.
           <button onClick=${abrirBankModal} style=${{...S.btnPrimary,width:"100%",marginTop:10,minHeight:44}}>Poner mi bank</button>
@@ -1159,11 +1186,12 @@ function App() {
           ? html`<div style=${S.empty}>No hay picks este mes.${isAdmin?html`<br/>Toca ＋ para agregar el primero.`:""}</div>`
           : renderLista(false)}
         </div>
+        </div>
       </div>`}
 
       <!-- CALENDARIO -->
       ${vista==="calendario" && html`<div>
-        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${prevMes} onNext=${nextMes} onHoy=${irHoy} renderAR=${renderAR}/>
+        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${()=>mesAnimado(false)} onNext=${()=>mesAnimado(true)} onHoy=${irHoy} renderAR=${renderAR}/>
         ${porDeporteMes.length>0 && html`<div style=${{marginTop:22}}>
           <${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>
           ${deporteFiltro && html`<div style=${{marginTop:-16,marginBottom:20}}>
