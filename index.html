@@ -378,6 +378,16 @@ function DeportesGrid({data,onSelect,selected}) {
   </div>`;
 }
 
+// Texto sin acentos y en minúsculas, para buscar
+const normTxt = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+// Resalta lo buscado dentro de un texto
+const marcar = (t, q) => {
+  t = String(t||""); if(!q) return t;
+  const nt = t.split("").map(c=>{ const n=normTxt(c); return n.length===1?n:c.toLowerCase(); }).join(""), nq = normTxt(q); const out = []; let i = 0, j;
+  if(nt.length!==t.length) return t;
+  while((j = nt.indexOf(nq, i)) !== -1 && nq){ if(j>i) out.push(t.slice(i,j)); out.push(html`<span style=${{background:"color-mix(in srgb,var(--ac) 35%,transparent)",borderRadius:4,padding:"0 2px",color:"#fff"}}>${t.slice(j,j+nq.length)}</span>`); i = j+nq.length; }
+  out.push(t.slice(i)); return out;
+};
 // Separa "pick" y "partido" de una descripción: usa el campo partido si existe; si no, lo intenta deducir
 const separarPick = a => {
   const d = String(a.descripcion||"").trim();
@@ -392,7 +402,7 @@ const separarPick = a => {
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
 
-function AR({a,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto}) {
+function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
   const show = open||expanded;
@@ -416,13 +426,13 @@ function AR({a,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g
       <div style=${{width:5,background:cr,flexShrink:0}}></div>
       <div style=${{flex:1,minWidth:0,padding:"12px 12px 12px 13px"}}>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
-          <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${titulo}</div>
+          <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${marcar(titulo,q)}</div>
           ${pend
             ? html`<div style=${{textAlign:"right",whiteSpace:"nowrap",lineHeight:"17px"}}><div style=${{fontSize:10,color:"var(--mu)",fontWeight:700}}>GANA</div><div style=${{color:"#bff5dc",fontWeight:800,fontSize:16}}>${OCULTAR?fmtPct(Number(a.monto||0)*(dec-1)):"+"+fmt(ganaria)}</div></div>`
             : html`<div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px",textDecoration:metida?"none":"line-through"}}>${montoTxt}</div>`}
         </div>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"var(--mu)"}}>
-          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${f.d} ${MESES_CORTO[f.m]}${subtitulo?" · "+subtitulo:""}</span>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${f.d} ${MESES_CORTO[f.m]}${subtitulo?" · ":""}${marcar(subtitulo,q)}</span>
           <span style=${{whiteSpace:"nowrap"}}>${pend ? "Apostado "+(OCULTAR?a.monto+"%":fmt(monto||0)) : a.monto+"% del bank"}</span>
         </div>
       </div>
@@ -852,6 +862,8 @@ function App() {
   const [faqBusca,setFaqBusca] = useState("");
   const [hojaMas,setHojaMas] = useState(null);
   const [infoDato,setInfoDato] = useState(null);
+  const [busca,setBusca] = useState("");
+  const [buscaTodo,setBuscaTodo] = useState(false);
   const [ia,setIa] = useState({estado:null,msg:""});
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
@@ -1064,6 +1076,18 @@ function App() {
     });
     return ()=>{ vivo=false; };
   },[vistaActual,temaKey,shareFmt,sharePesos,shareMejor,stats,bankrollMes,mesSeleccionado,anoSeleccionado,mejorPickMes,rachaActual,apuestasMes]);
+  // Buscador (pestaña Anual): por pick, partido, patas de parlay, deporte o tipo
+  const resultadosBusca = useMemo(()=>{
+    const q = normTxt(busca.trim());
+    if(!q) return {lista:[],grupos:[],stats:calcStats([],bankDe)};
+    const lista = apuestas.filter(cuentaAnual).filter(a=>buscaTodo||parseFecha(a.fecha).y===anoSeleccionado).filter(a=>{
+      const txt = [a.descripcion,a.partido,a.deporte,a.tipo,...(a.patas||[]).map(p=>typeof p==="object"?p.desc:p)].join(" ");
+      return normTxt(txt).includes(q);
+    }).sort((x,y)=>(y.fecha||"").localeCompare(x.fecha||"")||(Number(y.id)||0)-(Number(x.id)||0));
+    const grupos = [];
+    lista.forEach(a=>{ const {y,m}=parseFecha(a.fecha); const k=MESES[m]+(buscaTodo||y!==anoSeleccionado?" "+y:""); const g=grupos.find(x=>x[0]===k); if(g) g[1].push(a); else grupos.push([k,[a]]); });
+    return {lista, grupos, stats:calcStats(lista,bankDe)};
+  },[busca,buscaTodo,apuestas,anoSeleccionado,...dep]);
   const statsAnual = useMemo(()=>calcStats(apuestasAno,bankDe),[apuestasAno,...dep]);
 
   const momioPromedio = useMemo(()=>{
@@ -1095,7 +1119,7 @@ function App() {
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
+  const renderAR = (a,exp,q) => html`<${AR} key=${a.id} a=${a} q=${q} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
   const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMesLista.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
@@ -1492,6 +1516,38 @@ function App() {
             ${[[statsAnual.efectividad+"%","Acierto","acierto"],[statsAnual.ganadas+"-"+statsAnual.perdidas,"Récord","record"],[String(statsAnual.total),"Picks","picks"],[momioPromedio!==null?fmtMomio(momioPromedio):"—","Momio prom.","momio"]].map(([v,l,k])=>miniDato(v,l,k,"anual"))}
           </div>
         </div>
+        <div style=${{display:"flex",gap:8,alignItems:"center",margin:"2px 0 12px"}}>
+          <div style=${{flex:1,display:"flex",alignItems:"center",gap:8,background:"var(--card)",border:"1.5px solid "+(busca?"var(--ac)":"var(--br)"),borderRadius:14,padding:"0 12px"}}>
+            <span>🔍</span>
+            <input value=${busca} onInput=${e=>setBusca(e.target.value)} placeholder="Buscar equipo, jugador o pick…"
+              style=${{flex:1,minWidth:0,background:"none",border:"none",outline:"none",color:"#fff",fontSize:16,padding:"12px 0",fontFamily:"inherit"}}/>
+            ${busca && html`<button onClick=${()=>setBusca("")} style=${{background:"none",border:"none",color:"var(--mu)",fontSize:18,cursor:"pointer",padding:4}} aria-label="Borrar">✕</button>`}
+          </div>
+          ${busca && html`<button onClick=${()=>setBusca("")} style=${{background:"none",border:"none",color:"var(--ac)",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>Cancelar</button>`}
+        </div>
+        ${busca.trim() ? (()=>{ const r=resultadosBusca; const st=r.stats;
+          return html`<div>
+            <div style=${{display:"flex",gap:6,marginBottom:12}}>
+              ${[[false,String(anoSeleccionado)],[true,"Todo"]].map(([v,l])=>html`<button key=${l} onClick=${()=>setBuscaTodo(v)} style=${{padding:"7px 14px",borderRadius:12,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:buscaTodo===v?"var(--ac)":"var(--card)",color:buscaTodo===v?"var(--onac)":"var(--mu)",border:"1px solid var(--br)"}}>${l}</button>`)}
+            </div>
+            ${r.lista.length===0
+              ? html`<div style=${S.empty}>No encontré picks con “${busca.trim()}”${buscaTodo?"":" en "+anoSeleccionado}.${!buscaTodo?html`<br/><button onClick=${()=>setBuscaTodo(true)} style=${{...S.pillBtn,marginTop:10}}>Buscar en todo</button>`:""}</div>`
+              : html`<div>
+                <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:"12px 14px",marginBottom:14}}>
+                  <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+                    <b style=${{fontSize:16,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔍 “${busca.trim()}”</b>
+                    <b style=${{fontSize:18,whiteSpace:"nowrap",color:(ocultar?st.pct:st.neto)>=0?"#2fe0a0":"#ff5d7a"}}>${ocultar?fmtPct(st.pct):fmtSigno(st.neto)}</b>
+                  </div>
+                  <div style=${{display:"flex",gap:6,marginTop:10}}>
+                    ${[[st.total,"Picks","#fff"],[st.ganadas+" ✓","Ganados","#2fe0a0"],[st.perdidas+" ✕","Perdidos","#ff5d7a"],[st.efectividad+"%","Acierto","#fff"]].map(([v,l,c])=>html`<div key=${l} style=${{flex:1,background:"color-mix(in srgb,var(--bg) 55%,transparent)",borderRadius:10,padding:"8px 4px",textAlign:"center"}}><b style=${{fontSize:15,color:c}}>${v}</b><div style=${{fontSize:10,color:"var(--mu)",marginTop:2}}>${l}</div></div>`)}
+                  </div>
+                </div>
+                ${r.grupos.map(([k,arr])=>html`<div key=${k}>
+                  <div style=${{fontSize:11,color:"var(--mu)",fontWeight:800,letterSpacing:.8,margin:"6px 2px 8px",textTransform:"uppercase"}}>${k}</div>
+                  ${arr.map(a=>renderAR(a,false,busca.trim()))}
+                </div>`)}
+              </div>`}
+          </div>`; })() : html`<div>
         <div style=${S.section}>
           <h2 style=${S.secTitle}>Balance por mes</h2>
           <div style=${S.chartCard}>
@@ -1541,6 +1597,7 @@ function App() {
             <span style=${{color:"var(--ac)",fontWeight:700}}>${verTodasAno?"Ocultar":"Ver"}</span>
           </button>
           ${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}
+        </div>`}
         </div>`}
       </div>`}
 
