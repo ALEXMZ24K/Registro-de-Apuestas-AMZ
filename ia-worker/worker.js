@@ -1,7 +1,10 @@
-// AlexPicks · Lector de boletos con IA (Cloudflare Worker)
-// Recibe la foto de un boleto, verifica que quien la manda sea admin de AlexPicks
-// y le pide a Claude que extraiga los datos de la apuesta.
-// La clave de Anthropic vive SOLO como secreto ANTHROPIC_API_KEY en Cloudflare.
+// AlexPicks · Cloudflare Worker
+//  POST /            → Lee la foto de un boleto con IA (solo admins). Secreto: ANTHROPIC_API_KEY
+//  GET  /vapid       → Llave pública para notificaciones push
+//  POST /suscribir   → Guarda la suscripción push de un celular (KV "PUSH")
+//  POST /desuscribir → La borra
+//  POST /notificar   → Envía una notificación a todos los suscritos (solo admins)
+// Las suscripciones y las llaves de notificación viven en el KV vinculado como PUSH.
 
 const ORIGENES = ["https://alexmz24k.github.io"];
 const ADMINS = ["alexitozenil@gmail.com", "prokiller548@gmail.com"];
@@ -13,7 +16,7 @@ const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Es
 
 const cors = origin => ({
   "Access-Control-Allow-Origin": ORIGENES.includes(origin) ? origin : ORIGENES[0],
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Vary": "Origin",
 });
@@ -43,23 +46,120 @@ const HERRAMIENTA = {
   },
 };
 
+// ── Utilidades ──
+const te = new TextEncoder();
+const b64u = buf => { const b = new Uint8Array(buf); let s = ""; for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const deB64u = s => { s = String(s).replace(/-/g, "+").replace(/_/g, "/"); s += "=".repeat((4 - s.length % 4) % 4); const r = atob(s); const u = new Uint8Array(r.length); for (let i = 0; i < r.length; i++) u[i] = r.charCodeAt(i); return u; };
+const unir = (...arrs) => { const n = arrs.reduce((t, a) => t + a.length, 0); const o = new Uint8Array(n); let i = 0; for (const a of arrs) { o.set(a, i); i += a.length; } return o; };
+const sha256hex = async t => [...new Uint8Array(await crypto.subtle.digest("SHA-256", te.encode(t)))].map(b => b.toString(16).padStart(2, "0")).join("");
+
+// ¿Quien llama es admin? (sesión de Google de la app)
+async function emailAdmin(request) {
+  const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  const look = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: token }),
+  });
+  const quien = look.ok ? await look.json() : null;
+  const email = ((quien && quien.users && quien.users[0] && quien.users[0].email) || "").toLowerCase();
+  return ADMINS.includes(email) ? email : null;
+}
+
+// ── Web Push (RFC 8291 aes128gcm + VAPID RFC 8292) ──
+const VAPID_SUB = "https://alexmz24k.github.io/Registro-de-Apuestas-AMZ/";
+async function llavesVapid(env) {
+  let v = await env.PUSH.get("_vapid", "json");
+  if (!v) {
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    v = { publicKey: b64u(await crypto.subtle.exportKey("raw", kp.publicKey)), jwk: await crypto.subtle.exportKey("jwk", kp.privateKey) };
+    await env.PUSH.put("_vapid", JSON.stringify(v));
+  }
+  return v;
+}
+async function jwtVapid(v, aud) {
+  const enc = o => b64u(te.encode(JSON.stringify(o)));
+  const sinFirma = enc({ typ: "JWT", alg: "ES256" }) + "." + enc({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: VAPID_SUB });
+  const key = await crypto.subtle.importKey("jwk", v.jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const firma = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, te.encode(sinFirma));
+  return sinFirma + "." + b64u(firma);
+}
+async function hkdf(salt, ikm, info, len) {
+  const k = await crypto.subtle.importKey("raw", ikm, "HKDF", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt, info }, k, len * 8));
+}
+async function cifrarPush(sub, texto) {
+  const uaPub = deB64u(sub.keys.p256dh), auth = deB64u(sub.keys.auth);
+  const as = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+  const asPub = new Uint8Array(await crypto.subtle.exportKey("raw", as.publicKey));
+  const uaKey = await crypto.subtle.importKey("raw", uaPub, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const ecdh = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey }, as.privateKey, 256));
+  const ikm = await hkdf(auth, ecdh, unir(te.encode("WebPush: info\0"), uaPub, asPub), 32);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const cek = await hkdf(salt, ikm, te.encode("Content-Encoding: aes128gcm\0"), 16);
+  const nonce = await hkdf(salt, ikm, te.encode("Content-Encoding: nonce\0"), 12);
+  const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, tagLength: 128 }, key, unir(te.encode(texto), new Uint8Array([2]))));
+  const cab = new Uint8Array(16 + 4 + 1 + asPub.length);
+  cab.set(salt, 0); new DataView(cab.buffer).setUint32(16, 4096); cab[20] = asPub.length; cab.set(asPub, 21);
+  return unir(cab, ct);
+}
+async function enviarPush(v, sub, datos) {
+  const body = await cifrarPush(sub, JSON.stringify(datos));
+  const jwt = await jwtVapid(v, new URL(sub.endpoint).origin);
+  return fetch(sub.endpoint, { method: "POST", body, headers: {
+    "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", "TTL": "86400", "Urgency": "high",
+    "Authorization": `vapid t=${jwt}, k=${v.publicKey}` } });
+}
+const PUSH_HOSTS = [/\.push\.apple\.com$/, /^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/, /^web\.push\.apple\.com$/];
+
+async function rutasPush(request, env, origin, ruta) {
+  if (!env.PUSH) return json({ error: "Falta vincular el KV 'PUSH' al Worker" }, 500, origin);
+  if (ruta === "/vapid") return json({ publicKey: (await llavesVapid(env)).publicKey }, 200, origin);
+  let body = {}; try { body = await request.json(); } catch { }
+  if (ruta === "/suscribir") {
+    const sub = body.subscription;
+    let host = ""; try { host = new URL(sub.endpoint).hostname; } catch { }
+    if (!sub || !sub.keys || !sub.keys.p256dh || !sub.keys.auth || !PUSH_HOSTS.some(r => r.test(host))) return json({ error: "Suscripción inválida" }, 400, origin);
+    const tipos = { picks: body.tipos?.picks !== false, resultados: body.tipos?.resultados !== false };
+    await env.PUSH.put("s:" + await sha256hex(sub.endpoint), JSON.stringify({ sub: { endpoint: sub.endpoint, keys: sub.keys }, tipos, t: Date.now() }));
+    return json({ ok: true }, 200, origin);
+  }
+  if (ruta === "/desuscribir") {
+    if (body.endpoint) await env.PUSH.delete("s:" + await sha256hex(body.endpoint));
+    return json({ ok: true }, 200, origin);
+  }
+  if (ruta === "/notificar") {
+    if (!(await emailAdmin(request))) return json({ error: "Solo los admins pueden notificar" }, 403, origin);
+    const { tipo = "picks", title = "AlexPicks", body: texto = "", url = "./", tag } = body;
+    const v = await llavesVapid(env);
+    let cursor, claves = [];
+    do { const l = await env.PUSH.list({ prefix: "s:", cursor }); claves.push(...l.keys.map(k => k.name)); cursor = l.list_complete ? null : l.cursor; } while (cursor);
+    let enviados = 0, borrados = 0, fallidos = 0;
+    await Promise.all(claves.map(async k => {
+      const reg = await env.PUSH.get(k, "json"); if (!reg || reg.tipos?.[tipo] === false) return;
+      try {
+        const r = await enviarPush(v, reg.sub, { title, body: texto, url, tag });
+        if (r.status === 404 || r.status === 410) { await env.PUSH.delete(k); borrados++; }
+        else if (r.ok) enviados++; else fallidos++;
+      } catch { fallidos++; }
+    }));
+    return json({ ok: true, enviados, borrados, fallidos, total: claves.length }, 200, origin);
+  }
+  return json({ error: "Ruta no encontrada" }, 404, origin);
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") return new Response(null, { headers: cors(origin) });
-    if (request.method !== "POST") return json({ error: "Usa POST" }, 405, origin);
     if (!ORIGENES.includes(origin)) return json({ error: "Origen no permitido" }, 403, origin);
+    const ruta = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    if (ruta !== "/") return rutasPush(request, env, origin, ruta);
+    if (request.method !== "POST") return json({ error: "Usa POST" }, 405, origin);
     if (!env.ANTHROPIC_API_KEY) return json({ error: "Falta el secreto ANTHROPIC_API_KEY en Cloudflare" }, 500, origin);
 
     // 1) Verificar que sea un admin con sesión de Google en la app
-    const token = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
-    if (!token) return json({ error: "Inicia sesión" }, 401, origin);
-    const look = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: token }),
-    });
-    const quien = look.ok ? await look.json() : null;
-    const email = ((quien && quien.users && quien.users[0] && quien.users[0].email) || "").toLowerCase();
-    if (!ADMINS.includes(email)) return json({ error: "Solo los admins pueden leer boletos" }, 403, origin);
+    if (!(await emailAdmin(request))) return json({ error: "Solo los admins pueden leer boletos" }, 403, origin);
 
     // 2) Leer la imagen
     let body;

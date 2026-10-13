@@ -159,6 +159,39 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 // ── ntfy.sh notifications ──
 const NTFY_TOPIC = "alexpicks-apuestas-amz-2026";
 
+// Notificación push propia de la app (vía el Worker de Cloudflare; solo admins pueden enviar)
+async function pushNotificar(tipo, title, body, tag) {
+  try {
+    if(!auth.currentUser) return;
+    const idToken = await auth.currentUser.getIdToken();
+    await fetch(IA_URL+"/notificar",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+      body:JSON.stringify({tipo,title,body,tag,url:"./"})});
+  } catch(e) { console.log("Push error:", e); }
+}
+// Suscribir / desuscribir este celular a las notificaciones push
+const b64uABytes = s => { s=s.replace(/-/g,"+").replace(/_/g,"/"); s+="=".repeat((4-s.length%4)%4); const r=atob(s); return Uint8Array.from(r,c=>c.charCodeAt(0)); };
+const pushSoportado = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+async function pushSuscribir(tipos) {
+  if(!pushSoportado()) throw new Error("NOSOP");
+  const perm = await Notification.requestPermission();
+  if(perm!=="granted") throw new Error("PERM");
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if(!sub){
+    const r = await fetch(IA_URL+"/vapid"); const {publicKey} = await r.json();
+    sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64uABytes(publicKey)});
+  }
+  const r2 = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos})});
+  if(!r2.ok) throw new Error("SERV");
+  return true;
+}
+async function pushDesuscribir() {
+  try{
+    const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription();
+    if(sub){ await fetch(IA_URL+"/desuscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({endpoint:sub.endpoint})}).catch(()=>{}); await sub.unsubscribe(); }
+  }catch(e){}
+}
+
 async function enviarNotificacion(titulo, cuerpo) {
   try {
     const url = "https://ntfy.sh/" + NTFY_TOPIC;
@@ -863,6 +896,11 @@ function App() {
   const [hojaMas,setHojaMas] = useState(null);
   const [infoDato,setInfoDato] = useState(null);
   const [busca,setBusca] = useState("");
+  const [pushOn,setPushOn] = useState(false);
+  const [pushTipos,setPushTipos] = useState(()=>{ try{ return JSON.parse(localStorage.getItem("pushTipos")||"null")||{picks:true,resultados:true}; }catch(e){ return {picks:true,resultados:true}; } });
+  const [pushEstado,setPushEstado] = useState({cargando:false,msg:""});
+  const [verNtfy,setVerNtfy] = useState(false);
+  useEffect(()=>{ if(!pushSoportado()) return; navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(sub=>setPushOn(!!sub && Notification.permission==="granted")).catch(()=>{}); },[]);
   const [buscaTodo,setBuscaTodo] = useState(false);
   const [ia,setIa] = useState({estado:null,msg:""});
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
@@ -1209,6 +1247,12 @@ function App() {
         "🎯 Nuevo pick — AlexPicks",
         nueva.descripcion+" | "+nueva.deporte+" | Momio: "+momioStr+" | "+nueva.monto+"% = "+fmt(apMonto(nueva,bankrollMes))
       );
+      const esC = nueva.tipo==="Parlay/Combinada"||nueva.tipo==="Freebet";
+      const nP = (nueva.patas||[]).filter(p=>p.desc&&p.desc.trim()).length;
+      pushNotificar("picks",
+        (iconDeporte[nueva.deporte]||"🎯")+" Nuevo pick",
+        (esC?(nueva.tipo==="Freebet"?"Freebet":"Parlay")+" de "+nP+" picks: "+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):nueva.descripcion+(nueva.partido?" ("+nueva.partido+")":""))+" · Momio "+momioStr+" · "+nueva.monto+"% del bank",
+        "pick-"+Date.now());
     }
     setModal(false);
   };
@@ -1250,6 +1294,8 @@ function App() {
         emoji+" "+resultado.toUpperCase()+" — AlexPicks",
         ap.descripcion+" | "+ap.deporte+" | "+ganStr
       );
+      const pctRes = resultado==="Ganada" ? "+"+(Number(ap.monto||0)*(momioToDec(ap.cuota)-1)).toFixed(1)+"% del bank" : resultado==="Nula" ? "Se devuelve lo apostado" : "-"+Number(ap.monto||0)+"% del bank";
+      pushNotificar("resultados", emoji+" "+(resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id);
     }
   };
 
@@ -1347,6 +1393,14 @@ function App() {
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
   const chipTxt = !user ? "Entrar" : bankrollMes>0 ? (ocultar?"Bank ✎":fmt(bankrollMes+stats.neto)+" ✎") : "Poner bank ＋";
   const NTFY_URL = "https://ntfy.sh/"+NTFY_TOPIC;
+  const errPush = e => e.message==="PERM" ? "No diste permiso. Actívalo en Ajustes del celular → Notificaciones → AlexPicks (o en el navegador)." : e.message==="NOSOP" ? "Este navegador no soporta notificaciones." : "No se pudo conectar. Intenta de nuevo en un momento.";
+  const activarPush = async (tipos=pushTipos) => {
+    setPushEstado({cargando:true,msg:""});
+    try{ await pushSuscribir(tipos); setPushOn(true); try{ localStorage.setItem("pushTipos",JSON.stringify(tipos)); }catch(e){} setPushEstado({cargando:false,msg:"✅ ¡Listo! Te llegarán avisos en este celular."}); }
+    catch(e){ setPushEstado({cargando:false,msg:"⚠️ "+errPush(e)}); }
+  };
+  const desactivarPush = async () => { setPushEstado({cargando:true,msg:""}); await pushDesuscribir(); setPushOn(false); setPushEstado({cargando:false,msg:"Notificaciones desactivadas en este celular."}); };
+  const cambiarTipoPush = k => { const t={...pushTipos,[k]:!pushTipos[k]}; setPushTipos(t); try{ localStorage.setItem("pushTipos",JSON.stringify(t)); }catch(e){} if(pushOn) activarPush(t); };
   // Datos del cuadro azul: se tocan para ver qué significan
   const miniDato = (v,l,clave,ctx) => html`<button key=${l} onClick=${()=>setInfoDato({clave,ctx})} style=${{...S.miniStat,border:"none",color:"#fff",fontFamily:"inherit",cursor:"pointer"}}>
     <b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2,whiteSpace:"nowrap"}}>${l} <span style=${{opacity:.8}}>ⓘ</span></div></button>`;
@@ -1762,12 +1816,37 @@ function App() {
     ${verRecorrido && html`<${Recorrido} pasos=${pasosRecorrido} onClose=${()=>setVerRecorrido(false)}/>`}
 
     ${notisGuia && html`<${Hoja} onClose=${()=>setNotisGuia(false)} maxW=${480}>
-        <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Recibir avisos de picks</div>
+        <div style=${{fontWeight:800,fontSize:19,marginBottom:6,color:"#fff"}}>🔔 Notificaciones</div>
+        ${!pushSoportado()
+          ? html`<div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:14,fontSize:14,lineHeight:1.5,color:"#dfe5ff",marginBottom:14}}>
+              ${esIOS && !yaInstalada
+                ? html`En iPhone, las notificaciones solo funcionan con la app <b>agregada a tu pantalla de inicio</b>. Instálala, ábrela desde el ícono y vuelve aquí.
+                    <button onClick=${instalarApp} style=${{...S.btnPrimary,width:"100%",minHeight:44,marginTop:10}}>📲 Cómo instalarla</button>`
+                : "Este navegador no soporta notificaciones. Prueba desde Chrome o Safari actualizados, o usa la opción de ntfy de abajo."}
+            </div>`
+          : html`<div style=${{marginBottom:14}}>
+              <div style=${{fontSize:14,color:"var(--mu)",lineHeight:1.45,marginBottom:12}}>${pushOn?"Están activadas en este celular. Elige qué te avisamos:":"Recibe un aviso en este celular con cada pick nuevo y cada resultado, como cualquier app."}</div>
+              <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,overflow:"hidden",marginBottom:12}}>
+                ${[["picks","🎯 Picks nuevos"],["resultados","✅ Resultados (ganada / perdida)"]].map(([k,l],i)=>html`<button key=${k} onClick=${()=>cambiarTipoPush(k)} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",borderTop:i?"1px solid var(--br)":"none",padding:"12px 14px",color:"#fff",fontFamily:"inherit",fontSize:15,cursor:"pointer"}}>
+                  <span>${l}</span>
+                  <span style=${{width:46,height:28,borderRadius:14,background:pushTipos[k]?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}><span style=${{position:"absolute",top:3,left:pushTipos[k]?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span></span>
+                </button>`)}
+              </div>
+              ${pushOn
+                ? html`<button onClick=${desactivarPush} disabled=${pushEstado.cargando} style=${{...S.btnSecondary,width:"100%",minHeight:46}}>Desactivar en este celular</button>`
+                : html`<button onClick=${()=>activarPush()} disabled=${pushEstado.cargando} style=${{...S.btnPrimary,width:"100%",minHeight:50,fontSize:16,borderRadius:14}}>${pushEstado.cargando?"Activando…":"🔔 Activar notificaciones"}</button>`}
+              ${pushEstado.msg && html`<div style=${{fontSize:13,marginTop:10,lineHeight:1.4,color:pushEstado.msg.startsWith("⚠️")?"#ff5d7a":"#dfe5ff",textAlign:"center"}}>${pushEstado.msg}</div>`}
+            </div>`}
+        <button onClick=${()=>setVerNtfy(v=>!v)} style=${{display:"flex",justifyContent:"space-between",width:"100%",background:"none",border:"none",borderTop:"1px solid var(--br)",padding:"14px 2px",color:"var(--mu)",fontFamily:"inherit",fontSize:14,cursor:"pointer"}}>
+          <span>Otra opción: app ntfy</span><span>${verNtfy?"−":"+"}</span>
+        </button>
+        ${verNtfy && html`<div>
         ${[["1","Descarga la app gratis “ntfy” (App Store o Play Store)."],["2","Ábrela y toca ＋ para suscribirte a un tema."],["3","Escribe este tema exactamente:"]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"var(--ac)",color:"var(--onac)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
         <button onClick=${()=>{ try{ navigator.clipboard.writeText(NTFY_TOPIC); setNotisCopiado(true); setTimeout(()=>setNotisCopiado(false),2000);}catch(e){} }}
           style=${{width:"100%",background:"var(--bg)",border:"1px dashed var(--ac)",borderRadius:12,padding:"12px",color:"#fff",fontFamily:"monospace",fontSize:14,cursor:"pointer",marginBottom:6,wordBreak:"break-all"}}>${NTFY_TOPIC}</button>
         <div style=${{fontSize:12,color:notisCopiado?"#2fe0a0":"var(--mu)",textAlign:"center",marginBottom:14}}>${notisCopiado?"✓ Copiado":"Toca para copiar"}</div>
         <a href=${NTFY_URL} target="_blank" rel="noopener" style=${{display:"block",textAlign:"center",fontSize:13,color:"var(--ac)",marginBottom:14}}>O ábrelo en el navegador</a>
+        </div>`}
         <button onClick=${()=>setNotisGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Listo</button>
     </${Hoja}>`}
 
