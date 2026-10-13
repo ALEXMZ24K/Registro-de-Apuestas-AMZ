@@ -462,7 +462,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
   const profit = apuestas.reduce((s,a)=>s+gan(a),0);
   const profitPct = sumPct(apuestas);
 
-  const fmtK = n => { if(OCULTAR) return "•••"; const abs=Math.abs(n); const sg=n<0?"-":"+";
+  const fmtK = n => { if(OCULTAR) return "•••"; const abs=Math.round(Math.abs(n)); const sg=n<0?"-":"+";
     if(abs>=1000) return sg+"$"+(abs/1000).toFixed(abs>=10000?0:1).replace(/\.0$/,"")+"K";
     return sg+"$"+Math.round(abs); };
   const hoy = new Date();
