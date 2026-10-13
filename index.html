@@ -389,7 +389,7 @@ const separarPick = a => {
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
 
-function AR({a,onEdit,onDelete,onToggle,onPata,g,expanded,editable,monto}) {
+function AR({a,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto}) {
   const [open,setOpen] = useState(false);
   const show = open||expanded;
   const cr = colorRes[a.resultado]||"var(--mu)";
@@ -407,18 +407,18 @@ function AR({a,onEdit,onDelete,onToggle,onPata,g,expanded,editable,monto}) {
   const pend = a.resultado==="Pendiente";
   const dec = momioToDec(a.cuota)||1;
   const ganaria = (monto||0)*(dec-1);
-  return html`<div style=${S.apCard}>
-    <div style=${{display:"flex",cursor:"pointer"}} onClick=${()=>setOpen(o=>!o)}>
+  return html`<div style=${{...S.apCard,transition:"opacity .2s"}}>
+    <div style=${{display:"flex",cursor:"pointer",opacity:metida?1:.45}} onClick=${()=>setOpen(o=>!o)}>
       <div style=${{width:5,background:cr,flexShrink:0}}></div>
       <div style=${{flex:1,minWidth:0,padding:"12px 12px 12px 13px"}}>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
           <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${titulo}</div>
           ${pend
             ? html`<div style=${{textAlign:"right",whiteSpace:"nowrap",lineHeight:"17px"}}><div style=${{fontSize:10,color:"var(--mu)",fontWeight:700}}>GANA</div><div style=${{color:"#bff5dc",fontWeight:800,fontSize:16}}>${OCULTAR?fmtPct(Number(a.monto||0)*(dec-1)):"+"+fmt(ganaria)}</div></div>`
-            : html`<div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px"}}>${montoTxt}</div>`}
+            : html`<div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px",textDecoration:metida?"none":"line-through"}}>${montoTxt}</div>`}
         </div>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"var(--mu)"}}>
-          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${f.d} ${MESES_CORTO[f.m]}${subtitulo?" · "+subtitulo:""}</span>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${f.d} ${MESES_CORTO[f.m]}${subtitulo?" · "+subtitulo:""}</span>
           <span style=${{whiteSpace:"nowrap"}}>${pend ? "Apostado "+(OCULTAR?a.monto+"%":fmt(monto||0)) : a.monto+"% del bank"}</span>
         </div>
       </div>
@@ -439,6 +439,12 @@ function AR({a,onEdit,onDelete,onToggle,onPata,g,expanded,editable,monto}) {
               <div style=${{fontSize:16,fontWeight:800,color:c,marginTop:4}}>${v}</div>
             </div>`)}
         </div>`; })()}
+      ${puedeMeter && html`<button onClick=${e=>{e.stopPropagation();onMetida&&onMetida();}} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,width:"100%",background:"color-mix(in srgb,var(--bg) 55%,transparent)",border:"none",borderRadius:12,padding:"11px 12px",marginBottom:14,color:"#fff",fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+        <div><b style=${{fontSize:15}}>${metida?"✅ La metí":"🚫 No la metí"}</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:2}}>${metida?"Apágalo si no la jugaste y no te contará":"No cuenta en tus números · préndelo si sí la metiste"}</div></div>
+        <span style=${{width:48,height:28,borderRadius:14,background:metida?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
+          <span style=${{position:"absolute",top:3,left:metida?23:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span>
+        </span>
+      </button>`}
       ${combo && html`
         <div style=${{marginBottom:14}}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -854,6 +860,7 @@ function App() {
   const [bankrolls,setBankrolls] = useState({});
   const [bankrollsUser,setBankrollsUser] = useState({});
   const [iniciosUser,setIniciosUser] = useState({});
+  const [noMetidas,setNoMetidas] = useState({});
   const [bankModal,setBankModal] = useState(false);
   const [bmInput,setBmInput] = useState("");
   const [bmModo,setBmModo] = useState("dia1");
@@ -905,10 +912,11 @@ function App() {
 
   // Bank personal de cada usuario
   useEffect(()=>{
-    if(!usaBankPropio){ setBankrollsUser({}); setIniciosUser({}); return; }
+    if(!usaBankPropio){ setBankrollsUser({}); setIniciosUser({}); setNoMetidas({}); return; }
     const unsub = db.collection("usuarios").doc(user.uid).onSnapshot(snap=>{
       setBankrollsUser(snap.exists?(snap.data().bankrolls||{}):{});
       setIniciosUser(snap.exists?(snap.data().inicios||{}):{});
+      setNoMetidas(snap.exists?(snap.data().noMetidas||{}):{});
     });
     return ()=>unsub();
   },[usaBankPropio,user&&user.uid]);
@@ -940,7 +948,15 @@ function App() {
   const inicioDe = a => { if(!usaBankPropio) return ""; const {y,m}=parseFecha(a.fecha); return iniciosUser[`${y}-${m}`]||""; };
   // Una apuesta cuenta si el usuario no tiene bank ese mes (solo se ve) o si es del día de inicio en adelante
   const cuentaAp = a => { if(!usaBankPropio) return true; if(!(bankReal(a)>0)) return true; const ini=inicioDe(a); return !ini || a.fecha>=ini; };
-  const cuentaAnual = a => !usaBankPropio || (bankReal(a)>0 && cuentaAp(a));
+  // Picks que el amigo marcó como "No la metí": se ven pero no cuentan en sus números
+  const noMet = a => usaBankPropio && !!noMetidas[a.id];
+  const cuentaAnual = a => !usaBankPropio || (bankReal(a)>0 && cuentaAp(a) && !noMet(a));
+  const toggleMetida = a => {
+    if(!usaBankPropio) return;
+    const ref = db.collection("usuarios").doc(user.uid);
+    if(noMetidas[a.id]) ref.update({["noMetidas."+a.id]: firebase.firestore.FieldValue.delete()}).catch(()=>{});
+    else ref.set({noMetidas:{[a.id]:true}},{merge:true}).catch(()=>{});
+  };
   const fmtDia = iso => { const {m,d}=parseFecha(iso); return d+" "+MESES_CORTO[m].toLowerCase(); };
   const hoyISO = new Date().toLocaleDateString("en-CA");
   const esMesActual = mesSeleccionado===new Date().getMonth() && anoSeleccionado===new Date().getFullYear();
@@ -973,13 +989,15 @@ function App() {
   const apuestasMesTodas = useMemo(()=>apuestas.filter(a=>{
     const {y,m}=parseFecha(a.fecha); return m===mesSeleccionado&&y===anoSeleccionado;
   }),[apuestas,mesSeleccionado,anoSeleccionado]);
-  const dep = [usaBankPropio,bankrollsUser,iniciosUser,bankrolls];
-  const apuestasMes = useMemo(()=>apuestasMesTodas.filter(cuentaAp),[apuestasMesTodas,...dep]);
+  const dep = [usaBankPropio,bankrollsUser,iniciosUser,bankrolls,noMetidas];
+  const apuestasMesLista = useMemo(()=>apuestasMesTodas.filter(cuentaAp),[apuestasMesTodas,...dep,noMetidas]);
+  const apuestasMes = useMemo(()=>apuestasMesLista.filter(a=>!noMet(a)),[apuestasMesLista,noMetidas]);
+  const noMetidasMes = apuestasMesLista.length - apuestasMes.length;
   const apuestasAntes = useMemo(()=>apuestasMesTodas.filter(a=>!cuentaAp(a)),[apuestasMesTodas,...dep]);
 
   const apuestasAno = useMemo(()=>apuestas.filter(a=>parseFecha(a.fecha).y===anoSeleccionado).filter(cuentaAnual),[apuestas,anoSeleccionado,...dep]);
   const stats = useMemo(()=>calcStats(apuestasMes,bankDe),[apuestasMes,...dep]);
-  const simNeto = (usaBankPropio&&bankrollMes>0&&apuestasAntes.length>0) ? calcStats(apuestasMesTodas,bankDe).neto : null;
+  const simNeto = (usaBankPropio&&bankrollMes>0&&apuestasAntes.length>0) ? calcStats(apuestasMesTodas.filter(a=>!noMet(a)),bankDe).neto : null;
 
   const momioPromedioMes = useMemo(()=>{
     const con = apuestasMes.filter(a=>a.cuota&&a.cuota!==0);
@@ -998,7 +1016,7 @@ function App() {
     }
     return {racha,tipo};
   },[apuestasMes]);
-  const formaReciente = useMemo(()=>apuestas.filter(cuentaAp).filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10),[apuestas,...dep]);
+  const formaReciente = useMemo(()=>apuestas.filter(cuentaAp).filter(a=>!noMet(a)).filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10),[apuestas,...dep]);
   const mejorPickMes = useMemo(()=>{
     let best=null, bg=0;
     apuestasMes.forEach(a=>{ if(a.resultado!=="Ganada") return; const m=apMonto(a,bankDe); const g=m*momioToDec(a.cuota)-m; if(!best||g>bg){best=a;bg=g;} });
@@ -1052,11 +1070,11 @@ function App() {
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
+  const renderAR = (a,exp) => html`<${AR} key=${a.id} a=${a} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${()=>toggleMetida(a)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
   const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
-    ${apuestasAntes.length>0 && apuestasMes.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
-    ${apuestasMes.slice().reverse().map(a=>renderAR(a,exp))}
+    ${apuestasAntes.length>0 && apuestasMesLista.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
+    ${apuestasMesLista.slice().reverse().map(a=>renderAR(a,exp))}
     ${apuestasAntes.length>0 && html`<div>
       <div style=${subtitulo}>Antes de empezar <span style=${{background:"var(--br2)",color:"#aab",borderRadius:6,padding:"2px 6px",fontSize:9,marginLeft:6}}>NO SUMA</span></div>
       <div style=${{opacity:.45}}>${apuestasAntes.slice().reverse().map(a=>renderAR(a,exp))}</div>
@@ -1336,6 +1354,7 @@ function App() {
     ["🔔","¿Cómo recibo avisos de picks nuevos?","Instala la app ntfy y suscríbete al tema de AlexPicks. En Más → Notificaciones están los pasos y el tema para copiar.","notis"],
     ["📲","¿Cómo la instalo como app?","En iPhone: Compartir ⬆︎ → Agregar a pantalla de inicio. En Android: menú ⋮ → Instalar app.","instalar"],
     ["🙈","¿Puedo ocultar mis montos o cambiar colores?","Sí. En Más activa “Ocultar montos” para ver solo porcentajes y elige un Tema de colores. Se guarda en tu cuenta."],
+    ["🚫","¿Y si no metí un pick?","Abre el pick y apaga el switch “La metí”. Queda como “No la metí”: se sigue viendo, pero no cuenta en tu ganancia, acierto ni racha. Si te equivocaste, lo vuelves a prender. Solo te afecta a ti."],
     ["👆","¿Cómo cierro una ventana?","Las ventanas que suben desde abajo (bank, tema, día del calendario…) se cierran jalándolas hacia abajo desde la rayita de arriba, o tocando afuera."],
     ["🔒","¿Los demás ven mi bank?","No. Tu bank, tu día de inicio y tus preferencias solo los ves tú. Los picks sí son los mismos para todos."],
   ];
@@ -1376,6 +1395,7 @@ function App() {
             ${pctMes!==null && !ocultar && html` <span style=${{fontSize:15,fontWeight:700,color:pctMes>=0?"#bff5dc":"#ffc4cf"}}>${pctMes>=0?"▲":"▼"} ${Math.abs(pctMes).toFixed(1)}%</span>`}
             ${sinBank && html` <span style=${{fontSize:13,fontWeight:600,opacity:.8}}>estimado</span>`}
           </div>
+          ${noMetidasMes>0 && html`<div style=${{fontSize:12,color:"#dfe7ff",marginTop:4}}>Sin contar ${noMetidasMes} ${noMetidasMes===1?"pick que no metiste":"picks que no metiste"}</div>`}
           ${usaBankPropio&&bankrollMes>0 && html`<button onClick=${abrirBankModal} style=${{background:"none",border:"none",color:"#dfe7ff",fontSize:12,padding:"6px 0 0",cursor:"pointer",fontFamily:"inherit"}}>${iniciosUser[bankKey]?"Cuentas desde el "+fmtDia(iniciosUser[bankKey]):"Cuentas desde el día 1"} · <b style=${{color:"var(--ac2)"}}>Cambiar</b></button>`}
           <div style=${{display:"flex",gap:8,marginTop:12}}>
             ${[[stats.efectividad+"%","Acierto","acierto"],[rachaActual.racha>0?(rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha:"—","Racha","racha"],[String(stats.total),"Picks","picks"],[momioPromedioMes!==null?fmtMomio(momioPromedioMes):"—","Momio prom.","momio"]].map(([v,l,k])=>miniDato(v,l,k,"mes"))}
@@ -1423,7 +1443,7 @@ function App() {
               <b style=${{color:"#fff",fontSize:16}}>${iconDeporte[deporteFiltro]||"🎯"} ${deporteFiltro}</b>
               <button onClick=${()=>setDeporteFiltro(null)} style=${S.pillBtn}>✕ Cerrar</button>
             </div>
-            ${[...apuestasMes].reverse().filter(a=>a.deporte===deporteFiltro).map(a=>renderAR(a,false))}
+            ${[...apuestasMesLista].reverse().filter(a=>a.deporte===deporteFiltro).map(a=>renderAR(a,false))}
           </div>`}
         </div>`}
       </div>`}
