@@ -697,6 +697,26 @@ function Contador({valor, formato, dur=800}) {
 // ── Hoja que sube desde abajo y se cierra jalándola hacia abajo ──
 function Hoja({onClose, children, maxW=640}) {
   const panel = useRef(null), fondo = useRef(null), drag = useRef(null), cerrando = useRef(false);
+  // Mientras la hoja está abierta, lo de atrás no se mueve
+  useEffect(()=>{
+    const y = window.scrollY, b = document.body.style, prev = {position:b.position,top:b.top,left:b.left,right:b.right,width:b.width};
+    Object.assign(b,{position:"fixed",top:(-y)+"px",left:"0",right:"0",width:"100%"});
+    const p = panel.current, f = fondo.current;
+    // Listeners no pasivos para poder frenar el scroll nativo mientras se jala la hoja
+    const enPanel = e => {
+      const d = drag.current; if(!d) return;
+      const dy = e.touches[0].clientY - d.y;
+      // Jalando hacia abajo con el contenido hasta arriba: es la hoja la que se mueve, no la página
+      if(d.activo || (dy>0 && p.scrollTop<=0)) { if(e.cancelable) e.preventDefault(); }
+    };
+    const enFondo = e => e.preventDefault();
+    p && p.addEventListener("touchmove", enPanel, {passive:false});
+    f && f.addEventListener("touchmove", enFondo, {passive:false});
+    return ()=>{
+      p && p.removeEventListener("touchmove", enPanel); f && f.removeEventListener("touchmove", enFondo);
+      Object.assign(b,prev); window.scrollTo(0,y);
+    };
+  },[]);
   const cerrar = () => {
     if(cerrando.current) return; cerrando.current = true;
     const p=panel.current, f=fondo.current;
