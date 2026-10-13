@@ -177,6 +177,18 @@ const { useState, useMemo, useEffect, useRef } = React;
 const html = htm.bind(React.createElement);
 
 // ── Auth ──
+// Lector de boletos con IA (Cloudflare Worker; la clave de Anthropic vive solo ahí)
+const IA_URL = "https://alexpicks-ia.alexitozenil.workers.dev";
+// Reduce la foto antes de mandarla (más rápida y barata) → base64 JPEG
+const fotoABase64 = file => new Promise((res,rej)=>{
+  const img = new Image(), url = URL.createObjectURL(file);
+  img.onload = () => { const max=1600, k=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement("canvas"); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+    res(c.toDataURL("image/jpeg",0.88).split(",")[1]); };
+  img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("No se pudo abrir la imagen")); };
+  img.src = url;
+});
 const ADMIN_EMAILS = ["alexitozenil@gmail.com","prokiller548@gmail.com"];
 const loginGoogle = async () => {
   const provider = new firebase.auth.GoogleAuthProvider();
@@ -789,6 +801,7 @@ function App() {
   const [faqAbierta,setFaqAbierta] = useState(null);
   const [faqBusca,setFaqBusca] = useState("");
   const [hojaMas,setHojaMas] = useState(null);
+  const [ia,setIa] = useState({estado:null,msg:""});
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
@@ -1020,7 +1033,42 @@ function App() {
       setEditId(ap.id);
     } else {setForm(initialForm);setEditId(null);}
     setFormError("");
+    setIa({estado:null,msg:""});
     setModal(true);
+  };
+
+  const leerBoleto = async file => {
+    if(!file) return;
+    setIa({estado:"leyendo",msg:""});
+    try{
+      const image = await fotoABase64(file);
+      const idToken = await auth.currentUser.getIdToken();
+      const r = await fetch(IA_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+        body:JSON.stringify({image,mediaType:"image/jpeg",hoy:new Date().toLocaleDateString("en-CA")})});
+      const d = await r.json().catch(()=>({}));
+      if(!r.ok || !d.apuesta) throw new Error(d.error||"No se pudo leer el boleto");
+      const b = d.apuesta;
+      const esCombo = b.tipo==="Parlay/Combinada"||b.tipo==="Freebet";
+      const patas = esCombo && b.patas && b.patas.length ? b.patas.map(p=>({deporte:DEPORTES.includes(p.deporte)?p.deporte:"",desc:p.desc||""})) : [{deporte:"",desc:""},{deporte:"",desc:""}];
+      const am = Number(b.momio)||0;
+      const pct = bankrollMes>0 && b.apuesta>0 ? Math.round(b.apuesta/bankrollMes*1000)/10 : "";
+      setForm(f=>({...f,
+        tipo: TIPOS.includes(b.tipo)?b.tipo:f.tipo,
+        deporte: esCombo?"":(DEPORTES.includes(b.deporte)?b.deporte:f.deporte),
+        descripcion: esCombo?"":(b.descripcion||""),
+        patas,
+        cuota: am ? (momioDec ? momioToDec(am).toFixed(2) : (am>0?"+"+am:String(am))) : f.cuota,
+        monto: pct!==""?String(pct):f.monto,
+        fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:f.fecha,
+        resultado: ["Ganada","Perdida","Pendiente","Nula"].includes(b.resultado)?b.resultado:f.resultado,
+      }));
+      const partes = [];
+      if(b.apuesta) partes.push("Apostaste "+fmtReal(b.apuesta)+(pct!==""?" = "+pct+"% de tu bank":" (pon tu bank del mes para calcular el %)"));
+      if(b.notas) partes.push("Ojo: "+b.notas);
+      setIa({estado:"listo",msg:partes.join(" · ")});
+    }catch(e){
+      setIa({estado:"error",msg:e.message||"Error al leer el boleto"});
+    }
   };
 
   const guardar = () => {
@@ -1543,6 +1591,17 @@ function App() {
           <h2 style=${S.modalTitle}>${editId?"Editar apuesta":"Nueva apuesta"}</h2>
           <button onClick=${()=>setModal(false)} style=${S.closeBtn}>✕</button>
         </div>
+        ${!editId && html`<div style=${{marginBottom:16}}>
+          <label style=${{display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%",minHeight:54,borderRadius:14,cursor:ia.estado==="leyendo"?"default":"pointer",
+            background:ia.estado==="leyendo"?"var(--card)":"linear-gradient(135deg,var(--g1),var(--g2))",border:"1px solid var(--br2)",color:"#fff",fontWeight:800,fontSize:15}}>
+            <input type="file" accept="image/*" style=${{display:"none"}} disabled=${ia.estado==="leyendo"} onChange=${e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=""; leerBoleto(f); }}/>
+            ${ia.estado==="leyendo" ? html`<span className="sk" style=${{width:18,height:18,borderRadius:"50%"}}></span> Leyendo boleto…` : html`📷 Leer boleto con IA`}
+          </label>
+          ${ia.estado==="listo" && html`<div style=${{marginTop:8,fontSize:13,lineHeight:1.4,color:"#dfe5ff",background:"color-mix(in srgb,#2fe0a0 12%,transparent)",border:"1px solid color-mix(in srgb,#2fe0a0 40%,transparent)",borderRadius:12,padding:"10px 12px"}}>
+            ✓ Listo. <b>Revisa los datos antes de guardar.</b>${ia.msg?html`<br/>${ia.msg}`:""}</div>`}
+          ${ia.estado==="error" && html`<div style=${{marginTop:8,fontSize:13,color:"#ff5d7a",background:"#ff5d7a15",border:"1px solid #ff5d7a40",borderRadius:12,padding:"10px 12px"}}>⚠️ ${ia.msg}</div>`}
+          ${!ia.estado && html`<div style=${{marginTop:6,fontSize:12,color:"var(--mu)",textAlign:"center"}}>Sube la captura de tu boleto y se llena solo</div>`}
+        </div>`}
         <div style=${S.formGrid}>
           ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet") && html`<div style=${S.fg}>
             <label style=${S.label}>Deporte</label>
