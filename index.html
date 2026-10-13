@@ -79,6 +79,12 @@
     .sk-claro{background:linear-gradient(90deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.24) 45%,rgba(255,255,255,.10) 90%);background-size:250% 100%}
     @keyframes skBrillo{from{background-position:100% 0}to{background-position:-50% 0}}
     @media(prefers-reduced-motion:reduce){.sk{animation:none}}
+    /* Hojas que suben desde abajo (con un pequeño rebote) */
+    @keyframes hojaSube{from{transform:translateY(100%)}to{transform:none}}
+    @keyframes fondoIn{from{opacity:0}to{opacity:1}}
+    .hoja-panel{animation:hojaSube .38s cubic-bezier(.2,1.15,.35,1)}
+    .hoja-fondo{animation:fondoIn .25s ease-out}
+    @media(prefers-reduced-motion:reduce){.hoja-panel,.hoja-fondo{animation:none}}
     .nueva-spacer{height:calc(112px + env(safe-area-inset-bottom))}
     /* Mobile (≤600px) */
     @media(max-width:600px){
@@ -503,9 +509,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
         </div>`)}
     </div>
     </div>
-    ${sel && html`<div data-noswipe style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setSel(null)}>
-      <div onClick=${e=>e.stopPropagation()} style=${{background:"var(--card2)",borderTop:"1px solid var(--br2)",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"75vh",overflowY:"auto",padding:"10px 16px calc(20px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
-        <div style=${{width:44,height:5,borderRadius:3,background:"var(--br2)",margin:"0 auto 12px"}}></div>
+    ${sel && html`<${Hoja} onClose=${()=>setSel(null)}>
         <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:10}}>
           <b style=${{fontSize:18,color:"#fff"}}>${diaNombre} ${sel} de ${MESES[mes].toLowerCase()}</b>
           <b style=${{fontSize:16,color:netoSel>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${OCULTAR?fmtPct(netoSel):(netoSel>=0?"+":"")+fmt(netoSel)}</b>
@@ -513,8 +517,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
         ${apsSel.slice().reverse().map(a=>renderAR(a,false))}
         <div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:4}}>${apsSel.length} ${apsSel.length===1?"pick":"picks"} este día</div>
         <button onClick=${()=>setSel(null)} style=${{...S.btnSecondary,width:"100%",marginTop:12,minHeight:46}}>Cerrar</button>
-      </div>
-    </div>`}
+    </${Hoja}>`}
   </div>`;
 }
 
@@ -689,6 +692,52 @@ function Contador({valor, formato, dur=800}) {
     return ()=>cancelAnimationFrame(raf);
   },[valor]);
   return formato(v);
+}
+
+// ── Hoja que sube desde abajo y se cierra jalándola hacia abajo ──
+function Hoja({onClose, children, maxW=640}) {
+  const panel = useRef(null), fondo = useRef(null), drag = useRef(null), cerrando = useRef(false);
+  const cerrar = () => {
+    if(cerrando.current) return; cerrando.current = true;
+    const p=panel.current, f=fondo.current;
+    if(p){ p.style.animation="none"; p.style.transition="transform .22s ease-in"; p.style.transform="translateY(105%)"; }
+    if(f){ f.style.animation="none"; f.style.transition="opacity .22s"; f.style.opacity="0"; }
+    setTimeout(onClose,210);
+  };
+  const ini = e => {
+    const p=panel.current; if(!p || e.touches.length!==1) return;
+    const enManija = !!e.target.closest("[data-manija]");
+    if(!enManija && p.scrollTop>2) return; // si el contenido está scrolleado, primero se scrollea
+    drag.current = {y:e.touches[0].clientY, t:Date.now(), dy:0, activo:false};
+  };
+  const mov = e => {
+    const d=drag.current; if(!d) return;
+    const dy = e.touches[0].clientY-d.y;
+    if(!d.activo){ if(dy<-4){ drag.current=null; return; } if(dy<8) return; d.activo=true; d.t=Date.now(); }
+    d.dy = Math.max(0,dy-8);
+    const p=panel.current, f=fondo.current;
+    p.style.animation="none"; p.style.transition="none"; p.style.transform=`translateY(${d.dy}px)`;
+    if(f){ f.style.animation="none"; f.style.transition="none"; f.style.opacity=String(Math.max(.15,1-d.dy/450)); }
+  };
+  const fin = () => {
+    const d=drag.current; drag.current=null;
+    if(!d || !d.activo) return;
+    const p=panel.current, f=fondo.current;
+    const vel = d.dy/Math.max(1,Date.now()-d.t);
+    if(d.dy > p.offsetHeight*0.28 || (vel>0.5 && d.dy>40)) { cerrar(); return; }
+    p.style.transition="transform .3s cubic-bezier(.2,1.25,.4,1)"; p.style.transform="";
+    if(f){ f.style.transition="opacity .25s"; f.style.opacity=""; }
+  };
+  return html`<div data-noswipe style=${{position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+    <div ref=${fondo} className="hoja-fondo" onClick=${cerrar} style=${{position:"absolute",inset:0,background:"rgba(0,0,0,.62)"}}></div>
+    <div ref=${panel} className="hoja-panel" onTouchStart=${ini} onTouchMove=${mov} onTouchEnd=${fin} onTouchCancel=${fin}
+      style=${{position:"relative",background:"var(--card2)",borderTop:"1px solid var(--br2)",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:maxW,maxHeight:"88vh",overflowY:"auto",overscrollBehavior:"contain",padding:"0 18px calc(22px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008",color:"#e8e8f0"}}>
+      <div data-manija style=${{position:"sticky",top:0,zIndex:2,background:"var(--card2)",padding:"10px 0 12px",margin:"0 -18px 4px",touchAction:"none",cursor:"grab"}}>
+        <div style=${{width:44,height:5,borderRadius:3,background:"var(--mu3)",margin:"0 auto"}}></div>
+      </div>
+      ${children}
+    </div>
+  </div>`;
 }
 
 // ── Main App ──
@@ -1150,6 +1199,7 @@ function App() {
     ["🔔","¿Cómo recibo avisos de picks nuevos?","Instala la app ntfy y suscríbete al tema de AlexPicks. En Más → Notificaciones están los pasos y el tema para copiar.","notis"],
     ["📲","¿Cómo la instalo como app?","En iPhone: Compartir ⬆︎ → Agregar a pantalla de inicio. En Android: menú ⋮ → Instalar app.","instalar"],
     ["🙈","¿Puedo ocultar mis montos o cambiar colores?","Sí. En Más activa “Ocultar montos” para ver solo porcentajes y elige un Tema de colores. Se guarda en tu cuenta."],
+    ["👆","¿Cómo cierro una ventana?","Las ventanas que suben desde abajo (bank, tema, día del calendario…) se cierran jalándolas hacia abajo desde la rayita de arriba, o tocando afuera."],
     ["🔒","¿Los demás ven mi bank?","No. Tu bank, tu día de inicio y tus preferencias solo los ves tú. Los picks sí son los mismos para todos."],
   ];
   const compartirImagen = () => {
@@ -1419,9 +1469,7 @@ function App() {
           <b style=${{fontSize:15}}>Cerrar sesión</b>
         </button>`}
 
-        ${hojaMas && html`<div style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setHojaMas(null)}>
-          <div onClick=${e=>e.stopPropagation()} style=${{background:"var(--card2)",borderTop:"1px solid var(--br2)",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"85vh",overflowY:"auto",padding:"10px 16px calc(24px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
-            <div style=${{width:44,height:5,borderRadius:3,background:"var(--br2)",margin:"0 auto 14px"}}></div>
+        ${hojaMas && html`<${Hoja} onClose=${()=>setHojaMas(null)}>
             <b style=${{fontSize:19,color:"#fff",display:"block",marginBottom:14}}>${{momio:"Formato de momio",inicio:"Abrir la app en",tema:"Tema"}[hojaMas]}</b>
             ${hojaMas==="momio" && [["americano","Americano","-110 / +150"],["decimal","Decimal","1.91 / 2.50"]].map(([v,l,s])=>opcionHoja(l,s,(momioDec?"decimal":"americano")===v,()=>{ setMomioDec(v==="decimal"); setHojaMas(null); }))}
             ${hojaMas==="inicio" && [["inicio","🏠 Inicio","Tu resumen del mes y los picks"],["calendario","📅 Calendario","Tus resultados día por día"]].map(([v,l,s])=>opcionHoja(l,s,(prefs.inicio||"inicio")===v,()=>{ setPref("inicio",v); setHojaMas(null); }))}
@@ -1434,8 +1482,7 @@ function App() {
                 <div style=${{padding:"9px 10px",fontSize:13,fontWeight:on?800:500,color:on?"#fff":t.mu}}>${on?"✓ ":""}${t.nombre}</div>
               </button>`; })}
             </div>`}
-          </div>
-        </div>`}
+        </${Hoja}>`}
       </div>`}
 
      </div>
@@ -1452,20 +1499,17 @@ function App() {
       </div>
     </nav>
 
-    ${instalarGuia && html`<div style=${S.overlay} onClick=${()=>setInstalarGuia(false)}>
-      <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
+    ${instalarGuia && html`<${Hoja} onClose=${()=>setInstalarGuia(false)} maxW=${480}>
         <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Agregar a pantalla de inicio</div>
         ${(esIOS?[["1","Abre esta página en Safari o Chrome (no dentro de otra app)."],["2","Toca el botón Compartir ⬆︎ del navegador."],["3","Baja y toca “Agregar a pantalla de inicio”."],["4","Toca “Agregar” arriba a la derecha."]]:[["1","Toca el menú ⋮ de Chrome (arriba a la derecha)."],["2","Elige “Instalar app” o “Agregar a pantalla de inicio”."],["3","Confirma con “Instalar” o “Agregar”."]]).map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"var(--ac)",color:"var(--onac)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
         <div style=${{fontSize:12,color:"var(--mu)",margin:"4px 0 12px"}}>Después, abre AlexPicks desde el nuevo ícono. Tendrás que iniciar sesión otra vez dentro de la app.</div>
         <button onClick=${()=>setInstalarGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Entendido</button>
-      </div>
-    </div>`}
+    </${Hoja}>`}
 
     ${verTutorial && html`<${Tutorial} onClose=${()=>setVerTutorial(false)}/>`}
     ${verRecorrido && html`<${Recorrido} pasos=${pasosRecorrido} onClose=${()=>setVerRecorrido(false)}/>`}
 
-    ${notisGuia && html`<div style=${S.overlay} onClick=${()=>setNotisGuia(false)}>
-      <div style=${{...S.modal,padding:20}} onClick=${e=>e.stopPropagation()}>
+    ${notisGuia && html`<${Hoja} onClose=${()=>setNotisGuia(false)} maxW=${480}>
         <div style=${{fontWeight:800,fontSize:17,marginBottom:12}}>Recibir avisos de picks</div>
         ${[["1","Descarga la app gratis “ntfy” (App Store o Play Store)."],["2","Ábrela y toca ＋ para suscribirte a un tema."],["3","Escribe este tema exactamente:"]].map(([n,t])=>html`<div key=${n} style=${{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,fontSize:14,lineHeight:1.35}}><span style=${{background:"var(--ac)",color:"var(--onac)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:12,flexShrink:0}}>${n}</span><span>${t}</span></div>`)}
         <button onClick=${()=>{ try{ navigator.clipboard.writeText(NTFY_TOPIC); setNotisCopiado(true); setTimeout(()=>setNotisCopiado(false),2000);}catch(e){} }}
@@ -1473,12 +1517,10 @@ function App() {
         <div style=${{fontSize:12,color:notisCopiado?"#2fe0a0":"var(--mu)",textAlign:"center",marginBottom:14}}>${notisCopiado?"✓ Copiado":"Toca para copiar"}</div>
         <a href=${NTFY_URL} target="_blank" rel="noopener" style=${{display:"block",textAlign:"center",fontSize:13,color:"var(--ac)",marginBottom:14}}>O ábrelo en el navegador</a>
         <button onClick=${()=>setNotisGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Listo</button>
-      </div>
-    </div>`}
+    </${Hoja}>`}
 
     <!-- Modal nueva/editar -->
-    ${modal && html`<div style=${S.overlay} onClick=${()=>setModal(false)}>
-      <div style=${S.modal} onClick=${e=>e.stopPropagation()}>
+    ${modal && html`<${Hoja} onClose=${()=>setModal(false)}>
         <div style=${S.modalHeader}>
           <h2 style=${S.modalTitle}>${editId?"Editar apuesta":"Nueva apuesta"}</h2>
           <button onClick=${()=>setModal(false)} style=${S.closeBtn}>✕</button>
@@ -1564,12 +1606,10 @@ function App() {
           <button onClick=${()=>setModal(false)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${guardar} style=${S.btnPrimary}>Guardar</button>
         </div>
-      </div>
-    </div>`}
+    </${Hoja}>`}
 
     <!-- Modal bank del usuario -->
-    ${bankModal && html`<div style=${S.overlay} onClick=${()=>setBankModal(false)}>
-      <div style=${{...S.modal,maxWidth:380}} onClick=${e=>e.stopPropagation()}>
+    ${bankModal && html`<${Hoja} onClose=${()=>setBankModal(false)} maxW=${480}>
         <div style=${S.modalHeader}>
           <h2 style=${S.modalTitle}>${isAdmin?"Bank":"Tu bank"} de ${MESES[mesSeleccionado].toLowerCase()}</h2>
           <button onClick=${()=>setBankModal(false)} style=${S.closeBtn}>✕</button>
@@ -1586,12 +1626,10 @@ function App() {
           <button onClick=${()=>setBankModal(false)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${guardarBankModal} style=${S.btnPrimary}>Guardar bank</button>
         </div>
-      </div>
-    </div>`}
+    </${Hoja}>`}
 
     <!-- Modal eliminar -->
-    ${deleteConfirm && html`<div style=${S.overlay} onClick=${()=>setDeleteConfirm(null)}>
-      <div style=${{...S.modal,maxWidth:360}} onClick=${e=>e.stopPropagation()}>
+    ${deleteConfirm && html`<${Hoja} onClose=${()=>setDeleteConfirm(null)} maxW=${480}>
         <div style=${S.modalHeader}>
           <h2 style=${{...S.modalTitle,color:"#ff5d7a"}}>Eliminar apuesta</h2>
           <button onClick=${()=>setDeleteConfirm(null)} style=${S.closeBtn}>✕</button>
@@ -1601,8 +1639,7 @@ function App() {
           <button onClick=${()=>setDeleteConfirm(null)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${()=>eliminar(deleteConfirm)} style=${{...S.btnPrimary,background:"#ff5d7a"}}>Eliminar</button>
         </div>
-      </div>
-    </div>`}
+    </${Hoja}>`}
   </div>`;
 }
 
