@@ -483,7 +483,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
           <b style=${{fontSize:16,color:c}}>${v}</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:3}}>${l}</div>
         </div>`)}
     </div>
-    ${sel && html`<div style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setSel(null)}>
+    ${sel && html`<div data-noswipe style=${{...S.overlay,alignItems:"flex-end",padding:0}} onClick=${()=>setSel(null)}>
       <div onClick=${e=>e.stopPropagation()} style=${{background:"var(--card2)",borderTop:"1px solid var(--br2)",borderRadius:"26px 26px 0 0",width:"100%",maxWidth:640,maxHeight:"75vh",overflowY:"auto",padding:"10px 16px calc(20px + env(safe-area-inset-bottom))",boxShadow:"0 -10px 30px #0008"}}>
         <div style=${{width:44,height:5,borderRadius:3,background:"var(--br2)",margin:"0 auto 12px"}}></div>
         <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:10}}>
@@ -695,6 +695,7 @@ function App() {
   const [shareMejor,setShareMejor] = useState(true);
   const [shareImg,setShareImg] = useState(null);
   const shareFile = useRef(null);
+  const swipe = useRef(null);
   const [verTutorial,setVerTutorial] = useState(false);
   const [verRecorrido,setVerRecorrido] = useState(false);
   const [faqAbierta,setFaqAbierta] = useState(null);
@@ -1006,6 +1007,22 @@ function App() {
 
   const vista = vistaActual;
   const irA = v => { setVistaActual(v); window.scrollTo(0,0); };
+  // Deslizar de lado en Inicio y Calendario para cambiar de mes
+  const swipeIni = e => {
+    swipe.current = null;
+    if(vista!=="inicio" && vista!=="calendario") return;
+    if(e.touches.length!==1 || e.target.closest("[data-noswipe]")) return;
+    const t = e.touches[0];
+    if(t.clientX<25 || t.clientX>window.innerWidth-25) return; // bordes: gesto de "atrás" del navegador
+    swipe.current = {x:t.clientX, y:t.clientY, t:Date.now()};
+  };
+  const swipeFin = e => {
+    const s0 = swipe.current; swipe.current = null;
+    if(!s0) return;
+    const t = e.changedTouches[0], dx = t.clientX-s0.x, dy = t.clientY-s0.y;
+    if(Date.now()-s0.t>700 || Math.abs(dx)<60 || Math.abs(dx)<Math.abs(dy)*1.5) return;
+    if(dx<0) nextMes(); else prevMes();
+  };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
   const pctMes = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
@@ -1031,7 +1048,7 @@ function App() {
   </button>`;
   const pasosRecorrido = [
     {id:"t-chip", t:"Tu bank 💰", d:user?"Tócalo para poner o cambiar tu bank del mes. Con él se calculan tus pesos en cada pick.":"Toca aquí para entrar con Google y poner tu propio bank."},
-    {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Con ‹ › cambias de mes; abajo ves acierto, racha, número de picks y momio promedio."},
+    {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Desliza de lado (o usa ‹ ›) para cambiar de mes; abajo ves acierto, racha, número de picks y momio promedio."},
     {id:"t-forma", t:"Forma reciente", d:"Tus últimos 10 picks terminados: ✓ ganado, ✕ perdido. El más nuevo va a la derecha."},
     {id:"t-picks", t:"Los picks", d:"La franja de color es el resultado y a la derecha va el momio. Toca una tarjeta para ver monto, retorno y detalle."},
     {id:"t-tab-cal", t:"Calendario", d:"Tus resultados día por día. Verde ganó, rojo perdió; toca un día para ver sus picks."},
@@ -1065,7 +1082,7 @@ function App() {
   return html`<div style=${S.root}>
 
     <main style=${S.main}>
-     <div key=${vista} className="vista-anim">
+     <div key=${vista} className="vista-anim" onTouchStart=${swipeIni} onTouchEnd=${swipeFin}>
 
       ${mostrarInstalar && vista==="inicio" && html`<div style=${{background:"color-mix(in srgb,var(--ac) 10%,transparent)",border:"1px solid color-mix(in srgb,var(--ac) 33%,transparent)",borderRadius:16,padding:"10px 12px",display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
         <img src="icon-192.png" style=${{width:38,height:38,borderRadius:10}}/>
