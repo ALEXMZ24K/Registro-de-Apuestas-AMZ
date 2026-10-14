@@ -1444,8 +1444,14 @@ function App() {
       if(b.apuesta) partes.push("Apostaste "+fmtReal(b.apuesta)+(pct!==""?" = "+pct+"% de tu bank":" (pon tu bank del mes para calcular el %)"));
       if(b.notas) partes.push("Ojo: "+b.notas);
       setIa({estado:"listo",msg:partes.join(" · ")});
-      if(esCombo && Array.isArray(b.patas)) b.patas.forEach((pt,i)=>{ if(!pt||!pt.partido) return;
-        buscarPartidoAuto(pt.partido, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{ if(h) elegirPartido(h.lg,h.e,h.clave,i); }).catch(()=>{}); });
+      if(esCombo && Array.isArray(b.patas)) b.patas.forEach((pt,i)=>{ if(!pt) return;
+        // El partido puede venir aparte o pegado a la selección: "AS Roma vs Real Madrid: Ambos equipos marcan"
+        const m = String(pt.desc||"").match(/^(.+?\s(?:vs\.?|@|v)\s.+?)\s*[:\-–—]\s+(.+)$/i);
+        const partido = pt.partido || (m && m[1]); if(!partido) return;
+        buscarPartidoAuto(partido, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{ if(!h) return;
+          elegirPartido(h.lg,h.e,h.clave,i);
+          if(m && !pt.partido) setForm(f=>{ const np=[...f.patas]; if(np[i]&&np[i].desc===pt.desc) np[i]={...np[i],desc:m[2].trim()}; return {...f,patas:np}; });
+        }).catch(()=>{}); });
       if(!esCombo && b.partido){
         buscarPartidoAuto(b.partido, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{
           if(!h) return;
