@@ -259,9 +259,13 @@ const TEMAS = {
   dorado: {nombre:"Negro y oro",    bg:"#0c0a0a",card:"#1a1414",card2:"#201818",card3:"#140f0f",br:"#3a2a26",br2:"#4a3430",mu:"#b39f94",mu2:"#9c8a80",mu3:"#6e5f58",ac:"#e8b84a",ac2:"#f3d27a",onac:"#1a1200",g1:"#8a1428",g2:"#2a0a10"},
   fucsia: {nombre:"Fucsia y noche", bg:"#0b0d1f",card:"#161a36",card2:"#1b1f40",card3:"#10132a",br:"#2b3160",br2:"#363d72",mu:"#9aa0c8",mu2:"#848ab3",mu3:"#5c628c",ac:"#ff3d9a",ac2:"#ff9ccc",onac:"#fff",g1:"#b0136a",g2:"#1a1446"},
   naranja:{nombre:"Naranja y marino",bg:"#08121f",card:"#10213a",card2:"#142844",card3:"#0b1a2e",br:"#1f3a5f",br2:"#2a4a72",mu:"#8fa6c4",mu2:"#7a90b0",mu3:"#56698a",ac:"#ff8a1f",ac2:"#ffbe7a",onac:"#1a0d00",g1:"#e0631a",g2:"#0c2848"},
+  negroazul:{nombre:"Negro y azul", bg:"#000000",card:"#0f0f10",card2:"#141415",card3:"#0a0a0b",br:"#222224",br2:"#2e2e31",mu:"#8e8e93",mu2:"#7d7d82",mu3:"#57575c",ac:"#4a8dff",ac2:"#9ec1ff",onac:"#fff",g1:"#1f4fd6",g2:"#0c2270"},
+  negro:  {nombre:"Todo negro",     bg:"#000000",card:"#0e0e0f",card2:"#131314",card3:"#0a0a0a",br:"#1f1f21",br2:"#2b2b2e",mu:"#8a8a8f",mu2:"#78787d",mu3:"#545458",ac:"#4a8dff",ac2:"#7fb0ff",onac:"#fff",g1:"#121213",g2:"#0b0b0c",herob:"#262628"},
+  blanconegro:{nombre:"Negro y blanco",bg:"#000000",card:"#0d0d0d",card2:"#121212",card3:"#090909",br:"#1d1d1d",br2:"#2a2a2a",mu:"#8a8a8a",mu2:"#777777",mu3:"#525252",ac:"#ffffff",ac2:"#ffffff",onac:"#000",g1:"#111111",g2:"#0a0a0a",herob:"#2a2a2a"},
   menta:  {nombre:"Menta y negro",  bg:"#0a0f0e",card:"#121c1a",card2:"#162321",card3:"#0e1614",br:"#22362f",br2:"#2c443c",mu:"#8fb3a8",mu2:"#7a9d93",mu3:"#56756c",ac:"#3ff0c0",ac2:"#9ff7de",onac:"#04140f",g1:"#0f8a6a",g2:"#08201a"},
 };
-const aplicarTema = k => { const t=TEMAS[k]||TEMAS.azul; const r=document.documentElement.style; Object.keys(t).forEach(c=>{ if(c!=="nombre") r.setProperty("--"+c,t[c]); }); };
+const aplicarTema = k => { const t=TEMAS[k]||TEMAS.azul; const r=document.documentElement.style; Object.keys(t).forEach(c=>{ if(c!=="nombre") r.setProperty("--"+c,t[c]); }); if(!t.herob) r.setProperty("--herob","transparent");
+  const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content",t.bg); };
 const leerPrefs = () => { let p={}; try{ p=JSON.parse(localStorage.getItem("prefs")||"{}")||{}; if(!p.momio && localStorage.getItem("formatoMomio")) p.momio=localStorage.getItem("formatoMomio"); }catch(e){} return p; };
 aplicarTema(leerPrefs().tema);
 // Formato de momio elegido por el usuario (americano o decimal); se actualiza en cada render de App
@@ -316,7 +320,7 @@ const S = {
   monthNav:{background:"transparent",border:"none",color:"var(--mu)",fontSize:22,cursor:"pointer",padding:"0 8px"},
   monthLabel:{fontSize:"clamp(14px,4vw,17px)",fontWeight:700,color:"#fff",minWidth:"clamp(120px,40vw,180px)",textAlign:"center"},
   main:{maxWidth:640,margin:"0 auto",padding:"10px 16px 0"},
-  hero:{background:"linear-gradient(135deg,var(--g1),var(--g2))",borderRadius:24,padding:"16px 18px 18px",marginBottom:14,boxShadow:"0 10px 30px color-mix(in srgb,var(--g1) 20%,transparent)"},
+  hero:{background:"linear-gradient(135deg,var(--g1),var(--g2))",border:"1px solid var(--herob,transparent)",borderRadius:24,padding:"16px 18px 18px",marginBottom:14,boxShadow:"0 10px 30px color-mix(in srgb,var(--g1) 20%,transparent)"},
   chip:{background:"#ffffff2e",border:"none",color:"#fff",borderRadius:16,padding:"8px 13px",fontSize:13,fontWeight:700,cursor:"pointer",minHeight:36},
   miniStat:{flex:1,background:"#ffffff1f",borderRadius:12,padding:"8px 6px",textAlign:"center"},
   pageTitle:{fontSize:24,fontWeight:800,color:"#fff"},
