@@ -186,10 +186,13 @@ const LIGAS = [
   ["basketball/nba","NBA","Basquetbol"],["basketball/wnba","WNBA","Basquetbol"],["basketball/mens-college-basketball","NCAA Basketball","Basquetbol Colegial","&groups=50"],
   ["baseball/mlb","MLB","Béisbol"],
 ];
+// Estadísticas del equipo que nos interesan (remates, tiros a puerta, córners, tarjetas…)
+const EST = ["shotsOnTarget", "totalShots", "wonCorners", "yellowCards", "redCards", "foulsCommitted", "possessionPct", "offsides", "saves"];
+const estMapa = arr => { const m = {}; (arr || []).forEach(x => { if (x && EST.includes(x.name) && x.displayValue !== undefined) m[x.name] = x.displayValue; }); return m; };
 const valor = x => (x && typeof x === "object") ? (x.displayValue ?? x.value ?? "") : (x ?? "");
 function evNorm(e) {
   const c = (e.competitions || [])[0] || {}, st = c.status || e.status || {}, cs = c.competitors || [];
-  const eq = x => { const t = x.team || x.athlete || {}; return { n: t.shortDisplayName || t.displayName || "", full: t.displayName || "", a: t.abbreviation || "",
+  const eq = x => { const t = x.team || x.athlete || {}; return { id: String(t.id || ""), est: estMapa(x.statistics), n: t.shortDisplayName || t.displayName || "", full: t.displayName || "", a: t.abbreviation || "",
     l: t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "", c: t.color ? "#" + t.color : "", s: String(valor(x.score)) }; };
   const h = cs.find(x => x.homeAway === "home") || cs[0] || {}, a = cs.find(x => x.homeAway === "away") || cs[1] || {};
   return { id: String(e.id), t: e.date, st: (st.type && st.type.state) || "pre", det: (st.type && (st.type.shortDetail || st.type.detail)) || "", clk: st.displayClock || "", h: eq(h), a: eq(a) };
@@ -219,10 +222,26 @@ async function rutasMarcador(request, origin, ruta) {
   const pedidos = (u.searchParams.get("q") || "").split(",").map(x => x.split("~")).filter(x => x.length === 3 && LIGAS.some(l => l[0] === x[0])).slice(0, 30);
   const grupos = {};
   pedidos.forEach(([k, f, id]) => { (grupos[k + "~" + f] = grupos[k + "~" + f] || []).push(id); });
-  const ev = {};
+  const ev = {}, faltan = [];
   await Promise.all(Object.keys(grupos).map(async g => {
     const [k, f] = g.split("~");
-    try { (await scoreboard(k, f.replace(/\D/g, "").slice(0, 8), 25)).forEach(e => { if (grupos[g].includes(e.id)) ev[e.id] = { st: e.st, det: e.det, clk: e.clk, hs: e.h.s, as: e.a.s, t: e.t }; }); } catch {}
+    try { (await scoreboard(k, f.replace(/\D/g, "").slice(0, 8), 25)).forEach(e => { if (grupos[g].includes(e.id)) {
+      ev[e.id] = { st: e.st, det: e.det, clk: e.clk, hs: e.h.s, as: e.a.s, t: e.t, eh: e.h.est, ea: e.a.est };
+      // Si el marcador no trae tiros a puerta, se piden al detalle del partido (solo fútbol en juego o terminado)
+      if (k.startsWith("soccer") && e.st !== "pre" && !("shotsOnTarget" in e.h.est)) faltan.push({ k, id: e.id, hid: e.h.id, aid: e.a.id });
+    } }); } catch {}
+  }));
+  await Promise.all(faltan.slice(0, 6).map(async x => {
+    try {
+      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${x.k}/summary?event=${x.id}`, { cf: { cacheTtl: 25, cacheEverything: true } });
+      if (!r.ok) return;
+      const d = await r.json().catch(() => null);
+      const teams = (d && d.boxscore && d.boxscore.teams) || [];
+      const de = id => { const t = teams.find(t => t.team && String(t.team.id) === id); return t ? estMapa(t.statistics) : null; };
+      const h = de(x.hid) || (teams[0] && teams[0].homeAway === "home" ? estMapa(teams[0].statistics) : null);
+      const a = de(x.aid) || (teams[1] && teams[1].homeAway === "away" ? estMapa(teams[1].statistics) : null);
+      if (h) ev[x.id].eh = h; if (a) ev[x.id].ea = a;
+    } catch {}
   }));
   return resp({ ok: true, ev }, 25);
 }

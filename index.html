@@ -451,6 +451,24 @@ const pistaPick = (a,ev,v) => {
   const hit=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t));
   const H=hit(ev.h), A=hit(ev.a), uno=H!==A;
   const un=esFut(ev.k)?"goles":String(ev.k).startsWith("baseball")?"carreras":"puntos";
+  // Estadísticas de equipo: remates / tiros a puerta, córners, tarjetas
+  const stK = /(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/.test(t) ? ["shotsOnTarget","remates a puerta"]
+    : /\s(remates?|tiros?|disparos?|shots?)\s/.test(t) && !/\s(de esquina|libres?|penal)/.test(t) ? ["totalShots","remates"]
+    : /corner|tiros? de esquina|saques? de esquina/.test(t) ? ["wonCorners","córners"]
+    : /tarjetas?|cards?/.test(t) ? ["tarjetas","tarjetas"] : null;
+  if(stK){
+    if(/tiempo|mitad|\s(1h|2h|half)\s/.test(t)) return null;
+    const lin = t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/) || t.match(/(\d+)\s*\+/);
+    if(!lin) return null;
+    const leer = e => { if(!e) return NaN; if(stK[0]==="tarjetas") return e.yellowCards===undefined?NaN:Number(e.yellowCards)+Number(e.redCards||0); return e[stK[0]]===undefined?NaN:Number(e[stK[0]]); };
+    const vh=leer(v.eh), va=leer(v.ea);
+    let val;
+    if(H&&!A) val=vh; else if(A&&!H) val=va; else if(!H&&!A){ let pre=t.slice(0,t.indexOf(lin[0])); ["total","partido","juego","del","el","vs","entre","ambos","equipos","mas de","menos de"].forEach(x=>{ pre=pre.split(x).join(" "); }); if(pre.replace(/[^a-z]/g,"").length>3) return null; val=vh+va; } else return null;
+    if(isNaN(val)) return null;
+    const under = /under|menos de|baja/.test(lin[1]||""), L = lin[2]!==undefined ? Number(lin[2]) : Number(lin[1])-0.5;
+    if(!under){ const nec=Math.floor(L)+1; return val>=nec ? {txt:(fin?"Pegó":"Ya pegó")+" · "+val+" "+stK[1], ok:1, prog:[nec,nec]} : {txt:val+" de "+nec+" "+stK[1], ok:fin?-1:0, prog:[val,nec]}; }
+    const mx=Math.floor(L); return val>mx ? {txt:"Se pasó · "+val+" "+stK[1], ok:-1} : {txt:val+" "+stK[1]+" · máximo "+mx, ok:fin?1:0};
+  }
   if(/tiempo|mitad|cuarto|entrada|inning|periodo|\s(1h|2h|1q|2q|3q|4q|half)\s|corner|tarjeta|remate|tiro|asistencia|rebote|yarda|ponche|hit|anota primero|primer/.test(t)) return null;
   const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt);
   const ou=t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/);
@@ -530,7 +548,8 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
           <b style=${{whiteSpace:"nowrap",fontSize:13,color:"var(--mu2)",flexShrink:0}}>${fmtMomio(a.cuota)}</b>
         </div>
         ${enVivo && html`<${MarcadorVivo} ev=${ev} v=${vivo}/>`}
-        ${enVivo && pista && html`<div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:6}}>${pista.txt}</div>`}
+        ${enVivo && pista && html`<div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:7}}>${pista.txt}</div>`}
+        ${enVivo && pista && pista.prog && html`<div style=${{height:5,borderRadius:3,background:"var(--br2)",margin:"6px 18px 2px",overflow:"hidden"}}><div style=${{height:5,borderRadius:3,background:"var(--mu2)",width:Math.min(100,pista.prog[0]/pista.prog[1]*100)+"%",transition:"width .4s"}}></div></div>`}
         ${terminado && html`<div style=${{display:"flex",justifyContent:"space-between",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid var(--br)",fontSize:12,color:"var(--mu)"}}>
           <span style=${{display:"flex",alignItems:"center",gap:6}}><${Escudo} e=${lados(ev,vivo)[0]} s=${16}/><b style=${{color:"#fff"}}>${finTxt.replace("Final ","")}</b><${Escudo} e=${lados(ev,vivo)[1]} s=${16}/> Final</span>
           <span>${pista?(pista.ok>0?"Parece ganada":pista.ok<0?"Parece perdida":pista.txt):(admin?"":"Esperando resultado")}</span>
