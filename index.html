@@ -541,12 +541,13 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
   const dec = momioToDec(a.cuota)||1;
   const ganaria = (monto||0)*(dec-1);
   const ev = !combo && a.evento && a.evento.id ? a.evento : null;
-  const enVivo = pend && ev && vivo && vivo.st==="in";
+  const enVivo = ev && vivo && vivo.st==="in";
   const terminado = pend && ev && vivo && vivo.st==="post";
   const comboFin = combo && pend && estadoVivo==="post";
-  const legsVivo = combo && pend && (estadoVivo==="in"||estadoVivo==="post") ? patas.map((p,i)=>({p,v:vivoPatas&&vivoPatas[i]})).filter(x=>x.p.evento&&x.p.evento.id) : [];
+  const legsVivo = combo && (estadoVivo==="in"||(pend&&estadoVivo==="post")) ? patas.map((p,i)=>({p,v:vivoPatas&&vivoPatas[i]})).filter(x=>x.p.evento&&x.p.evento.id) : [];
   const pista = (enVivo||terminado) ? pistaPick(a,ev,vivo) : null;
-  const finTxt = (()=>{ if(!ev || !(terminado || (!pend && ev.fin))) return ""; const [l,r]=lados(ev,terminado?vivo:null);
+  const finTxt = (()=>{ if(!ev) return ""; const src = terminado ? vivo : !pend ? (ev.fin ? null : (vivo&&vivo.st==="post" ? vivo : undefined)) : undefined;
+    if(src===undefined) return ""; const [l,r]=lados(ev,src);
     return l.s!==undefined && l.s!==null && l.s!=="" ? "Final "+l.s+"-"+r.s : ""; })();
   const subLinea = enVivo ? (ev.liga||subtitulo) : (subtitulo + (finTxt && !terminado ? " · "+finTxt : ""));
   return html`<div style=${{...S.apCard,transition:"opacity .2s"}}>
@@ -1383,8 +1384,8 @@ function App() {
 
   // Marcador en vivo: cada 30 s mientras la app está abierta, solo de picks pendientes con partido elegido
   const vigilar = useMemo(()=>{ const lim=isoLocal(new Date(Date.now()-3*864e5));
-    return [...new Set(apuestas.filter(a=>a.resultado==="Pendiente"&&a.fecha>=lim).flatMap(a=>[a.evento,...(Array.isArray(a.patas)?a.patas:[]).map(p=>p&&typeof p==="object"?p.evento:null)])
-      .filter(e=>e&&e.id).map(e=>e.k+"~"+e.f+"~"+e.id))].slice(0,30).join(","); },[apuestas]);
+    return [...new Set(apuestas.filter(a=>a.fecha>=lim).flatMap(a=>[a.evento,...(Array.isArray(a.patas)?a.patas:[]).map(p=>p&&typeof p==="object"?p.evento:null)])
+      .filter(e=>e&&e.id&&!e.fin).map(e=>e.k+"~"+e.f+"~"+e.id))].slice(0,30).join(","); },[apuestas]);
   useEffect(()=>{
     if(!vigilar) return;
     let vivoOk=true;
@@ -1397,10 +1398,26 @@ function App() {
   const vivoDe = a => a.evento&&a.evento.id ? vivo[a.evento.id] : null;
   const vivoPatas = a => Array.isArray(a.patas) ? patasDe(a).map(p=>p.evento&&p.evento.id?vivo[p.evento.id]||null:null) : [];
   // Estado del pick para las secciones: "in" en juego, "post" terminó (parlay: todas sus legs con partido terminaron)
-  const estadoVivo = a => { if(a.resultado!=="Pendiente") return "";
-    if(esCombo(a)){ const ps=patasDe(a), vs=vivoPatas(a), con=ps.map((p,i)=>p.evento&&p.evento.id&&!p.res?vs[i]:undefined).filter(x=>x!==undefined);
-      if(!con.length) return ""; if(con.some(v=>v&&v.st==="in")) return "in"; if(con.every(v=>v&&v.st==="post")) return "post"; return ""; }
-    const v=vivoDe(a); return v?v.st:""; };
+  // Aunque ya esté calificado, mientras su partido se juega sigue en "En juego" con su marcador
+  const estadoVivo = a => { const pend = a.resultado==="Pendiente";
+    if(esCombo(a)){ const ps=patasDe(a), vs=vivoPatas(a);
+      const con = ps.map((p,i)=>p.evento&&p.evento.id?vs[i]:undefined).filter(x=>x!==undefined);
+      if(!con.length) return ""; if(con.some(v=>v&&v.st==="in")) return "in"; if(!pend) return "";
+      const abiertas = ps.map((p,i)=>p.evento&&p.evento.id&&!p.res?vs[i]:undefined).filter(x=>x!==undefined);
+      return (abiertas.length?abiertas:con).every(v=>v&&v.st==="post") ? "post" : ""; }
+    const v=vivoDe(a); if(!v) return ""; if(v.st==="in") return "in"; return pend&&v.st==="post"?"post":""; };
+  // Admin: si un pick ya calificado termina su partido, se guarda el marcador final
+  useEffect(()=>{
+    if(!isAdmin) return;
+    apuestas.forEach(a=>{ if(!a._docId||a.resultado==="Pendiente") return;
+      const cambios={};
+      const v=a.evento&&a.evento.id&&!a.evento.fin?vivo[a.evento.id]:null;
+      if(v&&v.st==="post"&&v.hs!=="") cambios.evento={...a.evento,fin:{hs:v.hs,as:v.as}};
+      if(Array.isArray(a.patas)&&a.patas.some(p=>p&&p.evento&&p.evento.id&&!p.evento.fin&&vivo[p.evento.id]&&vivo[p.evento.id].st==="post")){
+        cambios.patas=a.patas.map(p=>{ if(!(p&&typeof p==="object"&&p.evento&&p.evento.id&&!p.evento.fin)) return p; const w=vivo[p.evento.id]; return w&&w.st==="post"&&w.hs!==""?{...p,evento:{...p.evento,fin:{hs:w.hs,as:w.as}}}:p; }); }
+      if(Object.keys(cambios).length) db.collection("apuestas").doc(a._docId).update(cambios);
+    });
+  },[vivo]);
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
