@@ -4,6 +4,8 @@
 //  POST /suscribir   → Guarda la suscripción push de un celular (KV "PUSH")
 //  POST /desuscribir → La borra
 //  POST /notificar   → Envía una notificación a todos los suscritos (solo admins)
+//  GET  /partidos[?k=liga&d=AAAAMMDD] → Ligas disponibles, o partidos del día de una liga (ESPN)
+//  GET  /marcador?q=k~fecha~id,… → Marcador en vivo de los partidos elegidos
 // Las suscripciones y las llaves de notificación viven en el KV vinculado como PUSH.
 
 const ORIGENES = ["https://alexmz24k.github.io"];
@@ -171,12 +173,67 @@ async function rutasPush(request, env, origin, ruta) {
   return json({ error: "Ruta no encontrada" }, 404, origin);
 }
 
+// ───────── Partidos y marcadores (datos públicos de ESPN) ─────────
+const LIGAS = [
+  ["soccer/mex.1","Liga MX","Fútbol"],["soccer/uefa.champions","Champions League","Fútbol"],["soccer/uefa.europa","Europa League","Fútbol"],
+  ["soccer/uefa.europa.conf","Conference League","Fútbol"],["soccer/eng.1","Premier League","Fútbol"],["soccer/esp.1","LaLiga","Fútbol"],
+  ["soccer/ita.1","Serie A","Fútbol"],["soccer/ger.1","Bundesliga","Fútbol"],["soccer/fra.1","Ligue 1","Fútbol"],["soccer/por.1","Liga Portugal","Fútbol"],
+  ["soccer/ned.1","Eredivisie","Fútbol"],["soccer/usa.1","MLS","Fútbol"],["soccer/mex.2","Liga de Expansión","Fútbol"],
+  ["soccer/conmebol.libertadores","Libertadores","Fútbol"],["soccer/conmebol.sudamericana","Sudamericana","Fútbol"],
+  ["soccer/concacaf.champions","Concacaf Champions","Fútbol"],["soccer/fifa.friendly","Amistosos","Fútbol"],
+  ["soccer/fifa.worldq.concacaf","Eliminatoria Concacaf","Fútbol"],["soccer/fifa.worldq.conmebol","Eliminatoria Conmebol","Fútbol"],["soccer/uefa.nations","Nations League","Fútbol"],
+  ["football/nfl","NFL","Americano"],["football/college-football","NCAA Football","Americano Colegial","&groups=80"],
+  ["basketball/nba","NBA","Basquetbol"],["basketball/wnba","WNBA","Basquetbol"],["basketball/mens-college-basketball","NCAA Basketball","Basquetbol Colegial","&groups=50"],
+  ["baseball/mlb","MLB","Béisbol"],
+];
+const valor = x => (x && typeof x === "object") ? (x.displayValue ?? x.value ?? "") : (x ?? "");
+function evNorm(e) {
+  const c = (e.competitions || [])[0] || {}, st = c.status || e.status || {}, cs = c.competitors || [];
+  const eq = x => { const t = x.team || x.athlete || {}; return { n: t.shortDisplayName || t.displayName || "", full: t.displayName || "", a: t.abbreviation || "",
+    l: t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "", c: t.color ? "#" + t.color : "", s: String(valor(x.score)) }; };
+  const h = cs.find(x => x.homeAway === "home") || cs[0] || {}, a = cs.find(x => x.homeAway === "away") || cs[1] || {};
+  return { id: String(e.id), t: e.date, st: (st.type && st.type.state) || "pre", det: (st.type && (st.type.shortDetail || st.type.detail)) || "", clk: st.displayClock || "", h: eq(h), a: eq(a) };
+}
+async function scoreboard(k, fecha, ttl) {
+  const lg = LIGAS.find(l => l[0] === k);
+  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${k}/scoreboard?dates=${fecha}&limit=200${(lg && lg[3]) || ""}`,
+    { cf: { cacheTtl: ttl, cacheEverything: true } });
+  if (!r.ok) return [];
+  const d = await r.json().catch(() => null);
+  return ((d && d.events) || []).map(evNorm);
+}
+async function rutasMarcador(request, origin, ruta) {
+  const u = new URL(request.url);
+  const resp = (obj, seg) => new Response(JSON.stringify(obj), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=" + seg, ...cors(origin) } });
+  if (ruta === "/partidos") {
+    // Sin liga: solo la lista de ligas. Con liga: los partidos de ese día (una liga por llamada = poco CPU)
+    const k = u.searchParams.get("k");
+    if (!k) return resp({ ok: true, ligas: LIGAS.map(([k, liga, dep]) => ({ k, liga, dep })) }, 3600);
+    const lg = LIGAS.find(l => l[0] === k);
+    const d = (u.searchParams.get("d") || "").replace(/\D/g, "").slice(0, 8);
+    if (!lg || d.length !== 8) return json({ error: "Datos inválidos" }, 400, origin);
+    let ev = []; try { ev = await scoreboard(k, d, 60); } catch {}
+    return resp({ ok: true, ev }, 60);
+  }
+  // /marcador?q=soccer/mex.1~20261013~401234,...
+  const pedidos = (u.searchParams.get("q") || "").split(",").map(x => x.split("~")).filter(x => x.length === 3 && LIGAS.some(l => l[0] === x[0])).slice(0, 30);
+  const grupos = {};
+  pedidos.forEach(([k, f, id]) => { (grupos[k + "~" + f] = grupos[k + "~" + f] || []).push(id); });
+  const ev = {};
+  await Promise.all(Object.keys(grupos).map(async g => {
+    const [k, f] = g.split("~");
+    try { (await scoreboard(k, f.replace(/\D/g, "").slice(0, 8), 25)).forEach(e => { if (grupos[g].includes(e.id)) ev[e.id] = { st: e.st, det: e.det, clk: e.clk, hs: e.h.s, as: e.a.s, t: e.t }; }); } catch {}
+  }));
+  return resp({ ok: true, ev }, 25);
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") return new Response(null, { headers: cors(origin) });
     if (!ORIGENES.includes(origin)) return json({ error: "Origen no permitido" }, 403, origin);
     const ruta = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+    if (ruta === "/partidos" || ruta === "/marcador") return rutasMarcador(request, origin, ruta);
     if (ruta !== "/") return rutasPush(request, env, origin, ruta);
     if (request.method !== "POST") return json({ error: "Usa POST" }, 405, origin);
     if (!env.ANTHROPIC_API_KEY) return json({ error: "Falta el secreto ANTHROPIC_API_KEY en Cloudflare" }, 500, origin);

@@ -424,11 +424,72 @@ const separarPick = a => {
   if(m) return {pick:m[2].trim(), partido:m[1].trim()};
   return {pick:d, partido:""};
 };
+// ───── Partidos (ESPN vía el Worker) y marcador en vivo ─────
+const fechaESPN = d => d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
+const isoLocal = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const horaLocal = t => { const d=new Date(t); return isNaN(d)?"":d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",hour12:false}); };
+const esFut = k => String(k||"").startsWith("soccer");
+// En fútbol va primero el local (Tigres vs Toluca); en deportes de EUA primero el visitante (Bills @ Rams)
+const lados = (ev,v) => { const hs=v?v.hs:(ev.fin&&ev.fin.hs), as=v?v.as:(ev.fin&&ev.fin.as);
+  return esFut(ev.k) ? [{...ev.h,s:hs},{...ev.a,s:as}] : [{...ev.a,s:as},{...ev.h,s:hs}]; };
+const nombrePartido = ev => esFut(ev.k) ? ev.h.n+" vs "+ev.a.n : ev.a.n+" @ "+ev.h.n;
+const estadoTxt = v => { if(!v) return ""; if(v.st==="post") return "Final"; if(v.st==="pre") return horaLocal(v.t);
+  const d=String(v.det||v.clk||"");
+  if(/^(HT|Halftime)$/i.test(d)) return "Medio tiempo";
+  return d.replace(/\bTop\b/i,"▲").replace(/\bBot(tom)?\b/i,"▼").replace(/\bMid\b/i,"Mitad").replace(/\bEnd\b/i,"Fin").replace(/\bHalftime\b/i,"Medio tiempo")
+    .replace(/(\d)(st|nd|rd|th)\b/g,"$1º").replace(/\bOT\b/,"Tiempo extra").replace(/\bQtr\b/i,"C").trim(); };
+function Escudo({e,s=28}) {
+  const [err,setErr] = useState(false);
+  if(e && e.l && !err) return html`<img src=${e.l} alt="" width=${s} height=${s} loading="lazy" onError=${()=>setErr(true)} style=${{width:s,height:s,objectFit:"contain",flexShrink:0}}/>`;
+  return html`<span style=${{width:s,height:s,borderRadius:"50%",background:(e&&e.c)||"var(--br2)",color:"#fff",fontSize:Math.max(7,Math.round(s*.3)),fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>${String((e&&(e.a||e.n))||"?").slice(0,3).toUpperCase()}</span>`;
+}
+// Lee el pick y dice cómo va (solo cuando lo entiende con seguridad)
+const pistaPick = (a,ev,v) => {
+  if(!v||!ev) return null; const hs=Number(v.hs), as=Number(v.as); if(v.hs===""||v.as===""||isNaN(hs)||isNaN(as)) return null;
+  const t=" "+normTxt(a.descripcion||"")+" ", fin=v.st==="post";
+  const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  const hit=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t));
+  const H=hit(ev.h), A=hit(ev.a), uno=H!==A;
+  const un=esFut(ev.k)?"goles":String(ev.k).startsWith("baseball")?"carreras":"puntos";
+  if(/tiempo|mitad|cuarto|entrada|inning|periodo|\s(1h|2h|1q|2q|3q|4q|half)\s|corner|tarjeta|remate|tiro|asistencia|rebote|yarda|ponche|hit|anota primero|primer/.test(t)) return null;
+  const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt);
+  const ou=t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/);
+  if(ou){ // solo totales del partido: antes del over no puede ir un jugador, después solo goles/puntos/carreras
+    let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a),"vs","total","partido","juego","del","el"].forEach(x=>{ pre=pre.split(x).join(" "); });
+    const pos=t.slice(ou.index+ou[0].length).trim();
+    if(pre.replace(/[^a-z0-9]/g,"")!=="" || (pos && !/^(goles?|puntos?|pts|carreras?|runs?|totales?|en total)(\s|$)/.test(pos))) return null; }
+  if(ou && !uno){ const L=Number(ou[2]), tot=hs+as;
+    if(/over|mas de|alta/.test(ou[1])){ const nec=Math.floor(L)+1;
+      return tot>=nec ? {txt:(fin?"Pasó":"Ya pasó")+" · "+tot+" "+un, ok:1} : {txt:tot+" de "+nec+" "+un, ok:fin?-1:0}; }
+    const mx=Math.floor(L); return tot>mx ? {txt:"Se pasó · "+tot+" "+un, ok:-1} : {txt:(fin?"Quedó en ":"Van ")+tot+" · máximo "+mx, ok:fin?1:0}; }
+  if(!uno||ou) return null;
+  const mio=H?hs:as, otro=H?as:hs;
+  const sp=t.match(/\s([+-]\d+(?:\.\d+)?)\s/);
+  if(sp){ const m=mio-otro+Number(sp[1]); return {txt:m>0?(fin?"Cubrió":"Va cubriendo"):m<0?(fin?"No cubrió":"No cubre todavía"):"Justo en la línea", ok:m>0?1:m<0?(fin?-1:0):0}; }
+  if(/\d/.test(t.replace(/\s(ml|moneyline)\s/g," "))) return null;
+  if(/empate|draw|doble/.test(t)) return mio>=otro ? {txt:fin?"Pegó":"Va bien", ok:1} : {txt:fin?"No pegó":"Va abajo", ok:fin?-1:0};
+  if(mio>otro) return {txt:fin?"Ganó":"Va arriba", ok:1};
+  if(mio<otro) return {txt:fin?"Perdió":"Va abajo", ok:fin?-1:0};
+  return {txt:fin?"Empate":"Va empatado", ok:fin&&esFut(ev.k)?-1:0};
+};
+function MarcadorVivo({ev,v}) {
+  const [l,r] = lados(ev,v);
+  const eq = e => html`<div style=${{flex:1,minWidth:0,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><${Escudo} e=${e} s=${30}/><span style=${{fontSize:12,color:"var(--mu2)",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${e.n}</span></div>`;
+  return html`<div style=${{marginTop:10,background:"color-mix(in srgb,var(--bg) 60%,transparent)",borderRadius:12,padding:"10px 6px",display:"flex",alignItems:"center"}}>
+    ${eq(l)}
+    <div style=${{textAlign:"center",minWidth:92}}>
+      <div style=${{fontSize:26,fontWeight:800,color:"#fff",letterSpacing:1,fontVariantNumeric:"tabular-nums"}}>${l.s||0} - ${r.s||0}</div>
+      <div style=${{fontSize:11,color:"var(--mu)",marginTop:2}}><span style=${{display:"inline-block",width:6,height:6,borderRadius:"50%",background:"var(--mu2)",marginRight:5,verticalAlign:"middle"}}></span>${estadoTxt(v)}</div>
+    </div>
+    ${eq(r)}
+  </div>`;
+}
+
 // Patas de un parlay/freebet como lista limpia {deporte,desc,res}
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
 
-function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha}) {
+function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,admin}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
   const show = open||expanded;
@@ -447,6 +508,13 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
   const pend = a.resultado==="Pendiente";
   const dec = momioToDec(a.cuota)||1;
   const ganaria = (monto||0)*(dec-1);
+  const ev = !combo && a.evento && a.evento.id ? a.evento : null;
+  const enVivo = pend && ev && vivo && vivo.st==="in";
+  const terminado = pend && ev && vivo && vivo.st==="post";
+  const pista = (enVivo||terminado) ? pistaPick(a,ev,vivo) : null;
+  const finTxt = (()=>{ if(!ev || !(terminado || (!pend && ev.fin))) return ""; const [l,r]=lados(ev,terminado?vivo:null);
+    return l.s!==undefined && l.s!==null && l.s!=="" ? "Final "+l.s+"-"+r.s : ""; })();
+  const subLinea = enVivo ? (ev.liga||subtitulo) : (subtitulo + (finTxt && !terminado ? " · "+finTxt : ""));
   return html`<div style=${{...S.apCard,transition:"opacity .2s"}}>
     <div style=${{display:"flex",cursor:"pointer",opacity:metida?1:.45}} onClick=${()=>setOpen(o=>!o)}>
       <div style=${{width:5,background:cr,flexShrink:0}}></div>
@@ -458,9 +526,18 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
             : html`<div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px",textDecoration:metida?"none":"line-through"}}>${montoTxt}</div>`}
         </div>
         <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,marginTop:5,fontSize:12,color:"var(--mu)"}}>
-          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${a.resultado==="Nula" && html`<b style=${{fontSize:10,color:cr,marginRight:6}}>NULA</b>`}${sinFecha?"":f.d+" "+MESES_CORTO[f.m]+(subtitulo?" · ":"")}${marcar(subtitulo,q)}</span>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${a.resultado==="Nula" && html`<b style=${{fontSize:10,color:cr,marginRight:6}}>NULA</b>`}${sinFecha?"":f.d+" "+MESES_CORTO[f.m]+(subLinea?" · ":"")}${marcar(subLinea,q)}</span>
           <b style=${{whiteSpace:"nowrap",fontSize:13,color:"var(--mu2)",flexShrink:0}}>${fmtMomio(a.cuota)}</b>
         </div>
+        ${enVivo && html`<${MarcadorVivo} ev=${ev} v=${vivo}/>`}
+        ${enVivo && pista && html`<div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:6}}>${pista.txt}</div>`}
+        ${terminado && html`<div style=${{display:"flex",justifyContent:"space-between",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid var(--br)",fontSize:12,color:"var(--mu)"}}>
+          <span style=${{display:"flex",alignItems:"center",gap:6}}><${Escudo} e=${lados(ev,vivo)[0]} s=${16}/><b style=${{color:"#fff"}}>${finTxt.replace("Final ","")}</b><${Escudo} e=${lados(ev,vivo)[1]} s=${16}/> Final</span>
+          <span>${pista?(pista.ok>0?"Parece ganada":pista.ok<0?"Parece perdida":pista.txt):(admin?"":"Esperando resultado")}</span>
+        </div>`}
+        ${terminado && admin && html`<div style=${{display:"flex",gap:8,marginTop:9}}>
+          ${[["Ganada","✓ Ganada"],["Perdida","✕ Perdida"]].map(([r,t])=>html`<button key=${r} onClick=${e=>{e.stopPropagation();onToggle&&onToggle(r);}} style=${{flex:1,minHeight:40,borderRadius:10,border:"1px solid "+(pista&&((pista.ok>0&&r==="Ganada")||(pista.ok<0&&r==="Perdida"))?"color-mix(in srgb,var(--ac) 60%,transparent)":"var(--br)"),background:"transparent",color:"#dfe5ff",fontWeight:700,fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>${t}</button>`)}
+        </div>`}
       </div>
     </div>
     ${show && html`<div style=${S.apDetail}>
@@ -892,6 +969,9 @@ function App() {
   useEffect(()=>{ if(!pushSoportado()) return; navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(sub=>{ setPushOn(!!sub && Notification.permission==="granted"); setPushChecado(true); }).catch(()=>{}); },[]);
   const [buscaTodo,setBuscaTodo] = useState(false);
   const [ia,setIa] = useState({estado:null,msg:""});
+  const [vivo,setVivo] = useState({});          // marcador en vivo por id de partido ESPN
+  const [elegir,setElegir] = useState(null);    // selector de partido dentro de Nueva apuesta: {dia,dep,q}
+  const [partidosDia,setPartidosDia] = useState({}); // AAAAMMDD → {cargando,ligas,error}
   // Instalar en pantalla de inicio (iPhone: instrucciones; Android: botón real)
   const [instalarGuia,setInstalarGuia] = useState(false);
   const [promptInstalar,setPromptInstalar] = useState(null);
@@ -1154,9 +1234,75 @@ function App() {
 
   const maxNeto = useMemo(()=>Math.max(...datosPorMes.map(d=>Math.abs(d.neto)),1),[datosPorMes]);
 
+  // Selector de partido (Nueva apuesta)
+  const diaElegir = n => { const d=new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()+n); return d; };
+  const claveElegir = elegir ? fechaESPN(diaElegir(elegir.dia)) : null;
+  useEffect(()=>{
+    if(!claveElegir || partidosDia[claveElegir]) return;
+    const clave = claveElegir;
+    setPartidosDia(p=>({...p,[clave]:{cargando:true,ligas:[]}}));
+    (async()=>{
+      try{
+        const lst = await (await fetch(IA_URL+"/partidos")).json();
+        if(!lst||!lst.ok) throw 0;
+        let pend = lst.ligas.length, alguna = false;
+        await Promise.all(lst.ligas.map(async lg=>{
+          try{ const d = await (await fetch(IA_URL+"/partidos?k="+encodeURIComponent(lg.k)+"&d="+clave)).json(); if(d&&d.ok){ alguna=true;
+            if(d.ev&&d.ev.length) setPartidosDia(p=>{ const c=p[clave]||{}; const ligas=[...(c.ligas||[]),{...lg,ev:d.ev}].sort((x,y)=>lst.ligas.findIndex(l=>l.k===x.k)-lst.ligas.findIndex(l=>l.k===y.k)); return {...p,[clave]:{...c,ligas}}; }); } }catch(e){}
+          pend--; }));
+        setPartidosDia(p=>({...p,[clave]:{...(p[clave]||{}),cargando:false,error:!alguna}}));
+      }catch(e){ setPartidosDia(p=>({...p,[clave]:{cargando:false,error:true,ligas:[]}})); }
+    })();
+  },[claveElegir]);
+  const elegirPartido = (lg,e) => {
+    const ev = {k:lg.k, f:claveElegir, id:e.id, liga:lg.liga, t:e.t,
+      h:{n:e.h.n,full:e.h.full,a:e.h.a,l:e.h.l,c:e.h.c}, a:{n:e.a.n,full:e.a.full,a:e.a.a,l:e.a.l,c:e.a.c}};
+    const fe = new Date(e.t);
+    setForm(f=>({...f, evento:ev, partido:nombrePartido(ev), deporte:lg.dep||f.deporte, fecha:isNaN(fe)?f.fecha:isoLocal(fe)}));
+    setElegir(null);
+  };
+  const vistaElegir = () => {
+    const dat = partidosDia[claveElegir]||{cargando:true};
+    const q = normTxt(elegir.q||"").trim();
+    const ligas = (dat.ligas||[]).map(lg=>({...lg, ev:lg.ev.filter(e=>(!elegir.dep||lg.dep===elegir.dep)&&(!q||normTxt(e.h.n+" "+e.h.full+" "+e.a.n+" "+e.a.full+" "+lg.liga).includes(q)))})).filter(lg=>lg.ev.length);
+    const deps = [...new Set((dat.ligas||[]).map(l=>l.dep))];
+    const chip = (on,t,fn,k) => html`<button key=${k||t} onClick=${fn} style=${{flexShrink:0,padding:"8px 13px",borderRadius:12,fontSize:13,fontWeight:700,fontFamily:"inherit",cursor:"pointer",whiteSpace:"nowrap",
+      background:on?"var(--ac)":"var(--card)",color:on?"var(--onac)":"var(--mu)",border:"1px solid "+(on?"var(--ac)":"var(--br)")}}>${t}</button>`;
+    const fila = (lg,e) => { const ev={k:lg.k,h:e.h,a:e.a}, v={st:e.st,det:e.det,clk:e.clk,hs:e.h.s,as:e.a.s,t:e.t}, [l,r]=lados(ev,v);
+      const der = e.st==="in" ? html`<b style=${{fontSize:12,color:"var(--mu2)"}}>● ${estadoTxt(v)}</b>` : e.st==="post" ? html`<span style=${{fontSize:12,color:"var(--mu)"}}>Final</span>` : html`<b style=${{fontSize:13,color:"var(--mu2)"}}>${horaLocal(e.t)}</b>`;
+      const ln = x => html`<div style=${{display:"flex",alignItems:"center",gap:9}}><${Escudo} e=${x} s=${24}/><span style=${{fontSize:14,fontWeight:600,color:"#fff",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${x.n}</span>${e.st!=="pre"&&html`<b style=${{fontSize:14,color:"#fff",marginRight:4}}>${x.s}</b>`}</div>`;
+      return html`<button key=${e.id} onClick=${()=>elegirPartido(lg,e)} style=${{display:"flex",alignItems:"center",gap:10,width:"100%",background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:"10px 12px",marginBottom:8,fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+        <div style=${{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:7}}>${ln(l)}${ln(r)}</div>
+        <div style=${{minWidth:54,textAlign:"right"}}>${der}</div></button>`; };
+    return html`<div>
+      <input style=${{...S.input,fontSize:16,padding:"11px 13px",marginBottom:10}} value=${elegir.q} onInput=${e=>setElegir(x=>({...x,q:e.target.value}))} placeholder="Buscar equipo…"/>
+      <div style=${{display:"flex",gap:6,marginBottom:8}}>${[0,1,2,3].map(n=>{ const d=diaElegir(n); return chip(elegir.dia===n, n===0?"Hoy":n===1?"Mañana":["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getDay()]+" "+d.getDate(), ()=>setElegir(x=>({...x,dia:n})), "d"+n); })}</div>
+      ${deps.length>1 && html`<div style=${{display:"flex",gap:6,overflowX:"auto",marginBottom:6,paddingBottom:4}}>${chip(!elegir.dep,"Todos",()=>setElegir(x=>({...x,dep:""})))}${deps.map(d=>chip(elegir.dep===d,d,()=>setElegir(x=>({...x,dep:d}))))}</div>`}
+      ${dat.cargando && !ligas.length ? html`<div style=${{padding:"30px 0",textAlign:"center",color:"var(--mu)",fontSize:14}}>Buscando partidos…</div>`
+        : dat.error ? html`<div style=${{padding:"24px 0",textAlign:"center",color:"var(--mu)",fontSize:14,lineHeight:1.5}}>No se pudieron cargar los partidos.<br/>Escríbelo a mano o intenta en un momento.</div>`
+        : !ligas.length ? html`<div style=${{padding:"24px 0",textAlign:"center",color:"var(--mu)",fontSize:14}}>${q?"No encontré ese equipo este día.":"No hay partidos este día."}</div>`
+        : ligas.map(lg=>html`<div key=${lg.k}><div style=${{fontSize:11,color:"var(--mu)",fontWeight:800,letterSpacing:.8,margin:"12px 2px 8px",textTransform:"uppercase"}}>${lg.liga}</div>${lg.ev.map(e=>fila(lg,e))}</div>`)}
+      <button onClick=${()=>setElegir(null)} style=${{...S.btnSecondary,width:"100%",marginTop:10,minHeight:46}}>✏️ Mejor lo escribo a mano</button>
+    </div>`;
+  };
+
+  // Marcador en vivo: cada 30 s mientras la app está abierta, solo de picks pendientes con partido elegido
+  const vigilar = useMemo(()=>{ const lim=isoLocal(new Date(Date.now()-3*864e5));
+    return [...new Set(apuestas.filter(a=>a.resultado==="Pendiente"&&a.evento&&a.evento.id&&a.fecha>=lim).map(a=>a.evento.k+"~"+a.evento.f+"~"+a.evento.id))].slice(0,30).join(","); },[apuestas]);
+  useEffect(()=>{
+    if(!vigilar) return;
+    let vivoOk=true;
+    const tick = async () => { if(document.visibilityState!=="visible") return;
+      try{ const r=await fetch(IA_URL+"/marcador?q="+encodeURIComponent(vigilar)); const d=await r.json(); if(vivoOk&&d&&d.ev) setVivo(v=>({...v,...d.ev})); }catch(e){} };
+    tick(); const t=setInterval(tick,30000);
+    const vis=()=>{ if(document.visibilityState==="visible") tick(); }; document.addEventListener("visibilitychange",vis);
+    return ()=>{ vivoOk=false; clearInterval(t); document.removeEventListener("visibilitychange",vis); };
+  },[vigilar]);
+  const vivoDe = a => a.evento&&a.evento.id ? vivo[a.evento.id] : null;
+
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
+  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion} vivo=${vivoDe(a)} admin=${isAdmin}/>`;
   const porDia = lista => { const m=new Map(); lista.forEach(a=>{ if(!m.has(a.fecha)) m.set(a.fecha,[]); m.get(a.fecha).push(a); }); return [...m.entries()]; };
   const nombreDia = fe => { const f=parseFecha(fe), d=new Date(f.y,f.m,f.d), h=new Date(); h.setHours(0,0,0,0);
     const dif=Math.round((h-d)/864e5), base=f.d+" "+MESES_CORTO[f.m];
@@ -1164,7 +1310,11 @@ function App() {
   const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMesLista.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
-    ${porDia(apuestasMesLista.slice().reverse()).map(([fe,lista])=>html`<div key=${fe}>
+    ${(()=>{ const st=a=>a.resultado==="Pendiente"&&vivoDe(a)?vivoDe(a).st:"";
+      const sec=(t,l)=>l.length>0&&html`<div key=${t}><div style=${{fontSize:11,letterSpacing:.8,color:"var(--mu)",fontWeight:800,margin:"14px 2px 8px",textTransform:"uppercase"}}>${t}</div>${l.map(a=>renderAR(a,exp))}</div>`;
+      const ls=apuestasMesLista.slice().reverse();
+      return html`${sec("En juego",ls.filter(a=>st(a)==="in"))}${sec(isAdmin?"Por calificar":"Terminó · esperando resultado",ls.filter(a=>st(a)==="post"))}`; })()}
+    ${porDia(apuestasMesLista.slice().reverse().filter(a=>!(a.resultado==="Pendiente"&&vivoDe(a)&&(vivoDe(a).st==="in"||vivoDe(a).st==="post")))).map(([fe,lista])=>html`<div key=${fe}>
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,fontSize:11,letterSpacing:.8,color:"var(--mu)",fontWeight:800,margin:"14px 2px 8px",textTransform:"uppercase"}}>
         <span>${nombreDia(fe)}</span>
         ${(()=>{ const r=lista.filter(a=>!noMet(a)&&(a.resultado==="Ganada"||a.resultado==="Perdida")); if(!r.length) return null;
@@ -1184,6 +1334,7 @@ function App() {
       setForm({...ap,monto:String(ap.monto),cuota:momioDec?momioToDec(ap.cuota).toFixed(2):String(ap.cuota),patas});
       setEditId(ap.id);
     } else {setForm(initialForm);setEditId(null);}
+    setElegir(null);
     setFormError("");
     setIa({estado:null,msg:""});
     setModal(true);
@@ -1245,7 +1396,7 @@ function App() {
     if(!form.fecha) { setFormError("Selecciona la fecha"); return; }
     setFormError("");
     const deporte = !form.deporte ? (usaPatas?"Combinación":form.tipo) : form.deporte;
-    const nueva = {deporte,descripcion:desc,partido:usaPatas?"":String(form.partido||"").trim(),monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[]};
+    const nueva = {deporte,descripcion:desc,partido:usaPatas?"":String(form.partido||"").trim(),monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[],evento:(!usaPatas&&form.evento)?form.evento:null};
     if(editId){
       const docId=apuestas.find(a=>a.id===editId)?._docId;
       if(docId) db.collection("apuestas").doc(docId).set({...nueva,id:editId});
@@ -1285,6 +1436,8 @@ function App() {
     const ap=apuestas.find(a=>a.id===id);
     if(!ap?._docId) return;
     const cambios = {resultado};
+    const vf = ap.evento && vivo[ap.evento.id];
+    if(vf && vf.st==="post" && vf.hs!=="" && vf.as!=="") cambios.evento = {...ap.evento, fin:{hs:vf.hs, as:vf.as}};
     // Parlay ganado → todas sus patas ganaron: las que estén vacías se marcan ✓
     if(resultado==="Ganada" && (ap.tipo==="Parlay/Combinada"||ap.tipo==="Freebet") && Array.isArray(ap.patas) && ap.patas.length){
       cambios.patas = ap.patas.map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; if(o.desc&&String(o.desc).trim()&&!o.res) o.res="G"; return o; });
@@ -1856,9 +2009,11 @@ function App() {
     <!-- Modal nueva/editar -->
     ${modal && html`<${Hoja} onClose=${()=>setModal(false)}>
         <div style=${S.modalHeader}>
-          <h2 style=${S.modalTitle}>${editId?"Editar apuesta":"Nueva apuesta"}</h2>
-          <button onClick=${()=>setModal(false)} style=${S.closeBtn}>✕</button>
+          ${elegir ? html`<button onClick=${()=>setElegir(null)} style=${{background:"none",border:"none",color:"var(--ac)",fontSize:16,fontWeight:700,padding:"6px 0",cursor:"pointer",fontFamily:"inherit"}}>‹ Volver</button>` : ""}
+          <h2 style=${S.modalTitle}>${elegir?"Elegir partido":editId?"Editar apuesta":"Nueva apuesta"}</h2>
+          <button onClick=${()=>{setElegir(null);setModal(false);}} style=${S.closeBtn}>✕</button>
         </div>
+        ${elegir ? vistaElegir() : html`
         ${!editId && html`<div style=${{marginBottom:16}}>
           <label style=${{display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%",minHeight:54,borderRadius:14,cursor:ia.estado==="leyendo"?"default":"pointer",
             background:ia.estado==="leyendo"?"var(--card)":"linear-gradient(135deg,var(--g1),var(--g2))",border:"1px solid var(--br2)",color:"#fff",fontWeight:800,fontSize:15}}>
@@ -1890,7 +2045,15 @@ function App() {
                 <label style=${S.label}>Pick</label>
                 <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder=${form.tipo==="Especial por jugador"?"Ej: LeBron James +25.5 puntos":form.tipo==="PlayBoost"?"Ej: Boost Chiefs gana +180":"Ej: Real Madrid vs Barcelona"}/>
                 <label style=${{...S.label,marginTop:8}}>Partido <span style=${{textTransform:"none",letterSpacing:0,fontWeight:400}}>(opcional)</span></label>
-                <input style=${S.input} value=${form.partido||""} onInput=${e=>setForm(f=>({...f,partido:e.target.value}))} placeholder="Ej: Galatasaray vs Barcelona"/>
+                ${form.evento && form.evento.id
+                  ? html`<div style=${{display:"flex",alignItems:"center",gap:10,background:"var(--bg)",border:"1px solid var(--ac)",borderRadius:10,padding:"9px 10px"}}>
+                      <${Escudo} e=${lados(form.evento,null)[0]} s=${24}/><${Escudo} e=${lados(form.evento,null)[1]} s=${24}/>
+                      <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:14,color:"#fff"}}>${nombrePartido(form.evento)}</b><div style=${{fontSize:12,color:"var(--mu)"}}>${form.evento.liga} · ${horaLocal(form.evento.t)}</div></div>
+                      <button onClick=${()=>setForm(f=>({...f,evento:null,partido:""}))} aria-label="Quitar partido" style=${{background:"none",border:"none",color:"var(--mu)",fontSize:18,padding:6,cursor:"pointer"}}>✕</button>
+                    </div>`
+                  : html`<button onClick=${()=>setElegir({dia:0,dep:"",q:""})} style=${{display:"flex",alignItems:"center",gap:10,width:"100%",background:"var(--bg)",border:"1.5px dashed var(--ac)",borderRadius:10,padding:"11px 12px",color:"var(--ac)",fontWeight:700,fontSize:14,fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+                      <span style=${{flex:1}}>Elegir partido<div style=${{fontSize:12,color:"var(--mu)",fontWeight:400,marginTop:2}}>Con marcador en vivo · Liga MX, NFL, NBA, MLB…</div></span><span style=${{fontSize:18}}>›</span></button>
+                    <input style=${{...S.input,marginTop:8}} value=${form.partido||""} onInput=${e=>setForm(f=>({...f,partido:e.target.value}))} placeholder="o escríbelo a mano: Galatasaray vs Barcelona"/>`}
               </div>`
             : html`<div style=${{gridColumn:"1/-1"}}>
                 <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1952,7 +2115,7 @@ function App() {
         <div style=${S.modalFooter}>
           <button onClick=${()=>setModal(false)} style=${S.btnSecondary}>Cancelar</button>
           <button onClick=${guardar} style=${S.btnPrimary}>Guardar</button>
-        </div>
+        </div>`}
     </${Hoja}>`}
 
     <!-- Modal bank del usuario -->
