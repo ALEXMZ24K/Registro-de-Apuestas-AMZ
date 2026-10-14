@@ -571,6 +571,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
               ${v&&v.st!=="pre" ? html`<span style=${{display:"flex",alignItems:"center",gap:5,flexShrink:0}}><${Escudo} e=${l} s=${16}/><b style=${{color:"#fff"}}>${l.s} - ${r.s}</b><${Escudo} e=${r} s=${16}/><span style=${{color:"var(--mu)",marginLeft:3}}>${v.st==="in"?"● ":""}${estadoTxt(v)}</span></span>`
                 : html`<span style=${{color:"var(--mu)",flexShrink:0}}>${v?estadoTxt(v):horaLocal(p.evento.t)}</span>`}
             </div>
+            <div style=${{fontSize:11,color:"var(--mu)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${nombrePartido(p.evento)}${p.evento.liga?" · "+p.evento.liga:""}</div>
             ${ps && html`<div style=${{fontSize:11,marginTop:3,color:ps.listo||(v.st==="post"&&ps.ok>0)?"#2fe0a0":v.st==="post"&&ps.ok<0?"#ff5d7a":"var(--mu)",fontWeight:ps.listo?700:400}}>${v.st==="post"&&!ps.listo?(ps.ok>0?"Parece ganada":ps.ok<0?"Parece perdida":ps.txt):ps.txt}</div>`}
           </div>`; })}</div>`}
         ${comboFin && !admin && html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:6}}>Esperando resultado</div>`}
@@ -610,7 +611,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
                   background:p.res?rc:"transparent",color:p.res?"#06101f":"var(--mu3)",border:p.res?"none":"1.5px dashed var(--mu3)"}}>${p.res==="G"?"✓":p.res==="P"?"✕":""}</span>`;
               return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"color-mix(in srgb,var(--bg) 55%,transparent)",borderRadius:10,padding:"9px 10px"}}>
                 <span style=${{fontSize:16,flexShrink:0}}>${iconDeporte[p.deporte]||"🎯"}</span>
-                <span style=${{fontSize:14,color:"#e8ecff",flex:1,minWidth:0,wordBreak:"break-word"}}>${p.desc}</span>
+                <span style=${{fontSize:14,color:"#e8ecff",flex:1,minWidth:0,wordBreak:"break-word"}}>${p.desc}${p.evento&&p.evento.id&&html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:2}}>${nombrePartido(p.evento)}${p.evento.fin?" · Final "+lados(p.evento,null).map(x=>x.s).join("-"):""}</div>`}</span>
                 ${editable
                   ? html`<button onClick=${e=>{e.stopPropagation();onPata&&onPata(i);}} style=${{background:"none",border:"none",padding:4,cursor:"pointer"}} aria-label="Marcar pick">${marca}</button>`
                   : (p.res && marca)}
@@ -1362,7 +1363,7 @@ function App() {
 
   // Marcador en vivo: cada 30 s mientras la app está abierta, solo de picks pendientes con partido elegido
   const vigilar = useMemo(()=>{ const lim=isoLocal(new Date(Date.now()-3*864e5));
-    return [...new Set(apuestas.filter(a=>a.resultado==="Pendiente"&&a.fecha>=lim).flatMap(a=>[a.evento,...(Array.isArray(a.patas)?a.patas:[]).map(p=>p&&typeof p==="object"&&!p.res?p.evento:null)])
+    return [...new Set(apuestas.filter(a=>a.resultado==="Pendiente"&&a.fecha>=lim).flatMap(a=>[a.evento,...(Array.isArray(a.patas)?a.patas:[]).map(p=>p&&typeof p==="object"?p.evento:null)])
       .filter(e=>e&&e.id).map(e=>e.k+"~"+e.f+"~"+e.id))].slice(0,30).join(","); },[apuestas]);
   useEffect(()=>{
     if(!vigilar) return;
