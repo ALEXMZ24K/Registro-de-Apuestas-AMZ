@@ -82,6 +82,7 @@
     /* Hojas que suben desde abajo (con un pequeño rebote) */
     @keyframes hojaSube{from{transform:translateY(100%)}to{transform:none}}
     @keyframes fondoIn{from{opacity:0}to{opacity:1}}
+    @keyframes escanear{0%{top:8%}50%{top:88%}100%{top:8%}}
     .hoja-panel{animation:hojaSube .38s cubic-bezier(.2,1.15,.35,1)}
     .hoja-fondo{animation:fondoIn .25s ease-out}
     @media(prefers-reduced-motion:reduce){.hoja-panel,.hoja-fondo{animation:none}}
@@ -438,6 +439,12 @@ const estadoTxt = v => { if(!v) return ""; if(v.st==="post") return "Final"; if(
   if(/^(HT|Halftime)$/i.test(d)) return "Medio tiempo";
   return d.replace(/\bTop\b/i,"▲").replace(/\bBot(tom)?\b/i,"▼").replace(/\bMid\b/i,"Mitad").replace(/\bEnd\b/i,"Fin").replace(/\bHalftime\b/i,"Medio tiempo")
     .replace(/(\d)(st|nd|rd|th)\b/g,"$1º").replace(/\bOT\b/,"Tiempo extra").replace(/\bQtr\b/i,"C").trim(); };
+const ICONOS = {cam:'<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.5"/>',
+  img:'<rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M20 16l-4.5-4.5L7 19"/>',
+  pen:'<path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 0 0-3-3L5 16z"/><path d="M14 7l3 3"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  chev:'<path d="M9 6l6 6-6 6"/>', chk:'<path d="M5 12.5l4.5 4.5L19 7.5"/>'};
+const Ico = ({k,c="currentColor",s=22,w=1.8}) => html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke=${c} stroke-width=${w} stroke-linecap="round" stroke-linejoin="round" style=${{flexShrink:0}} dangerouslySetInnerHTML=${{__html:ICONOS[k]}}></svg>`;
 function Escudo({e,s=28}) {
   const [err,setErr] = useState(false);
   if(e && e.l && !err) return html`<img src=${e.l} alt="" width=${s} height=${s} loading="lazy" onError=${()=>setErr(true)} style=${{width:s,height:s,objectFit:"contain",flexShrink:0}}/>`;
@@ -1009,6 +1016,7 @@ function App() {
   useEffect(()=>{ if(!pushSoportado()) return; navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(sub=>{ setPushOn(!!sub && Notification.permission==="granted"); setPushChecado(true); }).catch(()=>{}); },[]);
   const [buscaTodo,setBuscaTodo] = useState(false);
   const [ia,setIa] = useState({estado:null,msg:""});
+  const [menuNueva,setMenuNueva] = useState(false); // hoja del ＋: foto, captura o a mano
   const [vivo,setVivo] = useState({});          // marcador en vivo por id de partido ESPN
   const [elegir,setElegir] = useState(null);    // selector de partido dentro de Nueva apuesta: {dia,dep,q}
   const [partidosDia,setPartidosDia] = useState({}); // AAAAMMDD → {cargando,ligas,error}
@@ -1327,6 +1335,17 @@ function App() {
     else setForm(f=>({...f, evento:ev, partido:nombrePartido(ev), deporte:lg.dep||f.deporte, fecha:isNaN(fe)?f.fecha:isoLocal(fe)}));
     setElegir(null);
   };
+  // Hoja del ＋ y "repetir uno reciente"
+  const recientes = useMemo(()=>{ const vistos=new Set(), out=[];
+    [...apuestas].sort((x,y)=>(y.id||0)-(x.id||0)).forEach(a=>{ const k=(a.tipo||"")+"|"+(a.descripcion||""); if(out.length<3&&!vistos.has(k)){ vistos.add(k); out.push(a); } });
+    return out; },[apuestas]);
+  const duplicar = ap => {
+    openModal();
+    const patas = Array.isArray(ap.patas)&&ap.patas.length ? ap.patas.map(p=>typeof p==="object"?{deporte:p.deporte||"",desc:p.desc||""}:{deporte:"",desc:p}) : initialForm.patas;
+    setForm({...initialForm, deporte:ap.deporte==="Combinación"?"":ap.deporte||"", tipo:ap.tipo||"", descripcion:esCombo(ap)?"":(ap.descripcion||""), partido:ap.partido||"", patas,
+      monto:String(ap.monto||""), cuota:momioDec?momioToDec(ap.cuota).toFixed(2):String(ap.cuota>0?"+"+ap.cuota:ap.cuota), fecha:isoLocal(new Date())});
+  };
+  const conFoto = file => { if(!file) return; setMenuNueva(false); openModal(); setTimeout(()=>leerBoleto(file),60); };
   // Botón / chip de partido elegido (pick sencillo o cada leg del parlay)
   const campoPartido = (ev, abrir, quitar, chico) => ev && ev.id
     ? html`<div style=${{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",border:"1px solid var(--ac)",borderRadius:10,padding:chico?"7px 8px":"9px 10px"}}>
@@ -1424,9 +1443,12 @@ function App() {
 
   const leerBoleto = async file => {
     if(!file) return;
-    setIa({estado:"leyendo",msg:""});
+    let prev=""; try{ prev=URL.createObjectURL(file); }catch(e){}
+    setIa({estado:"leyendo",msg:"",paso:0,prev});
+    const timers=[setTimeout(()=>setIa(x=>x.estado==="leyendo"?{...x,paso:Math.max(x.paso,2)}:x),2600),setTimeout(()=>setIa(x=>x.estado==="leyendo"?{...x,paso:Math.max(x.paso,3)}:x),6500)];
     try{
       const image = await fotoABase64(file);
+      setIa(x=>({...x,paso:1}));
       const idToken = await auth.currentUser.getIdToken();
       const r = await fetch(IA_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
         body:JSON.stringify({image,mediaType:"image/jpeg",hoy:new Date().toLocaleDateString("en-CA")})});
@@ -1451,6 +1473,7 @@ function App() {
       const partes = [];
       if(b.apuesta) partes.push("Apostaste "+fmtReal(b.apuesta)+(pct!==""?" = "+pct+"% de tu bank":" (pon tu bank del mes para calcular el %)"));
       if(b.notas) partes.push("Ojo: "+b.notas);
+      timers.forEach(clearTimeout);
       setIa({estado:"listo",msg:partes.join(" · ")});
       if(esCombo && Array.isArray(b.patas)) b.patas.forEach((pt,i)=>{ if(!pt) return;
         // El partido puede venir aparte o pegado a la selección: "AS Roma vs Real Madrid: Ambos equipos marcan"
@@ -1468,6 +1491,7 @@ function App() {
         }).catch(()=>{});
       }
     }catch(e){
+      timers.forEach(clearTimeout);
       setIa({estado:"error",msg:e.message||"Error al leer el boleto"});
     }
   };
@@ -2052,7 +2076,7 @@ function App() {
       <div className="tabbar-in">
         <button className=${vista==="inicio"?"on":""} onClick=${()=>tab("inicio")}><span className="ic">🏠</span>Inicio</button>
         <button id="t-tab-cal" className=${vista==="calendario"?"on":""} onClick=${()=>tab("calendario")}><span className="ic">📅</span>Calendario</button>
-        ${isAdmin && html`<button id="t-tab-plus" className="plus" onClick=${()=>openModal()} aria-label="Nueva apuesta">＋</button>`}
+        ${isAdmin && html`<button id="t-tab-plus" className="plus" onClick=${()=>setMenuNueva(true)} aria-label="Nueva apuesta">＋</button>`}
         <button id="t-tab-anual" className=${vista==="anual"?"on":""} onClick=${()=>tab("anual")}><span className="ic">📊</span>Anual</button>
         <button id="t-tab-mas" className=${vista==="mas"||vista==="compartir"||vista==="ayuda"?"on":""} onClick=${()=>tab("mas")}><span className="ic">☰</span>Más</button>
       </div>
@@ -2105,6 +2129,33 @@ function App() {
         <button onClick=${()=>setNotisGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Listo</button>
     </${Hoja}>`}
 
+    ${menuNueva && html`<${Hoja} onClose=${()=>setMenuNueva(false)} maxW=${520}>
+        <div style=${S.modalHeader}>
+          <h2 style=${S.modalTitle}>Nueva apuesta</h2>
+          <button onClick=${()=>setMenuNueva(false)} style=${S.closeBtn}>✕</button>
+        </div>
+        <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,overflow:"hidden"}}>
+          ${[["cam","Tomar foto del boleto","La IA llena todo por ti","foto"],["img","Elegir captura","De tus fotos o capturas de pantalla","captura"],["pen","Escribir a mano","Llenas tú el pick","mano"]].map(([k,t,sub,modo],i)=>{
+            const cont = html`<span style=${{width:38,height:38,borderRadius:11,background:"color-mix(in srgb,var(--ac) 16%,transparent)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><${Ico} k=${k} c="var(--ac)" s=${21}/></span>
+              <span style=${{flex:1,minWidth:0}}><b style=${{fontSize:15,color:"#fff"}}>${t}</b><span style=${{display:"block",fontSize:12,color:"var(--mu)",marginTop:2}}>${sub}</span></span>
+              <${Ico} k="chev" c="var(--mu3)" s=${18}/>`;
+            const st = {display:"flex",alignItems:"center",gap:13,width:"100%",padding:14,background:"none",border:"none",color:"#fff",textAlign:"left",fontFamily:"inherit",cursor:"pointer",boxSizing:"border-box"};
+            return modo==="mano"
+              ? html`<button key=${modo} onClick=${()=>{setMenuNueva(false);openModal();}} style=${{...st,borderTop:"1px solid var(--br)"}}>${cont}</button>`
+              : html`<label key=${modo} style=${{...st,borderTop:i?"1px solid var(--br)":"none"}}>
+                  <input type="file" accept="image/*" capture=${modo==="foto"?"environment":undefined} style=${{display:"none"}} onChange=${e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=""; conFoto(f); }}/>${cont}</label>`; })}
+        </div>
+        ${recientes.length>0 && html`<div>
+          <div style=${{fontSize:11,color:"var(--mu)",fontWeight:800,letterSpacing:.8,margin:"20px 2px 8px"}}>REPETIR UNO RECIENTE</div>
+          ${recientes.map(a=>{ const sp=esCombo(a)?null:separarPick(a), f=parseFecha(a.fecha);
+            return html`<button key=${a.id} onClick=${()=>{setMenuNueva(false);duplicar(a);}} style=${{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 12px",background:"var(--card)",border:"1px solid var(--br)",borderRadius:12,marginBottom:7,color:"#fff",textAlign:"left",fontFamily:"inherit",cursor:"pointer"}}>
+              <span style=${{flex:1,minWidth:0}}><b style=${{fontSize:14,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${sp?sp.pick:(a.tipo==="Freebet"?"Freebet":"Parlay")+" · "+patasDe(a).length+" picks"}</b>
+                <span style=${{fontSize:12,color:"var(--mu)"}}>${f.d} ${MESES_CORTO[f.m]} · ${fmtMomio(a.cuota)} · ${a.monto}%</span></span>
+              <${Ico} k="copy" c="var(--mu2)" s=${18}/></button>`; })}
+          <div style=${{fontSize:11,color:"var(--mu3)",textAlign:"center",marginTop:2}}>Se copia con fecha de hoy y sin resultado</div>
+        </div>`}
+    </${Hoja}>`}
+
     <!-- Modal nueva/editar -->
     ${modal && html`<${Hoja} onClose=${()=>setModal(false)}>
         <div style=${S.modalHeader}>
@@ -2113,11 +2164,27 @@ function App() {
           <button onClick=${()=>{setElegir(null);setModal(false);}} style=${S.closeBtn}>✕</button>
         </div>
         ${elegir ? vistaElegir() : html`
-        ${!editId && html`<div style=${{marginBottom:16}}>
+        ${!editId && ia.estado==="leyendo" && html`<div style=${{marginBottom:16}}>
+          <div style=${{display:"flex",gap:16,alignItems:"center",padding:"6px 2px"}}>
+            <div style=${{width:84,height:118,borderRadius:12,overflow:"hidden",position:"relative",flexShrink:0,background:"var(--card)",border:"1px solid var(--br)"}}>
+              ${ia.prev && html`<img src=${ia.prev} style=${{width:"100%",height:"100%",objectFit:"cover",opacity:.85}}/>`}
+              <div style=${{position:"absolute",left:0,right:0,height:3,background:"var(--ac)",boxShadow:"0 0 14px var(--ac)",animation:"escanear 2.2s ease-in-out infinite"}}></div>
+            </div>
+            <div style=${{flex:1}}>
+              ${["Foto lista","Leyendo el boleto","Sacando momio y monto","Llenando el formulario"].map((t,i)=>{ const st=i<(ia.paso||0)?2:i===(ia.paso||0)?1:0;
+                return html`<div key=${t} style=${{display:"flex",alignItems:"center",gap:10,padding:"7px 0"}}>
+                  <span style=${{width:22,height:22,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,background:st===2?"#2fe0a0":"transparent",border:st===2?"none":"2px solid "+(st===1?"var(--ac)":"var(--br2)")}}>
+                    ${st===2?html`<${Ico} k="chk" c="#06281b" s=${13} w=${2.8}/>`:st===1?html`<span style=${{width:8,height:8,borderRadius:"50%",background:"var(--ac)"}}></span>`:""}</span>
+                  <span style=${{fontSize:14,color:st===1?"#fff":st===2?"var(--mu2)":"var(--mu3)",fontWeight:st===1?700:400}}>${t}</span></div>`; })}
+            </div>
+          </div>
+          <div style=${{fontSize:12,color:"var(--mu)",marginTop:6}}>Tarda unos segundos…</div>
+        </div>`}
+        ${!editId && ia.estado!=="leyendo" && html`<div style=${{marginBottom:16}}>
           <label style=${{display:"flex",alignItems:"center",justifyContent:"center",gap:10,width:"100%",minHeight:54,borderRadius:14,cursor:ia.estado==="leyendo"?"default":"pointer",
             background:ia.estado==="leyendo"?"var(--card)":"linear-gradient(135deg,var(--g1),var(--g2))",border:"1px solid var(--br2)",color:"#fff",fontWeight:800,fontSize:15}}>
             <input type="file" accept="image/*" style=${{display:"none"}} disabled=${ia.estado==="leyendo"} onChange=${e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=""; leerBoleto(f); }}/>
-            ${ia.estado==="leyendo" ? html`<span className="sk" style=${{width:18,height:18,borderRadius:"50%"}}></span> Leyendo boleto…` : html`📷 Leer boleto con IA`}
+            ${ia.estado==="leyendo" ? html`<span className="sk" style=${{width:18,height:18,borderRadius:"50%"}}></span> Leyendo boleto…` : html`<${Ico} k="cam" c="#fff" s=${20}/> Leer boleto con IA`}
           </label>
           ${ia.estado==="listo" && html`<div style=${{marginTop:8,fontSize:13,lineHeight:1.4,color:"#dfe5ff",background:"color-mix(in srgb,#2fe0a0 12%,transparent)",border:"1px solid color-mix(in srgb,#2fe0a0 40%,transparent)",borderRadius:12,padding:"10px 12px"}}>
             ✓ Listo. <b>Revisa los datos antes de guardar.</b>${ia.msg?html`<br/>${ia.msg}`:""}</div>`}
