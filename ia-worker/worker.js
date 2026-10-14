@@ -36,7 +36,8 @@ const HERRAMIENTA = {
       partido: { type: "string", description: "Para apuesta sencilla: el partido, ej. 'Tigres vs Toluca', 'Bills @ Rams'. Vacío si es parlay o no aparece." },
       patas: { type: "array", description: "Solo para parlay/SGP: cada selección.", items: { type: "object", properties: {
         deporte: { type: "string", enum: [...DEPORTES, ""] },
-        desc: { type: "string", description: "Selección corta, ej. 'Steelers ML', 'Over 45.5 puntos'." } }, required: ["deporte","desc"] } },
+        desc: { type: "string", description: "Selección corta, ej. 'Steelers ML', 'Over 45.5 puntos'." },
+        partido: { type: "string", description: "Partido de esta selección si aparece, ej. 'Bills @ Rams'. Vacío si no aparece." } }, required: ["deporte","desc"] } },
       momio: { type: "integer", description: "Momio TOTAL del boleto en formato americano, ej. -117 o 250. Si viene en decimal, conviértelo." },
       apuesta: { type: "number", description: "Monto apostado en pesos (sin símbolos)." },
       pago_total: { type: "number", description: "Pago o 'Ganancia Total' mostrado (incluye lo apostado). 0 si no aparece." },

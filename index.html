@@ -507,7 +507,7 @@ function MarcadorVivo({ev,v}) {
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
 
-function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,admin}) {
+function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,vivoPatas,estadoVivo,admin}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
   const show = open||expanded;
@@ -529,6 +529,8 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
   const ev = !combo && a.evento && a.evento.id ? a.evento : null;
   const enVivo = pend && ev && vivo && vivo.st==="in";
   const terminado = pend && ev && vivo && vivo.st==="post";
+  const comboFin = combo && pend && estadoVivo==="post";
+  const legsVivo = combo && pend && (estadoVivo==="in"||estadoVivo==="post") ? patas.map((p,i)=>({p,v:vivoPatas&&vivoPatas[i]})).filter(x=>x.p.evento&&x.p.evento.id) : [];
   const pista = (enVivo||terminado) ? pistaPick(a,ev,vivo) : null;
   const finTxt = (()=>{ if(!ev || !(terminado || (!pend && ev.fin))) return ""; const [l,r]=lados(ev,terminado?vivo:null);
     return l.s!==undefined && l.s!==null && l.s!=="" ? "Final "+l.s+"-"+r.s : ""; })();
@@ -554,7 +556,18 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
           <span style=${{display:"flex",alignItems:"center",gap:6}}><${Escudo} e=${lados(ev,vivo)[0]} s=${16}/><b style=${{color:"#fff"}}>${finTxt.replace("Final ","")}</b><${Escudo} e=${lados(ev,vivo)[1]} s=${16}/> Final</span>
           <span>${pista?(pista.ok>0?"Parece ganada":pista.ok<0?"Parece perdida":pista.txt):(admin?"":"Esperando resultado")}</span>
         </div>`}
-        ${terminado && admin && html`<div style=${{display:"flex",gap:8,marginTop:9}}>
+        ${legsVivo.length>0 && html`<div style=${{marginTop:8}}>${legsVivo.map(({p,v},i)=>{ const [l,r]=lados(p.evento,v||null); const ps=v&&v.st!=="pre"?pistaPick({descripcion:p.desc},p.evento,v):null;
+          const yaRes = p.res==="G"?"✓":p.res==="P"?"✕":"";
+          return html`<div key=${i} style=${{borderTop:"1px solid var(--br)",padding:"7px 0"}}>
+            <div style=${{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
+              <span style=${{flex:1,minWidth:0,color:"#e8ecff",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${yaRes&&html`<b style=${{color:p.res==="G"?"#2fe0a0":"#ff5d7a",marginRight:5}}>${yaRes}</b>`}${p.desc}</span>
+              ${v&&v.st!=="pre" ? html`<span style=${{display:"flex",alignItems:"center",gap:5,flexShrink:0}}><${Escudo} e=${l} s=${16}/><b style=${{color:"#fff"}}>${l.s} - ${r.s}</b><${Escudo} e=${r} s=${16}/><span style=${{color:"var(--mu)",marginLeft:3}}>${v.st==="in"?"● ":""}${estadoTxt(v)}</span></span>`
+                : html`<span style=${{color:"var(--mu)",flexShrink:0}}>${v?estadoTxt(v):horaLocal(p.evento.t)}</span>`}
+            </div>
+            ${ps && html`<div style=${{fontSize:11,marginTop:3,color:ps.listo||(v.st==="post"&&ps.ok>0)?"#2fe0a0":v.st==="post"&&ps.ok<0?"#ff5d7a":"var(--mu)",fontWeight:ps.listo?700:400}}>${v.st==="post"&&!ps.listo?(ps.ok>0?"Parece ganada":ps.ok<0?"Parece perdida":ps.txt):ps.txt}</div>`}
+          </div>`; })}</div>`}
+        ${comboFin && !admin && html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:6}}>Esperando resultado</div>`}
+        ${(terminado||comboFin) && admin && html`<div style=${{display:"flex",gap:8,marginTop:9}}>
           ${[["Ganada","✓ Ganada"],["Perdida","✕ Perdida"]].map(([r,t])=>html`<button key=${r} onClick=${e=>{e.stopPropagation();onToggle&&onToggle(r);}} style=${{flex:1,minHeight:40,borderRadius:10,border:"1px solid "+(pista&&((pista.ok>0&&r==="Ganada")||(pista.ok<0&&r==="Perdida"))?"color-mix(in srgb,var(--ac) 60%,transparent)":"var(--br)"),background:"transparent",color:"#dfe5ff",fontWeight:700,fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>${t}</button>`)}
         </div>`}
       </div>
@@ -1297,13 +1310,24 @@ function App() {
     }
     return null;
   };
-  const elegirPartido = (lg,e,clave=claveElegir) => {
+  const elegirPartido = (lg,e,clave=claveElegir,pataAuto) => {
     const ev = {k:lg.k, f:clave, id:e.id, liga:lg.liga, t:e.t,
       h:{n:e.h.n,full:e.h.full,a:e.h.a,l:e.h.l,c:e.h.c}, a:{n:e.a.n,full:e.a.full,a:e.a.a,l:e.a.l,c:e.a.c}};
     const fe = new Date(e.t);
-    setForm(f=>({...f, evento:ev, partido:nombrePartido(ev), deporte:lg.dep||f.deporte, fecha:isNaN(fe)?f.fecha:isoLocal(fe)}));
+    const pata = elegir && elegir.pata!==undefined ? elegir.pata : pataAuto;
+    if(pata!==undefined) setForm(f=>{ const np=[...f.patas]; np[pata]={...np[pata],evento:ev,deporte:lg.dep||np[pata].deporte}; return {...f,patas:np}; });
+    else setForm(f=>({...f, evento:ev, partido:nombrePartido(ev), deporte:lg.dep||f.deporte, fecha:isNaN(fe)?f.fecha:isoLocal(fe)}));
     setElegir(null);
   };
+  // Botón / chip de partido elegido (pick sencillo o cada leg del parlay)
+  const campoPartido = (ev, abrir, quitar, chico) => ev && ev.id
+    ? html`<div style=${{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",border:"1px solid var(--ac)",borderRadius:10,padding:chico?"7px 8px":"9px 10px"}}>
+        <${Escudo} e=${lados(ev,null)[0]} s=${chico?20:24}/><${Escudo} e=${lados(ev,null)[1]} s=${chico?20:24}/>
+        <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:chico?13:14,color:"#fff"}}>${nombrePartido(ev)}</b><div style=${{fontSize:11,color:"var(--mu)"}}>${ev.liga} · ${horaLocal(ev.t)}</div></div>
+        <button onClick=${quitar} aria-label="Quitar partido" style=${{background:"none",border:"none",color:"var(--mu)",fontSize:17,padding:6,cursor:"pointer"}}>✕</button>
+      </div>`
+    : html`<button onClick=${abrir} style=${{display:"flex",alignItems:"center",gap:10,width:"100%",background:"var(--bg)",border:"1.5px dashed var(--ac)",borderRadius:10,padding:chico?"9px 11px":"11px 12px",color:"var(--ac)",fontWeight:700,fontSize:chico?13:14,fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
+        <span style=${{flex:1}}>Elegir partido${!chico?html`<div style=${{fontSize:12,color:"var(--mu)",fontWeight:400,marginTop:2}}>Con marcador en vivo · Liga MX, NFL, NBA, MLB…</div>`:html`<span style=${{fontWeight:400,color:"var(--mu)"}}> · para ver el marcador</span>`}</span><span style=${{fontSize:18}}>›</span></button>`;
   const vistaElegir = () => {
     const dat = partidosDia[claveElegir]||{cargando:true};
     const q = normTxt(elegir.q||"").trim();
@@ -1331,7 +1355,8 @@ function App() {
 
   // Marcador en vivo: cada 30 s mientras la app está abierta, solo de picks pendientes con partido elegido
   const vigilar = useMemo(()=>{ const lim=isoLocal(new Date(Date.now()-3*864e5));
-    return [...new Set(apuestas.filter(a=>a.resultado==="Pendiente"&&a.evento&&a.evento.id&&a.fecha>=lim).map(a=>a.evento.k+"~"+a.evento.f+"~"+a.evento.id))].slice(0,30).join(","); },[apuestas]);
+    return [...new Set(apuestas.filter(a=>a.resultado==="Pendiente"&&a.fecha>=lim).flatMap(a=>[a.evento,...(Array.isArray(a.patas)?a.patas:[]).map(p=>p&&typeof p==="object"&&!p.res?p.evento:null)])
+      .filter(e=>e&&e.id).map(e=>e.k+"~"+e.f+"~"+e.id))].slice(0,30).join(","); },[apuestas]);
   useEffect(()=>{
     if(!vigilar) return;
     let vivoOk=true;
@@ -1342,10 +1367,16 @@ function App() {
     return ()=>{ vivoOk=false; clearInterval(t); document.removeEventListener("visibilitychange",vis); };
   },[vigilar]);
   const vivoDe = a => a.evento&&a.evento.id ? vivo[a.evento.id] : null;
+  const vivoPatas = a => Array.isArray(a.patas) ? patasDe(a).map(p=>p.evento&&p.evento.id?vivo[p.evento.id]||null:null) : [];
+  // Estado del pick para las secciones: "in" en juego, "post" terminó (parlay: todas sus legs con partido terminaron)
+  const estadoVivo = a => { if(a.resultado!=="Pendiente") return "";
+    if(esCombo(a)){ const ps=patasDe(a), vs=vivoPatas(a), con=ps.map((p,i)=>p.evento&&p.evento.id&&!p.res?vs[i]:undefined).filter(x=>x!==undefined);
+      if(!con.length) return ""; if(con.some(v=>v&&v.st==="in")) return "in"; if(con.every(v=>v&&v.st==="post")) return "post"; return ""; }
+    const v=vivoDe(a); return v?v.st:""; };
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion} vivo=${vivoDe(a)} admin=${isAdmin}/>`;
+  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion} vivo=${vivoDe(a)} vivoPatas=${vivoPatas(a)} estadoVivo=${estadoVivo(a)} admin=${isAdmin}/>`;
   const porDia = lista => { const m=new Map(); lista.forEach(a=>{ if(!m.has(a.fecha)) m.set(a.fecha,[]); m.get(a.fecha).push(a); }); return [...m.entries()]; };
   const nombreDia = fe => { const f=parseFecha(fe), d=new Date(f.y,f.m,f.d), h=new Date(); h.setHours(0,0,0,0);
     const dif=Math.round((h-d)/864e5), base=f.d+" "+MESES_CORTO[f.m];
@@ -1353,11 +1384,11 @@ function App() {
   const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMesLista.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
-    ${(()=>{ const st=a=>a.resultado==="Pendiente"&&vivoDe(a)?vivoDe(a).st:"";
+    ${(()=>{ const st=estadoVivo;
       const sec=(t,l)=>l.length>0&&html`<div key=${t}><div style=${{fontSize:11,letterSpacing:.8,color:"var(--mu)",fontWeight:800,margin:"14px 2px 8px",textTransform:"uppercase"}}>${t}</div>${l.map(a=>renderAR(a,exp))}</div>`;
       const ls=apuestasMesLista.slice().reverse();
       return html`${sec("En juego",ls.filter(a=>st(a)==="in"))}${sec(isAdmin?"Por calificar":"Terminó · esperando resultado",ls.filter(a=>st(a)==="post"))}`; })()}
-    ${porDia(apuestasMesLista.slice().reverse().filter(a=>!(a.resultado==="Pendiente"&&vivoDe(a)&&(vivoDe(a).st==="in"||vivoDe(a).st==="post")))).map(([fe,lista])=>html`<div key=${fe}>
+    ${porDia(apuestasMesLista.slice().reverse().filter(a=>!["in","post"].includes(estadoVivo(a)))).map(([fe,lista])=>html`<div key=${fe}>
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,fontSize:11,letterSpacing:.8,color:"var(--mu)",fontWeight:800,margin:"14px 2px 8px",textTransform:"uppercase"}}>
         <span>${nombreDia(fe)}</span>
         ${(()=>{ const r=lista.filter(a=>!noMet(a)&&(a.resultado==="Ganada"||a.resultado==="Perdida")); if(!r.length) return null;
@@ -1413,6 +1444,8 @@ function App() {
       if(b.apuesta) partes.push("Apostaste "+fmtReal(b.apuesta)+(pct!==""?" = "+pct+"% de tu bank":" (pon tu bank del mes para calcular el %)"));
       if(b.notas) partes.push("Ojo: "+b.notas);
       setIa({estado:"listo",msg:partes.join(" · ")});
+      if(esCombo && Array.isArray(b.patas)) b.patas.forEach((pt,i)=>{ if(!pt||!pt.partido) return;
+        buscarPartidoAuto(pt.partido, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{ if(h) elegirPartido(h.lg,h.e,h.clave,i); }).catch(()=>{}); });
       if(!esCombo && b.partido){
         buscarPartidoAuto(b.partido, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{
           if(!h) return;
@@ -1488,9 +1521,11 @@ function App() {
     const cambios = {resultado};
     const vf = ap.evento && vivo[ap.evento.id];
     if(vf && vf.st==="post" && vf.hs!=="" && vf.as!=="") cambios.evento = {...ap.evento, fin:{hs:vf.hs, as:vf.as}};
+    const finPata = p => { const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; const v=o.evento&&vivo[o.evento.id]; if(v&&v.st==="post"&&v.hs!=="") o.evento={...o.evento,fin:{hs:v.hs,as:v.as}}; return o; };
+    if(Array.isArray(ap.patas) && ap.patas.some(p=>p&&p.evento)) cambios.patas = ap.patas.map(finPata);
     // Parlay ganado → todas sus patas ganaron: las que estén vacías se marcan ✓
     if(resultado==="Ganada" && (ap.tipo==="Parlay/Combinada"||ap.tipo==="Freebet") && Array.isArray(ap.patas) && ap.patas.length){
-      cambios.patas = ap.patas.map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; if(o.desc&&String(o.desc).trim()&&!o.res) o.res="G"; return o; });
+      cambios.patas = (cambios.patas||ap.patas).map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; if(o.desc&&String(o.desc).trim()&&!o.res) o.res="G"; return o; });
     }
     db.collection("apuestas").doc(ap._docId).update(cambios);
     if(resultado==="Ganada"||resultado==="Perdida"||resultado==="Nula") {
@@ -2095,14 +2130,8 @@ function App() {
                 <label style=${S.label}>Pick</label>
                 <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder=${form.tipo==="Especial por jugador"?"Ej: LeBron James +25.5 puntos":form.tipo==="PlayBoost"?"Ej: Boost Chiefs gana +180":"Ej: Real Madrid vs Barcelona"}/>
                 <label style=${{...S.label,marginTop:8}}>Partido <span style=${{textTransform:"none",letterSpacing:0,fontWeight:400}}>(opcional)</span></label>
-                ${form.evento && form.evento.id
-                  ? html`<div style=${{display:"flex",alignItems:"center",gap:10,background:"var(--bg)",border:"1px solid var(--ac)",borderRadius:10,padding:"9px 10px"}}>
-                      <${Escudo} e=${lados(form.evento,null)[0]} s=${24}/><${Escudo} e=${lados(form.evento,null)[1]} s=${24}/>
-                      <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:14,color:"#fff"}}>${nombrePartido(form.evento)}</b><div style=${{fontSize:12,color:"var(--mu)"}}>${form.evento.liga} · ${horaLocal(form.evento.t)}</div></div>
-                      <button onClick=${()=>setForm(f=>({...f,evento:null,partido:""}))} aria-label="Quitar partido" style=${{background:"none",border:"none",color:"var(--mu)",fontSize:18,padding:6,cursor:"pointer"}}>✕</button>
-                    </div>`
-                  : html`<button onClick=${()=>setElegir({dia:0,dep:"",q:""})} style=${{display:"flex",alignItems:"center",gap:10,width:"100%",background:"var(--bg)",border:"1.5px dashed var(--ac)",borderRadius:10,padding:"11px 12px",color:"var(--ac)",fontWeight:700,fontSize:14,fontFamily:"inherit",cursor:"pointer",textAlign:"left"}}>
-                      <span style=${{flex:1}}>Elegir partido<div style=${{fontSize:12,color:"var(--mu)",fontWeight:400,marginTop:2}}>Con marcador en vivo · Liga MX, NFL, NBA, MLB…</div></span><span style=${{fontSize:18}}>›</span></button>
+                ${campoPartido(form.evento, ()=>setElegir({dia:0,dep:"",q:""}), ()=>setForm(f=>({...f,evento:null,partido:""})))}
+                ${!(form.evento&&form.evento.id) && html`
                     <input style=${{...S.input,marginTop:8}} value=${form.partido||""} onInput=${e=>setForm(f=>({...f,partido:e.target.value}))} placeholder="o escríbelo a mano: Galatasaray vs Barcelona"/>`}
               </div>`
             : html`<div style=${{gridColumn:"1/-1"}}>
@@ -2123,6 +2152,7 @@ function App() {
                           ${DEPORTES.map(d=>html`<option key=${d} value=${d}>${iconDeporte[d]} ${d}</option>`)}
                         </select>
                         <input style=${S.input} value=${p.desc} onInput=${e=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],desc:e.target.value};return{...f,patas:np};})} placeholder=${"Descripción: Ej: Lakers -5.5"}/>
+                        ${campoPartido(p.evento, ()=>setElegir({dia:0,dep:"",q:"",pata:i}), ()=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],evento:null};return{...f,patas:np};}), true)}
                       </div>
                     </div>
                   `)}
