@@ -2135,7 +2135,7 @@ function App() {
           <button onClick=${()=>setMenuNueva(false)} style=${S.closeBtn}>✕</button>
         </div>
         <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,overflow:"hidden"}}>
-          ${[["cam","Tomar foto del boleto","La IA llena todo por ti","foto"],["img","Elegir captura","De tus fotos o capturas de pantalla","captura"],["pen","Escribir a mano","Llenas tú el pick","mano"]].map(([k,t,sub,modo],i)=>{
+          ${[["img","Subir captura del boleto","La IA llena todo por ti","captura"],["pen","Escribir a mano","Llenas tú el pick","mano"]].map(([k,t,sub,modo],i)=>{
             const cont = html`<span style=${{width:38,height:38,borderRadius:11,background:"color-mix(in srgb,var(--ac) 16%,transparent)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><${Ico} k=${k} c="var(--ac)" s=${21}/></span>
               <span style=${{flex:1,minWidth:0}}><b style=${{fontSize:15,color:"#fff"}}>${t}</b><span style=${{display:"block",fontSize:12,color:"var(--mu)",marginTop:2}}>${sub}</span></span>
               <${Ico} k="chev" c="var(--mu3)" s=${18}/>`;
