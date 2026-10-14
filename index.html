@@ -428,7 +428,7 @@ const separarPick = a => {
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
 
-function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto}) {
+function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
   const show = open||expanded;
@@ -450,21 +450,17 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
   return html`<div style=${{...S.apCard,transition:"opacity .2s"}}>
     <div style=${{display:"flex",cursor:"pointer",opacity:metida?1:.45}} onClick=${()=>setOpen(o=>!o)}>
       <div style=${{width:5,background:cr,flexShrink:0}}></div>
-      <div style=${{flex:1,minWidth:0,padding:"12px 12px 12px 13px"}}>
+      <div style=${{flex:1,minWidth:0,padding:"11px 13px 11px 13px"}}>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
           <div style=${{fontSize:16,fontWeight:700,lineHeight:"21px",color:"#fff",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",wordBreak:"break-word"}}>${marcar(titulo,q)}</div>
           ${pend
             ? html`<div style=${{textAlign:"right",whiteSpace:"nowrap",lineHeight:"17px"}}><div style=${{fontSize:10,color:"var(--mu)",fontWeight:700}}>GANA</div><div style=${{color:"#bff5dc",fontWeight:800,fontSize:16}}>${OCULTAR?fmtPct(Number(a.monto||0)*(dec-1)):"+"+fmt(ganaria)}</div></div>`
             : html`<div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px",textDecoration:metida?"none":"line-through"}}>${montoTxt}</div>`}
         </div>
-        <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginTop:6,fontSize:12,color:"var(--mu)"}}>
-          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${f.d} ${MESES_CORTO[f.m]}${subtitulo?" · ":""}${marcar(subtitulo,q)}</span>
-          <span style=${{whiteSpace:"nowrap"}}>${pend ? "Apostado "+(OCULTAR?a.monto+"%":fmt(monto||0)) : a.monto+"% del bank"}</span>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,marginTop:5,fontSize:12,color:"var(--mu)"}}>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${a.resultado==="Nula" && html`<b style=${{fontSize:10,color:cr,marginRight:6}}>NULA</b>`}${sinFecha?"":f.d+" "+MESES_CORTO[f.m]+(subtitulo?" · ":"")}${marcar(subtitulo,q)}</span>
+          <b style=${{whiteSpace:"nowrap",fontSize:13,color:"var(--mu2)",flexShrink:0}}>${fmtMomio(a.cuota)}</b>
         </div>
-      </div>
-      <div style=${{width:68,flexShrink:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"var(--card3)",borderLeft:"1px solid var(--br)",padding:"8px 2px"}}>
-        <b style=${{fontSize:15,color:"#fff"}}>${fmtMomio(a.cuota)}</b>
-        <span style=${{fontSize:9,fontWeight:800,color:cr,marginTop:3,letterSpacing:.3}}>${resTxt}</span>
       </div>
     </div>
     ${show && html`<div style=${S.apDetail}>
@@ -1160,11 +1156,23 @@ function App() {
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp,q) => html`<${AR} key=${a.id} a=${a} q=${q} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
+  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion}/>`;
+  const porDia = lista => { const m=new Map(); lista.forEach(a=>{ if(!m.has(a.fecha)) m.set(a.fecha,[]); m.get(a.fecha).push(a); }); return [...m.entries()]; };
+  const nombreDia = fe => { const f=parseFecha(fe), d=new Date(f.y,f.m,f.d), h=new Date(); h.setHours(0,0,0,0);
+    const dif=Math.round((h-d)/864e5), base=f.d+" "+MESES_CORTO[f.m];
+    return dif===0?"Hoy · "+base:dif===1?"Ayer · "+base:dif===-1?"Mañana · "+base:["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][d.getDay()]+" "+base; };
   const subtitulo = {fontSize:11,letterSpacing:1,color:"var(--mu)",fontWeight:700,margin:"16px 2px 10px",textTransform:"uppercase"};
   const renderLista = exp => html`
     ${apuestasAntes.length>0 && apuestasMesLista.length>0 && html`<div style=${subtitulo}>Desde que empezaste</div>`}
-    ${apuestasMesLista.slice().reverse().map(a=>renderAR(a,exp))}
+    ${porDia(apuestasMesLista.slice().reverse()).map(([fe,lista])=>html`<div key=${fe}>
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,fontSize:11,letterSpacing:.8,color:"var(--mu)",fontWeight:800,margin:"14px 2px 8px",textTransform:"uppercase"}}>
+        <span>${nombreDia(fe)}</span>
+        ${(()=>{ const r=lista.filter(a=>!noMet(a)&&(a.resultado==="Ganada"||a.resultado==="Perdida")); if(!r.length) return null;
+          const v = OCULTAR ? sumPct(r) : r.reduce((s,a)=>s+gananciaAp(a),0);
+          return html`<span style=${{color:v>0?"#2fe0a0":v<0?"#ff5d7a":"var(--mu)",letterSpacing:.3}}>${OCULTAR?fmtPct(v):fmtSigno(Math.round(v))}</span>`; })()}
+      </div>
+      ${lista.map(a=>renderAR(a,exp,undefined,true))}
+    </div>`)}
     ${apuestasAntes.length>0 && html`<div>
       <div style=${subtitulo}>Antes de empezar <span style=${{background:"var(--br2)",color:"#aab",borderRadius:6,padding:"2px 6px",fontSize:9,marginLeft:6}}>NO SUMA</span></div>
       <div style=${{opacity:.45}}>${apuestasAntes.slice().reverse().map(a=>renderAR(a,exp))}</div>
@@ -1403,7 +1411,7 @@ function App() {
   const cambiarTipoPush = k => { const t={...pushTipos,[k]:!pushTipos[k]}; setPushTipos(t); try{ localStorage.setItem("pushTipos",JSON.stringify(t)); }catch(e){} if(pushOn) activarPush(t); };
   // Datos del cuadro azul: se tocan para ver qué significan
   const miniDato = (v,l,clave,ctx) => html`<button key=${l} onClick=${()=>setInfoDato({clave,ctx})} style=${{...S.miniStat,border:"none",color:"#fff",fontFamily:"inherit",cursor:"pointer"}}>
-    <b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2,whiteSpace:"nowrap"}}>${l} <span style=${{opacity:.8}}>ⓘ</span></div></button>`;
+    <b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2,whiteSpace:"nowrap"}}>${l}</div></button>`;
   const infoDe = ({clave,ctx}) => {
     const anual = ctx==="anual", st = anual?statsAnual:stats, periodo = anual?"en "+anoSeleccionado:"este mes";
     const mp = anual?momioPromedio:momioPromedioMes;
@@ -1437,9 +1445,9 @@ function App() {
   </button>`;
   const pasosRecorrido = [
     {id:"t-chip", t:"Tu bank 💰", d:user?"Tócalo para poner o cambiar tu bank del mes. Con él se calculan tus pesos en cada pick.":"Toca aquí para entrar con Google y poner tu propio bank."},
-    {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Desliza de lado (o usa ‹ ›) para cambiar de mes; abajo ves acierto, racha, número de picks y momio promedio."},
-    {id:"t-forma", t:"Forma reciente", d:"Tus últimos 10 picks terminados: ✓ ganado, ✕ perdido. El más nuevo va a la derecha."},
-    {id:"t-picks", t:"Los picks", d:"La franja de color es el resultado y a la derecha va el momio. Toca una tarjeta para ver lo apostado, el cobro y la ganancia."},
+    {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Desliza de lado (o usa ‹ ›) para cambiar de mes. Toca acierto, racha, picks o momio para ver qué significa cada uno."},
+    {id:"t-forma", t:"Forma reciente", d:"Tus últimos picks terminados: verde ganado, rojo perdido. El más nuevo va a la derecha."},
+    {id:"t-picks", t:"Los picks", d:"Van agrupados por día, con lo que ganaste ese día a la derecha. El color es el resultado y abajo a la derecha va el momio. Toca una tarjeta para ver lo apostado, el cobro y la ganancia."},
     ...(()=>{ if(!usaBankPropio) return []; const pk=apuestasMesLista.slice().reverse().find(cuentaAp); if(!pk) return [];
       return [{id:"t-meti-"+pk.id, antes:()=>window.dispatchEvent(new CustomEvent("abrir-pick",{detail:pk.id})), t:"¿No metiste un pick? 🚫", d:"Dentro de cada pick está este switch. Si no lo jugaste, apágalo: se queda en la lista pero ya no cuenta en tu ganancia, acierto ni racha. Si te equivocas, lo vuelves a prender."}]; })(),
     {id:"t-tab-cal", t:"Calendario", d:"Tus resultados día por día. Verde ganó, rojo perdió; toca un día para ver sus picks."},
@@ -1505,6 +1513,10 @@ function App() {
           <div style=${{display:"flex",gap:8,marginTop:12}}>
             ${[[stats.efectividad+"%","Acierto","acierto"],[rachaActual.racha>0?(rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha:"—","Racha","racha"],[String(stats.total),"Picks","picks"],[momioPromedioMes!==null?fmtMomio(momioPromedioMes):"—","Momio prom.","momio"]].map(([v,l,k])=>miniDato(v,l,k,"mes"))}
           </div>
+          ${formaReciente.length>0 && html`<div id="t-forma" style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,fontSize:11,color:"#dfe7ff"}}>
+            <span>Últimos ${Math.min(6,formaReciente.length)}</span>
+            <div style=${{display:"flex",gap:5}}>${formaReciente.slice(-6).map((a,i)=>html`<span key=${i} title=${a.descripcion} style=${{width:10,height:10,borderRadius:"50%",background:a.resultado==="Ganada"?"#2fe0a0":"#ff5d7a",boxShadow:"0 0 0 1.5px color-mix(in srgb,#000 18%,transparent)"}}></span>`)}</div>
+          </div>`}
         </div>
 
         <div data-swipe-fade>
@@ -1527,18 +1539,10 @@ function App() {
           <b style=${{color:"#f5c842",fontSize:16,whiteSpace:"nowrap"}}>${fmt(bankrollMes+simNeto)}</b>
         </div>`}
 
-        ${formaReciente.length>0 && html`<div id="t-forma" style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,margin:"4px 2px 4px",flexWrap:"wrap"}}>
-          <span style=${{fontSize:11,color:"var(--mu)",fontWeight:700,letterSpacing:.5}}>FORMA RECIENTE</span>
-          <div style=${{display:"flex",gap:4}}>
-            ${formaReciente.map((a,i)=>html`<span key=${i} title=${a.descripcion} style=${{width:24,height:24,borderRadius:"50%",background:a.resultado==="Ganada"?"#2fe0a0":"#ff5d7a",color:"#06101f",fontSize:12,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>${a.resultado==="Ganada"?"✓":"✕"}</span>`)}
-          </div>
-        </div>`}
 
         <div id="t-picks">
         <div style=${S.secHead}>
           <b style=${{fontSize:18,color:"#fff"}}>Picks de ${MESES[mesSeleccionado].toLowerCase()}</b>
-          ${(()=>{ const t=apuestasMesTodas; const G=t.filter(a=>a.resultado==="Ganada").length, P=t.filter(a=>a.resultado==="Perdida").length, E=t.filter(a=>a.resultado==="Pendiente").length;
-            return html`<span style=${{fontSize:13,fontWeight:700,whiteSpace:"nowrap"}}><span style=${{color:"#2fe0a0"}}>${G} ✓</span><span style=${{color:"var(--mu3)"}}> · </span><span style=${{color:"#ff5d7a"}}>${P} ✕</span>${E?html`<span style=${{color:"var(--mu3)"}}> · </span><span style=${{color:"#c9d2f0"}}>${E} ⏳</span>`:""}</span>`; })()}
         </div>
         ${apuestasMesTodas.length===0
           ? html`<div style=${S.empty}>No hay picks este mes.${isAdmin?html`<br/>Toca ＋ para agregar el primero.`:""}</div>`
