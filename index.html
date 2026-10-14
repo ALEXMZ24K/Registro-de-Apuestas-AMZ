@@ -1016,7 +1016,8 @@ function App() {
   useEffect(()=>{ if(!pushSoportado()) return; navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(sub=>{ setPushOn(!!sub && Notification.permission==="granted"); setPushChecado(true); }).catch(()=>{}); },[]);
   const [buscaTodo,setBuscaTodo] = useState(false);
   const [ia,setIa] = useState({estado:null,msg:""});
-  const [menuNueva,setMenuNueva] = useState(false); // hoja del ＋: foto, captura o a mano
+  const [menuNueva,setMenuNueva] = useState(false); // hoja del ＋: captura o a mano
+  const inputFoto = useRef(null);
   const [vivo,setVivo] = useState({});          // marcador en vivo por id de partido ESPN
   const [elegir,setElegir] = useState(null);    // selector de partido dentro de Nueva apuesta: {dia,dep,q}
   const [partidosDia,setPartidosDia] = useState({}); // AAAAMMDD → {cargando,ligas,error}
@@ -2129,6 +2130,7 @@ function App() {
         <button onClick=${()=>setNotisGuia(false)} style=${{...S.btnPrimary,width:"100%",minHeight:46}}>Listo</button>
     </${Hoja}>`}
 
+    <input ref=${inputFoto} type="file" accept="image/png,image/jpeg,image/heic,image/webp" style=${{position:"fixed",left:-9999,top:0,opacity:0,width:1,height:1}} onChange=${e=>{ const f=e.target.files&&e.target.files[0]; conFoto(f); }}/>
     ${menuNueva && html`<${Hoja} onClose=${()=>setMenuNueva(false)} maxW=${520}>
         <div style=${S.modalHeader}>
           <h2 style=${S.modalTitle}>Nueva apuesta</h2>
@@ -2142,8 +2144,7 @@ function App() {
             const st = {display:"flex",alignItems:"center",gap:13,width:"100%",padding:14,background:"none",border:"none",color:"#fff",textAlign:"left",fontFamily:"inherit",cursor:"pointer",boxSizing:"border-box"};
             return modo==="mano"
               ? html`<button key=${modo} onClick=${()=>{setMenuNueva(false);openModal();}} style=${{...st,borderTop:"1px solid var(--br)"}}>${cont}</button>`
-              : html`<label key=${modo} style=${{...st,borderTop:i?"1px solid var(--br)":"none"}}>
-                  <input type="file" accept="image/*" capture=${modo==="foto"?"environment":undefined} style=${{display:"none"}} onChange=${e=>{ const f=e.target.files&&e.target.files[0]; e.target.value=""; conFoto(f); }}/>${cont}</label>`; })}
+              : html`<button key=${modo} onClick=${()=>{ const el=inputFoto.current; if(el){ el.value=""; el.click(); } }} style=${{...st,borderTop:i?"1px solid var(--br)":"none"}}>${cont}</button>`; })}
         </div>
         ${recientes.length>0 && html`<div>
           <div style=${{fontSize:11,color:"var(--mu)",fontWeight:800,letterSpacing:.8,margin:"20px 2px 8px"}}>REPETIR UNO RECIENTE</div>
