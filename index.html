@@ -451,6 +451,13 @@ const pistaPick = (a,ev,v) => {
   const hit=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t));
   const H=hit(ev.h), A=hit(ev.a), uno=H!==A;
   const un=esFut(ev.k)?"goles":String(ev.k).startsWith("baseball")?"carreras":"puntos";
+  // Ambos equipos anotan (Sí / No)
+  if(/ambos\s+(equipos\s+)?(marcan|anotan)|\sbtts\s|both teams to score/.test(t) && !/tiempo|mitad|\s(1h|2h|half)\s/.test(t)){
+    const no = /(marcan|anotan|btts|score)\s*:?\s*no(\s|$)/.test(t) || /\sno\s+(marcan|anotan)/.test(t);
+    const falta = hs===0&&as===0 ? "Falta que anoten los dos" : "Falta que anote "+(hs===0?ev.h.n:ev.a.n);
+    if(!no) return hs>0&&as>0 ? {txt:"¡Ganaste! · los dos ya anotaron", ok:1, listo:1} : {txt:fin?"No anotaron los dos":falta, ok:fin?-1:0};
+    return hs>0&&as>0 ? {txt:"Ya anotaron los dos", ok:-1} : {txt:fin?"¡Ganaste!":"Va bien · "+(hs===0&&as===0?"nadie ha anotado":"solo anotó "+(hs>0?ev.h.n:ev.a.n)), ok:fin?1:0, listo:fin?1:0};
+  }
   // Estadísticas de equipo: remates / tiros a puerta, córners, tarjetas
   const stK = /(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/.test(t) ? ["shotsOnTarget","remates a puerta"]
     : /\s(remates?|tiros?|disparos?|shots?)\s/.test(t) && !/\s(de esquina|libres?|penal)/.test(t) ? ["totalShots","remates"]
