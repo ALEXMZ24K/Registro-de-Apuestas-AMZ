@@ -1237,25 +1237,49 @@ function App() {
   // Selector de partido (Nueva apuesta)
   const diaElegir = n => { const d=new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()+n); return d; };
   const claveElegir = elegir ? fechaESPN(diaElegir(elegir.dia)) : null;
-  useEffect(()=>{
-    if(!claveElegir || partidosDia[claveElegir]) return;
-    const clave = claveElegir;
+  const cargandoDias = useRef({});
+  const cargarPartidos = clave => {
+    if(cargandoDias.current[clave]) return cargandoDias.current[clave];
     setPartidosDia(p=>({...p,[clave]:{cargando:true,ligas:[]}}));
-    (async()=>{
+    const pr = (async()=>{
+      let todas = [];
       try{
         const lst = await (await fetch(IA_URL+"/partidos")).json();
         if(!lst||!lst.ok) throw 0;
-        let pend = lst.ligas.length, alguna = false;
+        let alguna = false;
+        const orden = k => lst.ligas.findIndex(l=>l.k===k);
         await Promise.all(lst.ligas.map(async lg=>{
           try{ const d = await (await fetch(IA_URL+"/partidos?k="+encodeURIComponent(lg.k)+"&d="+clave)).json(); if(d&&d.ok){ alguna=true;
-            if(d.ev&&d.ev.length) setPartidosDia(p=>{ const c=p[clave]||{}; const ligas=[...(c.ligas||[]),{...lg,ev:d.ev}].sort((x,y)=>lst.ligas.findIndex(l=>l.k===x.k)-lst.ligas.findIndex(l=>l.k===y.k)); return {...p,[clave]:{...c,ligas}}; }); } }catch(e){}
-          pend--; }));
-        setPartidosDia(p=>({...p,[clave]:{...(p[clave]||{}),cargando:false,error:!alguna}}));
-      }catch(e){ setPartidosDia(p=>({...p,[clave]:{cargando:false,error:true,ligas:[]}})); }
+            if(d.ev&&d.ev.length){ todas=[...todas,{...lg,ev:d.ev}].sort((x,y)=>orden(x.k)-orden(y.k));
+              const snap=todas; setPartidosDia(p=>({...p,[clave]:{...(p[clave]||{}),ligas:snap}})); } } }catch(e){} }));
+        setPartidosDia(p=>({...p,[clave]:{ligas:todas,cargando:false,error:!alguna}}));
+        if(!alguna) delete cargandoDias.current[clave];
+      }catch(e){ delete cargandoDias.current[clave]; setPartidosDia(p=>({...p,[clave]:{cargando:false,error:true,ligas:[]}})); }
+      return todas;
     })();
-  },[claveElegir]);
-  const elegirPartido = (lg,e) => {
-    const ev = {k:lg.k, f:claveElegir, id:e.id, liga:lg.liga, t:e.t,
+    cargandoDias.current[clave] = pr;
+    return pr;
+  };
+  useEffect(()=>{ if(claveElegir) cargarPartidos(claveElegir); },[claveElegir]);
+  // Después de leer el boleto con IA: busca solo el partido en ESPN y lo liga si lo encuentra
+  const buscarPartidoAuto = async (texto, fechaIso) => {
+    const pal = x => normTxt(x).split(/[^a-z0-9]+/).filter(w=>w.length>=4&&!["club","deportivo","united","city","real","atletico","sporting","racing","fc","cf"].includes(w));
+    const tw = new Set(pal(texto)); if(!tw.size) return null;
+    const pega = e => [e.n,e.full].some(x=>pal(x).some(w=>tw.has(w))) || (e.a&&e.a.length>=3&&new RegExp("(^|[^a-z])"+normTxt(e.a)+"([^a-z]|$)").test(normTxt(texto)));
+    const [y,m,d] = (fechaIso||isoLocal(new Date())).split("-").map(Number);
+    const base = new Date(y,m-1,d,12);
+    for(const off of [0,1,-1]){
+      const dt = new Date(base); dt.setDate(dt.getDate()+off);
+      const clave = fechaESPN(dt);
+      const ligas = await cargarPartidos(clave);
+      const hits = []; (ligas||[]).forEach(lg=>lg.ev.forEach(e=>{ if(pega(e.h)&&pega(e.a)) hits.push({lg,e,clave}); }));
+      if(hits.length===1) return hits[0];
+      if(hits.length>1) return null;
+    }
+    return null;
+  };
+  const elegirPartido = (lg,e,clave=claveElegir) => {
+    const ev = {k:lg.k, f:clave, id:e.id, liga:lg.liga, t:e.t,
       h:{n:e.h.n,full:e.h.full,a:e.h.a,l:e.h.l,c:e.h.c}, a:{n:e.a.n,full:e.a.full,a:e.a.a,l:e.a.l,c:e.a.c}};
     const fe = new Date(e.t);
     setForm(f=>({...f, evento:ev, partido:nombrePartido(ev), deporte:lg.dep||f.deporte, fecha:isNaN(fe)?f.fecha:isoLocal(fe)}));
@@ -1370,6 +1394,13 @@ function App() {
       if(b.apuesta) partes.push("Apostaste "+fmtReal(b.apuesta)+(pct!==""?" = "+pct+"% de tu bank":" (pon tu bank del mes para calcular el %)"));
       if(b.notas) partes.push("Ojo: "+b.notas);
       setIa({estado:"listo",msg:partes.join(" · ")});
+      if(!esCombo && b.partido){
+        buscarPartidoAuto(b.partido, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{
+          if(!h) return;
+          elegirPartido(h.lg,h.e,h.clave);
+          setIa(x=>({...x,msg:(x.msg?x.msg+" · ":"")+"Partido encontrado: "+nombrePartido({k:h.lg.k,h:h.e.h,a:h.e.a})+" (marcador en vivo activado)"}));
+        }).catch(()=>{});
+      }
     }catch(e){
       setIa({estado:"error",msg:e.message||"Error al leer el boleto"});
     }
