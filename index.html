@@ -1749,7 +1749,18 @@ function App() {
     }
     const cerrar = () => { const e=listaAno.current; if(!e){ setVerTodasAno(false); return; }
       e.style.transition="opacity .18s ease-in, transform .18s ease-in"; e.style.opacity="0"; e.style.transform="translateY(-10px)";
-      setTimeout(()=>{ setVerTodasAno(false); e.style.transition="none"; e.style.opacity=""; e.style.transform=""; },190); };
+      setTimeout(()=>{
+        // La lista deja un hueco del mismo alto para que la página no se encoja de golpe; luego se baja suave a donde termina la página
+        const h=e.offsetHeight; e.style.transition="none"; e.style.height=h+"px"; e.style.opacity=""; e.style.transform="";
+        setVerTodasAno(false);
+        requestAnimationFrame(()=>{
+          const maxY = Math.max(0, document.documentElement.scrollHeight - h - window.innerHeight);
+          const soltar = () => { e.style.height=""; };
+          if(window.scrollY > maxY+2){ window.scrollTo({top:maxY,behavior:"smooth"});
+            const t0=Date.now(); const esp=()=>{ if(window.scrollY<=maxY+2 || Date.now()-t0>900) soltar(); else requestAnimationFrame(esp); }; requestAnimationFrame(esp);
+          } else soltar();
+        });
+      },190); };
     const top = btn ? btn.getBoundingClientRect().top : 0;
     if(btn && top < 70){
       const destino = Math.max(0,window.scrollY+top-90);
