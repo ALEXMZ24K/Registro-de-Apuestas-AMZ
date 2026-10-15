@@ -18,6 +18,10 @@
     html,body{overflow-x:hidden;touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
     /* Al presionar, botones y tarjetas se hunden tantito */
     *{-webkit-tap-highlight-color:transparent}
+    /* Mantener presionado no selecciona texto ni abre el menú de copiar (excepto en campos para escribir) */
+    body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+    img{-webkit-user-drag:none}
     button,label,.presionable{transition:transform .14s cubic-bezier(.2,.8,.2,1)}
     button:active:not(:disabled),label:active,.presionable:active{transform:scale(.97)}
     .tabbar .plus:active{transform:scale(.92)}
