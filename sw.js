@@ -17,8 +17,8 @@ self.addEventListener('push', e => {
   const title = d.title || 'AlexPicks';
   e.waitUntil(self.registration.showNotification(title, {
     body: d.body || '',
-    icon: 'icon-192.png',
-    badge: 'icon-192.png',
+    icon: 'icon2-192.png',
+    badge: 'icon2-badge-96.png',
     tag: d.tag || undefined,
     data: { url: d.url || './' },
   }));
