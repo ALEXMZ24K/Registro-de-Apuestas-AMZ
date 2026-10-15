@@ -1,5 +1,7 @@
-# El robot: cada cambio en la rama "prueba" se prueba solo. Si todo pasa, se pasa a la app real (main),
-# salvo que el mensaje del cambio diga [revisar] (entonces espera el visto bueno de Alex).
+# El robot. Cada cambio en la rama "prueba":
+#  1) se copia a la app de prueba (/prueba/ dentro de main) para verla en el celular,
+#  2) el robot la prueba como iPhone y como Android (con datos falsos),
+#  3) si todo pasa, se pasa a la app real — salvo que el mensaje del cambio diga [revisar].
 name: Robot de pruebas
 
 on:
@@ -9,10 +11,34 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
+  actions: write
+
+concurrency:
+  group: robot
+  cancel-in-progress: false
 
 jobs:
+  actualizar-app-de-prueba:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, path: main, fetch-depth: 0 }
+      - uses: actions/checkout@v4
+        with: { ref: prueba, path: rama-prueba }
+      - name: Copiar a /prueba/
+        run: |
+          rm -rf main/prueba && mkdir -p main/prueba
+          rsync -a --exclude .git --exclude .github --exclude tests --exclude node_modules \
+            --exclude package.json --exclude playwright.config.js --exclude firebase --exclude ia-worker \
+            rama-prueba/ main/prueba/
+          cd main
+          git config user.name "robot-alexpicks"; git config user.email "robot@users.noreply.github.com"
+          git add -A prueba
+          git diff --cached --quiet || (git commit -m "App de prueba actualizada" && git push origin HEAD:main)
+      - name: Publicar
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh workflow run pages.yml --ref main -R ${{ github.repository }}
+
   probar:
     runs-on: ubuntu-latest
     steps:
@@ -28,15 +54,18 @@ jobs:
         with: { name: reporte-robot, path: playwright-report, retention-days: 14 }
 
   pasar-a-la-app-real:
-    needs: probar
+    needs: [actualizar-app-de-prueba, probar]
     if: ${{ !contains(github.event.head_commit.message, '[revisar]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - name: Pasar prueba → main
-        run: git push origin HEAD:main
-
-  publicar:
-    needs: pasar-a-la-app-real
-    uses: ./.github/workflows/pages.yml
+        with: { ref: main, fetch-depth: 0 }
+      - name: Juntar prueba → main
+        run: |
+          git config user.name "robot-alexpicks"; git config user.email "robot@users.noreply.github.com"
+          git fetch origin prueba
+          git merge --no-edit -X theirs origin/prueba -m "Pasa a la app real (aprobado por el robot)"
+          git push origin HEAD:main
+      - name: Publicar
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh workflow run pages.yml --ref main -R ${{ github.repository }}
