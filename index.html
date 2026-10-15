@@ -2026,7 +2026,7 @@ function App() {
             <b style=${{fontSize:15}}>Todos los picks de ${anoSeleccionado} (${apuestasAno.length})</b>
             <span style=${{color:"var(--ac)",fontWeight:700}}>${verTodasAno?"Ocultar":"Ver"}</span>
           </button>
-          <div ref=${listaAno} style=${{willChange:"opacity, transform"}}>${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}</div>
+          <div ref=${listaAno}>${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}</div>
         </div>`}
         </div>`}
       </div>`}
