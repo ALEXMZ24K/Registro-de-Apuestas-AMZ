@@ -155,10 +155,11 @@
   document.addEventListener("DOMContentLoaded", function(){
     var b = document.createElement("div");
     b.id = "barra-prueba";
-    b.style.cssText = "position:fixed;top:calc(6px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:99999;background:#ffc94a;color:#2a1d00;font:800 11px/1 system-ui,sans-serif;padding:6px 10px;border-radius:20px;box-shadow:0 4px 14px #0008;cursor:pointer;letter-spacing:.4px;user-select:none";
+    // Abajo a la izquierda, arriba de la barra; sin sombra ni centrado con transform (eso la hacía verse borrosa)
+    b.style.cssText = "position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:10px;z-index:99999;background:#ffc94a;color:#2a1d00;font:800 11px/1 system-ui,sans-serif;padding:6px 9px;border-radius:20px;border:1px solid #2a1d00;cursor:pointer;letter-spacing:.3px;user-select:none;-webkit-user-select:none";
     b.textContent = "🧪 PRUEBA · " + (rol==="amigo"?"amigo":rol==="nadie"?"sin sesión":"admin") + " ▾";
     var m = document.createElement("div");
-    m.style.cssText = "display:none;position:fixed;top:calc(36px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:99999;background:#1b1b1d;border:1px solid #333;border-radius:14px;overflow:hidden;min-width:220px;box-shadow:0 10px 30px #000a;font:600 14px system-ui,sans-serif";
+    m.style.cssText = "display:none;position:fixed;bottom:calc(116px + env(safe-area-inset-bottom));left:10px;z-index:99999;background:#1b1b1d;border:1px solid #333;border-radius:14px;overflow:hidden;min-width:220px;box-shadow:0 10px 30px #000a;font:600 14px system-ui,sans-serif";
     var opc = [["Ver como admin","?rol=admin"],["Ver como amigo","?rol=amigo"],["Ver sin sesión","?rol=nadie"],["Reiniciar datos de prueba","?reiniciar=1"]];
     opc.forEach(function(o,i){ var a=document.createElement("a"); a.href=location.pathname+o[1]+(location.search.indexOf("prueba=1")>=0?"&prueba=1":""); a.textContent=o[0];
       a.style.cssText="display:block;padding:12px 14px;color:"+(i===3?"#ff7a8f":"#eee")+";text-decoration:none;border-top:"+(i?"1px solid #2a2a2c":"none"); m.appendChild(a); });
