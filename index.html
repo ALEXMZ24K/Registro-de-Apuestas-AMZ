@@ -1048,6 +1048,7 @@ function App() {
   const [ia,setIa] = useState({estado:null,msg:""});
   const [menuNueva,setMenuNueva] = useState(false); // hoja del ＋: captura o a mano
   const inputFoto = useRef(null);
+  const btnAno = useRef(null), listaAno = useRef(null);
   const [vivo,setVivo] = useState({});          // marcador en vivo por id de partido ESPN
   const [elegir,setElegir] = useState(null);    // selector de partido dentro de Nueva apuesta: {dia,dep,q}
   const [partidosDia,setPartidosDia] = useState({}); // AAAAMMDD → {cargando,ligas,error}
@@ -1721,6 +1722,24 @@ function App() {
   // Resultado de un mes (para el selector de mes del calendario); null si no hay picks terminados
   const resMes = (y,m) => { const l=apuestas.filter(a=>{ const f=parseFecha(a.fecha); return f.y===y&&f.m===m&&cuentaAp(a)&&!noMet(a)&&(a.resultado==="Ganada"||a.resultado==="Perdida"); });
     if(!l.length) return null; return OCULTAR ? sumPct(l) : l.reduce((s,a)=>s+gananciaAp(a),0); };
+  // Abrir/cerrar "Todos los picks del año" con animación; al cerrar primero sube suave hasta el título
+  const toggleAno = () => {
+    const el = listaAno.current, btn = btnAno.current;
+    if(!verTodasAno){
+      setVerTodasAno(true);
+      requestAnimationFrame(()=>{ const e=listaAno.current; if(!e) return; const h=e.scrollHeight;
+        e.style.overflow="hidden"; e.style.transition="none"; e.style.height="0px"; e.style.opacity="0"; e.getBoundingClientRect();
+        e.style.transition="height .35s ease, opacity .3s ease"; e.style.height=Math.min(h,1400)+"px"; e.style.opacity="1";
+        setTimeout(()=>{ e.style.height=""; e.style.overflow=""; e.style.transition=""; },380); });
+      return;
+    }
+    const cerrar = () => { if(!el){ setVerTodasAno(false); return; }
+      el.style.overflow="hidden"; el.style.transition="none"; el.style.height=Math.min(el.scrollHeight,window.innerHeight*1.5)+"px"; el.getBoundingClientRect();
+      el.style.transition="height .3s ease, opacity .25s ease"; el.style.height="0px"; el.style.opacity="0";
+      setTimeout(()=>{ setVerTodasAno(false); el.style.height=""; el.style.opacity=""; el.style.overflow=""; el.style.transition=""; },310); };
+    const top = btn ? btn.getBoundingClientRect().top : 0;
+    if(btn && top < 70){ window.scrollTo({top:Math.max(0,window.scrollY+top-90),behavior:"smooth"}); setTimeout(cerrar,420); } else cerrar();
+  };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
   const pctMes = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
@@ -1985,11 +2004,11 @@ function App() {
           </div>`)}
         </div>`}
         ${apuestasAno.length>0 && html`<div style=${S.section}>
-          <button onClick=${()=>setVerTodasAno(v=>!v)} style=${{...S.row,justifyContent:"space-between"}}>
+          <button ref=${btnAno} onClick=${toggleAno} style=${{...S.row,justifyContent:"space-between"}}>
             <b style=${{fontSize:15}}>Todos los picks de ${anoSeleccionado} (${apuestasAno.length})</b>
             <span style=${{color:"var(--ac)",fontWeight:700}}>${verTodasAno?"Ocultar":"Ver"}</span>
           </button>
-          ${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}
+          <div ref=${listaAno}>${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}</div>
         </div>`}
         </div>`}
       </div>`}
