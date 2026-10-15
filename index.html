@@ -13,14 +13,12 @@
     // MODO PRUEBA (en /prueba/ o con ?prueba=1): reemplaza Firebase por una base de datos falsa con picks de ejemplo; nunca toca los datos reales
     window.ES_PRUEBA = /\/prueba\//.test(location.pathname) || /[?&]prueba=1\b/.test(location.search);
     if(window.ES_PRUEBA) document.write('<script src="fake-firebase.js"><\/script>');
-    // La de prueba se instala como app aparte ("Prueba", con ícono amarillo) que abre /prueba/, no la real
-    if(window.ES_PRUEBA) document.addEventListener("DOMContentLoaded",function(){
-      var q=function(s){return document.querySelector(s);};
-      if(q('link[rel="manifest"]')) q('link[rel="manifest"]').href="manifest-prueba.json";
-      if(q('link[rel="apple-touch-icon"]')) q('link[rel="apple-touch-icon"]').href="icon-prueba-180.png";
-      if(q('meta[name="apple-mobile-web-app-title"]')) q('meta[name="apple-mobile-web-app-title"]').content="Prueba";
-      document.title="AlexPicks Prueba";
-    });
+    // La de prueba se instala como app aparte ("Prueba", ícono amarillo) que siempre abre /prueba/.
+    // Se escriben aquí (y no más abajo) para que el iPhone lea el manifiesto correcto desde el inicio.
+    document.write(window.ES_PRUEBA
+      ? '<link rel="manifest" href="manifest-prueba.json"><link rel="apple-touch-icon" href="icon-prueba-180.png"><meta name="apple-mobile-web-app-title" content="Prueba">'
+      : '<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon2-180.png"><meta name="apple-mobile-web-app-title" content="AlexPicks">');
+    if(window.ES_PRUEBA) document.title = "AlexPicks Prueba";
   </script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -166,13 +164,12 @@
       .deporte-card{min-width:68px !important;font-size:11px !important}
     }
   </style>
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon2-180.png">
+
   <link rel="icon" type="image/png" sizes="32x32" href="icon2-32.png">
   <link rel="icon" type="image/svg+xml" href="icon2.svg">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="AlexPicks">
+
   <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
   document.addEventListener("touchstart",()=>{},{passive:true}); // para que :active funcione en iPhone
   // Sin zoom: ni pellizcando ni con doble toque
