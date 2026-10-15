@@ -1112,7 +1112,7 @@ function App() {
   const [ia,setIa] = useState({estado:null,msg:""});
   const [menuNueva,setMenuNueva] = useState(false); // hoja del ＋: captura o a mano
   const inputFoto = useRef(null);
-  const [respaldo,setRespaldo] = useState("");
+  const [respaldo,setRespaldo] = useState({});
   const btnAno = useRef(null), listaAno = useRef(null);
   const [vivo,setVivo] = useState({});          // marcador en vivo por id de partido ESPN
   const [elegir,setElegir] = useState(null);    // selector de partido dentro de Nueva apuesta: {dia,dep,q}
@@ -1867,9 +1867,11 @@ function App() {
     } else cerrar();
   };
   // Respaldo: descarga TODOS los picks (no solo los meses cargados) en CSV para Excel y en JSON completo
-  const descargarRespaldo = async () => {
-    if(respaldo==="Preparando…") return;
-    setRespaldo("Preparando…");
+  // Un archivo por toque (iPhone solo deja una descarga a la vez)
+  const descargarRespaldo = async (tipo) => {
+    if(respaldo[tipo]==="Preparando…") return;
+    const msg = t => setRespaldo(r=>({...r,[tipo]:t}));
+    msg("Preparando…");
     try{
       const snap = await db.collection("apuestas").get();
       const lista = snap.docs.map(d=>({...d.data(),_docId:d.id})).sort((x,y)=>(x.fecha||"").localeCompare(y.fecha||""));
@@ -1879,10 +1881,10 @@ function App() {
       const cols = ["fecha","deporte","tipo","descripcion","partido","monto","cuota","resultado"];
       const filas = lista.map(a=>[...cols.map(c=>a[c]), esCombo(a)?patasDe(a).map(p=>p.desc+(p.res?" ["+p.res+"]":"")).join(" | "):"", a.evento&&a.evento.fin?lados(a.evento,null).map(x=>x.s).join("-"):""]);
       const csv = "\uFEFF"+[[...cols.map(c=>({monto:"% del bank",cuota:"momio"})[c]||c),"legs","marcador final"].map(esc).join(","),...filas.map(f=>f.map(esc).join(","))].join("\n");
-      bajar(csv,"alexpicks-respaldo-"+hoy+".csv","text/csv;charset=utf-8");
-      bajar(JSON.stringify(lista,null,1),"alexpicks-respaldo-"+hoy+".json","application/json");
-      setRespaldo("✓ Listo: "+lista.length+" picks descargados ("+hoy+")");
-    }catch(e){ setRespaldo("⚠️ No se pudo descargar. Intenta de nuevo."); }
+      if(tipo==="csv") bajar(csv,"alexpicks-respaldo-"+hoy+".csv","text/csv;charset=utf-8");
+      else bajar(JSON.stringify(lista,null,1),"alexpicks-respaldo-"+hoy+".json","application/json");
+      msg("✓ Listo: "+lista.length+" picks ("+hoy+")");
+    }catch(e){ msg("⚠️ No se pudo descargar. Intenta de nuevo."); }
   };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
@@ -2260,7 +2262,8 @@ function App() {
         ])}
 
         ${isAdmin && grupoMas("Admin",[
-          filaMas({e:"💾",t:"Descargar respaldo",sub:respaldo||"Todos los picks en Excel (CSV) y copia completa (JSON)",onClick:descargarRespaldo}),
+          filaMas({e:"📊",t:"Respaldo para Excel",sub:respaldo.csv||"Todos los picks en un archivo CSV",onClick:()=>descargarRespaldo("csv")}),
+          filaMas({e:"💾",t:"Copia completa",sub:respaldo.json||"Archivo JSON para poder restaurar todo",onClick:()=>descargarRespaldo("json")}),
         ])}
 
         ${grupoMas("Ayuda",[
