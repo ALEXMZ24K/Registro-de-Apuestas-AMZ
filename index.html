@@ -16,6 +16,7 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--bg:#0a0f20;--card:#121a38;--card2:#141d40;--card3:#0e1530;--br:#243060;--br2:#2b3870;--mu:#8f9bc4;--mu2:#7c88b3;--mu3:#5a668f;--ac:#4a8dff;--ac2:#9ec1ff;--onac:#fff;--g1:#1d4fd8;--g2:#0f2160}
     html,body{overflow-x:hidden;touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
+    *{touch-action:manipulation}
     input,select,textarea{font-size:16px!important}
     body{background:var(--bg);color:#e8e8f0;font-family:'DM Sans',sans-serif}
     input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{opacity:1}
@@ -143,8 +144,7 @@
   <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
   // Sin zoom: ni pellizcando ni con doble toque
   ["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
-  document.addEventListener("touchmove",e=>{ if(e.touches&&e.touches.length>1) e.preventDefault(); },{passive:false});
-  let ultimoToque=0; document.addEventListener("touchend",e=>{ const ahora=Date.now(); if(ahora-ultimoToque<300 && !e.target.closest("input,textarea,select")) e.preventDefault(); ultimoToque=ahora; },{passive:false});</script>
+  document.addEventListener("touchmove",e=>{ if(e.touches&&e.touches.length>1) e.preventDefault(); },{passive:false});</script>
 </head>
 <body>
 <div id="root"></div>
