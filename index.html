@@ -16,6 +16,12 @@
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--bg:#0a0f20;--card:#121a38;--card2:#141d40;--card3:#0e1530;--br:#243060;--br2:#2b3870;--mu:#8f9bc4;--mu2:#7c88b3;--mu3:#5a668f;--ac:#4a8dff;--ac2:#9ec1ff;--onac:#fff;--g1:#1d4fd8;--g2:#0f2160}
     html,body{overflow-x:hidden;touch-action:pan-x pan-y;-webkit-text-size-adjust:100%}
+    /* Al presionar, botones y tarjetas se hunden tantito */
+    *{-webkit-tap-highlight-color:transparent}
+    button,label,.presionable{transition:transform .14s cubic-bezier(.2,.8,.2,1)}
+    button:active:not(:disabled),label:active,.presionable:active{transform:scale(.97)}
+    .tabbar .plus:active{transform:scale(.92)}
+    [data-manija]:active{transform:none}
     *{touch-action:manipulation}
     input,select,textarea{font-size:16px!important}
     body{background:var(--bg);color:#e8e8f0;font-family:'DM Sans',sans-serif}
@@ -150,6 +156,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="AlexPicks">
   <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+  document.addEventListener("touchstart",()=>{},{passive:true}); // para que :active funcione en iPhone
   // Sin zoom: ni pellizcando ni con doble toque
   ["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
   document.addEventListener("touchmove",e=>{ if(e.touches&&e.touches.length>1) e.preventDefault(); },{passive:false});</script>
@@ -538,6 +545,29 @@ function MarcadorVivo({ev,v}) {
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
 
+// Despliega/oculta su contenido animando el alto (para el detalle de cada pick)
+function Desplegable({abierto, contenido}) {
+  const [montado,setMontado] = useState(abierto);
+  const ref = useRef(null), animarAbrir = useRef(false), primera = useRef(true);
+  useEffect(()=>{
+    if(primera.current){ primera.current=false; return; }
+    if(abierto){ animarAbrir.current=true; setMontado(true); return; }
+    const el=ref.current; if(!el){ setMontado(false); return; }
+    el.style.transition="none"; el.style.overflow="hidden"; el.style.height=el.scrollHeight+"px"; el.getBoundingClientRect();
+    el.style.transition="height .26s cubic-bezier(.2,.8,.2,1), opacity .2s ease"; el.style.height="0px"; el.style.opacity="0";
+    const t=setTimeout(()=>setMontado(false),260); return ()=>clearTimeout(t);
+  },[abierto]);
+  React.useLayoutEffect(()=>{
+    if(!montado || !animarAbrir.current) return; animarAbrir.current=false;
+    const el=ref.current; if(!el) return; const h=el.scrollHeight;
+    el.style.transition="none"; el.style.overflow="hidden"; el.style.height="0px"; el.style.opacity="0"; el.getBoundingClientRect();
+    el.style.transition="height .3s cubic-bezier(.2,.8,.2,1), opacity .22s ease"; el.style.height=h+"px"; el.style.opacity="1";
+    const t=setTimeout(()=>{ el.style.height=""; el.style.overflow=""; el.style.transition=""; },310); return ()=>clearTimeout(t);
+  },[montado]);
+  if(!montado) return null;
+  return html`<div ref=${ref}>${contenido()}</div>`;
+}
+
 function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,vivoPatas,estadoVivo,admin}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
@@ -568,7 +598,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
     return l.s!==undefined && l.s!==null && l.s!=="" ? "Final "+l.s+"-"+r.s : ""; })();
   const subLinea = enVivo ? (ev.liga||subtitulo) : (subtitulo + (finTxt && !terminado ? " · "+finTxt : ""));
   return html`<div style=${{...S.apCard,transition:"opacity .2s"}}>
-    <div style=${{display:"flex",cursor:"pointer",opacity:metida?1:.45}} onClick=${()=>setOpen(o=>!o)}>
+    <div className="presionable" style=${{display:"flex",cursor:"pointer",opacity:metida?1:.45}} onClick=${()=>setOpen(o=>!o)}>
       <div style=${{width:5,background:cr,flexShrink:0}}></div>
       <div style=${{flex:1,minWidth:0,padding:"11px 13px 11px 13px"}}>
         <div style=${{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
@@ -605,7 +635,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
         </div>`}
       </div>
     </div>
-    ${show && html`<div style=${S.apDetail}>
+    <${Desplegable} abierto=${!!show} contenido=${()=>html`<div style=${S.apDetail}>
       ${(()=>{ const m=monto||0, r=a.resultado;
         const cobro = r==="Ganada"||r==="Pendiente" ? m*dec : r==="Nula" ? m : 0;
         const gan = r==="Pendiente" ? ganaria : g;
@@ -656,7 +686,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
           <button onClick=${onDelete} style=${{...S.actBtn,minHeight:42,color:"#ff5d7a",padding:"6px 18px"}}>🗑️</button>
         </div>
       </div>`}
-    </div>`}
+    </div>`}/>
   </div>`;
 }
 
