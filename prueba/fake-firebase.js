@@ -148,7 +148,7 @@
   var authFn = function(){ return auth; }; authFn.GoogleAuthProvider = GoogleAuthProvider; authFn.Auth = {Persistence:{LOCAL:"local"}};
   var fsFn = function(){ return db; }; fsFn.FieldValue = { delete: function(){ return BORRAR; } };
 
-  window.firebase = { initializeApp: function(){ return {}; }, firestore: fsFn, auth: authFn, apps: [] };
+  window.firebase = { initializeApp: function(){ return {}; }, firestore: fsFn, auth: authFn, apps: [], __falso: true };
   window.ES_PRUEBA = true;
 
   // ---------- Etiqueta "PRUEBA" con menú ----------
@@ -164,5 +164,9 @@
       a.style.cssText="display:block;padding:12px 14px;color:"+(i===3?"#ff7a8f":"#eee")+";text-decoration:none;border-top:"+(i?"1px solid #2a2a2c":"none"); m.appendChild(a); });
     b.onclick = function(){ m.style.display = m.style.display==="none" ? "block" : "none"; };
     document.body.appendChild(b); document.body.appendChild(m);
+    var etiqueta = function(u){ b.textContent = "🧪 PRUEBA · " + (!u ? "sin sesión" : u.uid==="prueba-admin" ? "admin" : "amigo") + " ▾"; };
+    oyentesAuth.push(etiqueta);
+    // Por si algo la quita, se vuelve a poner
+    setInterval(function(){ if(!document.getElementById("barra-prueba")){ document.body.appendChild(b); document.body.appendChild(m); } }, 1000);
   });
 })();

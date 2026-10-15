@@ -183,6 +183,11 @@ const firebaseConfig = {
   messagingSenderId: "472356636148",
   appId: "1:472356636148:web:5b467de76f50b58afee5a1"
 };
+// Seguro: en modo prueba JAMÁS se usa la base de datos real. Si la falsa no cargó, la app no arranca.
+if(window.ES_PRUEBA && !(window.firebase && window.firebase.__falso)){
+  document.body.innerHTML = '<div style="padding:40px 24px;color:#fff;font-family:sans-serif;text-align:center"><b style="font-size:20px">Modo prueba no cargó</b><p style="margin-top:10px;color:#aaa">Recarga la página. (Por seguridad no se usan los datos reales aquí.)</p></div>';
+  throw new Error("Modo prueba sin base de datos falsa");
+}
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
