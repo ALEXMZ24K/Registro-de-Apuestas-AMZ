@@ -1848,7 +1848,7 @@ function App() {
   const pasosRecorrido = [
     {id:"t-chip", t:"Tu bank 💰", d:user?"Tócalo para poner o cambiar tu bank del mes. Con él se calculan tus pesos en cada pick.":"Toca aquí para entrar con Google y poner tu propio bank."},
     {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Desliza de lado (o usa ‹ ›) para cambiar de mes. Al terminar el recorrido, toca acierto, racha, picks o momio para ver qué significa cada uno."},
-    {id:"t-forma", t:"Forma reciente", d:"Tus últimos picks terminados: verde ganado, rojo perdido. El más nuevo va a la derecha."},
+    {id:"t-forma", t:"Tus últimos 6", d:"Cómo te fue en tus últimos 6 picks: verde es ganado y rojo es perdido. El más reciente va a la derecha."},
     {id:"t-picks", t:"Los picks", d:"Van agrupados por día, con lo que ganaste ese día a la derecha. El color es el resultado y abajo a la derecha va el momio. Toca una tarjeta para ver lo apostado, el cobro y la ganancia."},
     ...(()=>{ if(!usaBankPropio) return []; const pk=apuestasMesLista.slice().reverse().find(cuentaAp); if(!pk) return [];
       return [{id:"t-meti-"+pk.id, antes:()=>window.dispatchEvent(new CustomEvent("abrir-pick",{detail:pk.id})), t:"¿No metiste un pick? 🚫", d:"Dentro de cada pick está este switch. Si no lo jugaste, apágalo: se queda en la lista pero ya no cuenta en tu ganancia, acierto ni racha. Si te equivocas, lo vuelves a prender."}]; })(),
