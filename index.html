@@ -878,6 +878,15 @@ function Recorrido({pasos,onClose}) {
   const [i,setI] = useState(0);
   const [r,setR] = useState(null);
   const p = pasos[i];
+  // Durante el recorrido la pantalla no se mueve con el dedo (solo la app la mueve para enseñar cada paso)
+  useEffect(()=>{
+    const b=document.body.style, h=document.documentElement.style, prev={b:b.overflow,h:h.overflow};
+    b.overflow="hidden"; h.overflow="hidden";
+    const frenar = e => { if(e.cancelable) e.preventDefault(); };
+    document.addEventListener("touchmove",frenar,{passive:false});
+    document.addEventListener("wheel",frenar,{passive:false});
+    return ()=>{ b.overflow=prev.b; h.overflow=prev.h; document.removeEventListener("touchmove",frenar); document.removeEventListener("wheel",frenar); };
+  },[]);
   useEffect(()=>{
     if(!p) return;
     let el = null, vivo = true, t = null, t2 = null;
