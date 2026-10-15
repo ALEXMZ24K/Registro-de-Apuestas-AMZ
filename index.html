@@ -1639,6 +1639,25 @@ function App() {
   const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
 
   // Pantalla de carga: siluetas de la app que brillan mientras llegan los picks
+  if(cargando && vistaActual==="calendario") return html`<div style=${S.root}>
+    <main style=${S.main}>
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"6px 0 14px"}}>
+        <h1 style=${S.pageTitle}>Calendario</h1>
+        <span className="sk" style=${{width:64,height:40,borderRadius:14}}></span>
+      </div>
+      <div style=${S.monthRow}>
+        <span className="sk" style=${{width:44,height:44,borderRadius:12}}></span>
+        <b style=${{fontSize:18,color:"#fff"}}>${MESES[new Date().getMonth()]} ${new Date().getFullYear()}</b>
+        <span className="sk" style=${{width:44,height:44,borderRadius:12}}></span>
+      </div>
+      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5,marginBottom:5}}>
+        ${["L","M","M","J","V","S","D"].map((d,i)=>html`<div key=${i} style=${{textAlign:"center",fontSize:12,color:"var(--mu)",fontWeight:700}}>${d}</div>`)}
+      </div>
+      <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5}}>
+        ${[...Array(35)].map((_,i)=>html`<span key=${i} className="sk" style=${{height:56,borderRadius:12}}></span>`)}
+      </div>
+    </main>
+  </div>`;
   if(cargando) return html`<div style=${S.root}>
     <main style=${S.main}>
       <div style=${{...S.hero,boxShadow:"none"}}>
