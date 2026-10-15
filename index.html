@@ -999,8 +999,13 @@ function Hoja({onClose, children, maxW=640}) {
     Hoja.abiertas = (Hoja.abiertas||0)+1; b.overflow="hidden"; hs.overflow="hidden";
     const p = panel.current, f = fondo.current;
     // Listeners no pasivos para poder frenar el scroll nativo mientras se jala la hoja
+    let x0=0, y0=0;
+    const inicioToque = e => { const t=e.touches[0]; x0=t.clientX; y0=t.clientY; };
     const enPanel = e => {
-      // Si el contenido de la hoja no tiene scroll, ningún movimiento debe llegar a la página de atrás
+      // Movimiento de lado (p. ej. deslizar los chips de deportes): se deja pasar
+      const t0=e.touches[0];
+      if(Math.abs(t0.clientX-x0)>Math.abs(t0.clientY-y0) && !(drag.current&&drag.current.activo)) return;
+      // Si el contenido de la hoja no tiene scroll, ningún movimiento vertical debe llegar a la página de atrás
       if(p.scrollHeight<=p.clientHeight+1 && e.cancelable) e.preventDefault();
       const d = drag.current; if(!d) return;
       const dy = e.touches[0].clientY - d.y;
@@ -1008,10 +1013,11 @@ function Hoja({onClose, children, maxW=640}) {
       if(d.activo || (dy>0 && p.scrollTop<=0)) { if(e.cancelable) e.preventDefault(); }
     };
     const enFondo = e => e.preventDefault();
+    p && p.addEventListener("touchstart", inicioToque, {passive:true});
     p && p.addEventListener("touchmove", enPanel, {passive:false});
     f && f.addEventListener("touchmove", enFondo, {passive:false});
     return ()=>{
-      p && p.removeEventListener("touchmove", enPanel); f && f.removeEventListener("touchmove", enFondo);
+      p && p.removeEventListener("touchstart", inicioToque); p && p.removeEventListener("touchmove", enPanel); f && f.removeEventListener("touchmove", enFondo);
       Hoja.abiertas = Math.max(0,(Hoja.abiertas||1)-1); if(!Hoja.abiertas){ b.overflow=prev.bo; hs.overflow=prev.ho; }
     };
   },[]);
@@ -1026,12 +1032,12 @@ function Hoja({onClose, children, maxW=640}) {
     const p=panel.current; if(!p || e.touches.length!==1) return;
     const enManija = !!e.target.closest("[data-manija]");
     if(!enManija && p.scrollTop>2) return; // si el contenido está scrolleado, primero se scrollea
-    drag.current = {y:e.touches[0].clientY, t:Date.now(), dy:0, activo:false};
+    drag.current = {x:e.touches[0].clientX, y:e.touches[0].clientY, t:Date.now(), dy:0, activo:false};
   };
   const mov = e => {
     const d=drag.current; if(!d) return;
     const dy = e.touches[0].clientY-d.y;
-    if(!d.activo){ if(dy<-4){ drag.current=null; return; } if(dy<8) return; d.activo=true; d.t=Date.now(); }
+    if(!d.activo){ if(dy<-4 || Math.abs(e.touches[0].clientX-d.x)>Math.abs(dy)){ drag.current=null; return; } if(dy<8) return; d.activo=true; d.t=Date.now(); }
     d.dy = Math.max(0,dy-8);
     const p=panel.current, f=fondo.current;
     p.style.animation="none"; p.style.transition="none"; p.style.transform=`translateY(${d.dy}px)`;
