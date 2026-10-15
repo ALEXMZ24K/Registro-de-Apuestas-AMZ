@@ -63,8 +63,8 @@
     .tabbar button.on .ic{filter:none;opacity:1}
     .tabbar .plus{flex:0 0 auto;width:60px;height:60px;min-height:60px;border-radius:50%;background:var(--ac);color:var(--onac);font-size:32px;font-weight:400;margin:-30px 4px 0;border:4px solid var(--bg);box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 40%,transparent);justify-content:center;padding:0}
     /* Transición suave al cambiar de pestaña */
-    @keyframes vistaIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    .vista-anim{animation:vistaIn .22s ease-out}
+    @keyframes vistaIn{from{opacity:.55;transform:translateY(6px)}to{opacity:1;transform:none}}
+    .vista-anim{animation:vistaIn .18s ease-out}
     @media(prefers-reduced-motion:reduce){.vista-anim{animation:none}}
     /* Al cambiar de mes: lo de abajo entra suave, tarjeta por tarjeta */
     @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
