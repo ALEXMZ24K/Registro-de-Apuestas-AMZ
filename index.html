@@ -13,6 +13,14 @@
     // MODO PRUEBA (en /prueba/ o con ?prueba=1): reemplaza Firebase por una base de datos falsa con picks de ejemplo; nunca toca los datos reales
     window.ES_PRUEBA = /\/prueba\//.test(location.pathname) || /[?&]prueba=1\b/.test(location.search);
     if(window.ES_PRUEBA) document.write('<script src="fake-firebase.js"><\/script>');
+    // La de prueba se instala como app aparte ("Prueba", con ícono amarillo) que abre /prueba/, no la real
+    if(window.ES_PRUEBA) document.addEventListener("DOMContentLoaded",function(){
+      var q=function(s){return document.querySelector(s);};
+      if(q('link[rel="manifest"]')) q('link[rel="manifest"]').href="manifest-prueba.json";
+      if(q('link[rel="apple-touch-icon"]')) q('link[rel="apple-touch-icon"]').href="icon-prueba-180.png";
+      if(q('meta[name="apple-mobile-web-app-title"]')) q('meta[name="apple-mobile-web-app-title"]').content="Prueba";
+      document.title="AlexPicks Prueba";
+    });
   </script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
