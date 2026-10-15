@@ -662,10 +662,11 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
 
 
 // ── Calendario mensual ──
-function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR, onIr, resMes}) {
+function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR, onIr, resMes, pedirAno, cargandoMes}) {
   const vistas = todas||apuestas;
   const [sel, setSel] = useState(null);
   const [selector, setSelector] = useState(null); // año que se ve en el selector de mes
+  useEffect(()=>{ if(selector!==null && pedirAno) pedirAno(selector); },[selector]);
   useEffect(()=>{ setSel(null); },[mes,ano]);
 
   const offset = (new Date(ano, mes, 1).getDay()+6)%7; // semana empieza en lunes
@@ -716,6 +717,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
       <button onClick=${()=>setSelector(ano)} style=${{background:"none",border:"none",color:"#fff",fontSize:18,fontWeight:800,fontFamily:"inherit",cursor:"pointer",padding:"6px 10px",borderRadius:10,display:"flex",alignItems:"center",gap:6}}>${MESES[mes]} ${ano} <span style=${{fontSize:12,color:"var(--mu)"}}>▾</span></button>
       <button style=${S.sqBtn} onClick=${onNext} aria-label="Mes siguiente">›</button>
     </div>
+    ${cargandoMes && html`<div style=${{textAlign:"center",fontSize:12,color:"var(--mu)",margin:"-6px 0 8px"}}>Cargando picks…</div>`}
     <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5,marginBottom:5}}>
       ${["L","M","M","J","V","S","D"].map((d,i)=>html`<div key=${i} style=${{textAlign:"center",fontSize:12,color:"var(--mu)",fontWeight:700}}>${d}</div>`)}
     </div>
@@ -1025,7 +1027,11 @@ function Hoja({onClose, children, maxW=640}) {
 
 // ── Main App ──
 function App() {
-  const [apuestas,setApuestas] = useState([]);
+  // Los picks se cargan por mes (no toda la historia): cada mes pedido tiene su propio listener en vivo
+  const [meses,setMeses] = useState({});      // "AAAA-MM" (o "*" = todo) → picks de ese mes
+  const [mesesExtra,setMesesExtra] = useState([]); // meses pedidos aparte (p. ej. al abrir el selector de un año)
+  const apuestas = useMemo(()=>{ const m=new Map(); Object.values(meses).forEach(l=>l.forEach(a=>m.set(a._docId,a)));
+    return [...m.values()].sort((x,y)=>(x.fecha||"").localeCompare(y.fecha||"")||(Number(x.id)||0)-(Number(y.id)||0)); },[meses]);
   const [cargando,setCargando] = useState(true);
   const [form,setForm] = useState(initialForm);
   const [editId,setEditId] = useState(null);
@@ -1098,13 +1104,33 @@ function App() {
   const [bankInput,setBankInput] = useState("");
   const [formError,setFormError] = useState("");
 
+  const claveMes = (y,m) => y+"-"+String(m+1).padStart(2,"0");
+  const keyHoy = claveMes(new Date().getFullYear(), new Date().getMonth());
+  const keySel = claveMes(anoSeleccionado, mesSeleccionado);
+  const clavesActivas = useMemo(()=>{
+    const k = new Set([keyHoy, keySel, ...mesesExtra]);
+    // Los primeros días del mes también el mes pasado (partidos en vivo de picks de fin de mes)
+    const h=new Date(); if(h.getDate()<=3){ const p=new Date(h.getFullYear(),h.getMonth()-1,1); k.add(claveMes(p.getFullYear(),p.getMonth())); }
+    if(vistaActual==="anual") for(let i=0;i<12;i++) k.add(claveMes(anoSeleccionado,i));
+    if(vistaActual==="anual" && buscaTodo) k.add("*");
+    return [...k].sort().join(",");
+  },[keyHoy,keySel,mesesExtra,vistaActual,anoSeleccionado,buscaTodo]);
+  const listeners = useRef({});
   useEffect(()=>{
-    const unsub = db.collection("apuestas").orderBy("fecha","asc").onSnapshot(snap=>{
-      setApuestas(snap.docs.map(d=>({...d.data(),_docId:d.id})).sort((x,y)=>(x.fecha||"").localeCompare(y.fecha||"")||(Number(x.id)||0)-(Number(y.id)||0)));
-      setCargando(false);
-    },()=>setCargando(false));
-    return ()=>unsub();
-  },[]);
+    clavesActivas.split(",").forEach(k=>{
+      if(!k || listeners.current[k]) return;
+      const col = db.collection("apuestas");
+      const q = k==="*" ? col : col.where("fecha",">=",k+"-01").where("fecha","<=",k+"-31");
+      listeners.current[k] = q.onSnapshot(snap=>{
+        setMeses(prev=>({...prev,[k]:snap.docs.map(d=>({...d.data(),_docId:d.id}))}));
+      },()=>setMeses(prev=>({...prev,[k]:prev[k]||[]})));
+    });
+  },[clavesActivas]);
+  useEffect(()=>()=>{ Object.values(listeners.current).forEach(u=>{ try{u();}catch(e){} }); },[]);
+  // Lista lista cuando ya llegó el mes de hoy y el que se está viendo
+  useEffect(()=>{ if(cargando && meses[keyHoy] && meses[keySel]) setCargando(false); },[meses,keyHoy,keySel]);
+  const mesCargando = !meses[keySel];
+  const pedirAno = y => { const ks=[...Array(12)].map((_,i)=>claveMes(y,i)); setMesesExtra(prev=>[...new Set([...prev,...ks])]); };
 
   useEffect(()=>{
     return auth.onAuthStateChanged(u=>setUser(u));
@@ -1267,7 +1293,8 @@ function App() {
     }
     return {racha,tipo};
   },[apuestasMes]);
-  const formaReciente = useMemo(()=>apuestas.filter(cuentaAp).filter(a=>!noMet(a)).filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10),[apuestas,...dep]);
+  // Últimos picks del mes que se está viendo (se reinicia cada mes, igual que la racha)
+  const formaReciente = useMemo(()=>apuestasMes.filter(a=>!noMet(a)).filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10),[apuestasMes,...dep]);
   const mejorPickMes = useMemo(()=>{
     let best=null, bg=0;
     apuestasMes.forEach(a=>{ if(a.resultado!=="Ganada") return; const m=apMonto(a,bankDe); const g=m*momioToDec(a.cuota)-m; if(!best||g>bg){best=a;bg=g;} });
@@ -1948,7 +1975,9 @@ function App() {
         <div style=${S.secHead}>
           <b style=${{fontSize:18,color:"#fff"}}>Picks de ${MESES[mesSeleccionado].toLowerCase()}</b>
         </div>
-        ${apuestasMesTodas.length===0
+        ${apuestasMesTodas.length===0 && mesCargando
+          ? html`<div>${[0,1,2,3].map(i=>html`<div key=${i} style=${{...S.apCard,height:66,display:"flex",alignItems:"center",padding:"0 14px",gap:10,opacity:1-i*.18}}><span className="sk" style=${{flex:1,height:14}}></span><span className="sk" style=${{width:60,height:14}}></span></div>`)}</div>`
+          : apuestasMesTodas.length===0
           ? html`<div style=${S.empty}>No hay picks este mes.${isAdmin?html`<br/>Toca ＋ para agregar el primero.`:""}</div>`
           : renderLista(false)}
         </div>
@@ -1957,7 +1986,7 @@ function App() {
 
       <!-- CALENDARIO -->
       ${vista==="calendario" && html`<div>
-        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${()=>mesAnimado(false)} onNext=${()=>mesAnimado(true)} onHoy=${irHoy} renderAR=${renderAR} onIr=${(m,y)=>{ setMesSeleccionado(m); setAnoSeleccionado(y); }} resMes=${resMes}/>
+        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${()=>mesAnimado(false)} onNext=${()=>mesAnimado(true)} onHoy=${irHoy} renderAR=${renderAR} onIr=${(m,y)=>{ setMesSeleccionado(m); setAnoSeleccionado(y); }} resMes=${resMes} pedirAno=${pedirAno} cargandoMes=${mesCargando}/>
         ${porDeporteMes.length>0 && html`<div style=${{marginTop:22}}>
           <${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>
           ${deporteFiltro && html`<div style=${{marginTop:-16,marginBottom:20}}>
