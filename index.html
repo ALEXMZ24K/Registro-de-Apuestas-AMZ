@@ -67,7 +67,12 @@
     .vista-anim{animation:vistaIn .24s cubic-bezier(.2,.8,.2,1)}
     /* Navegadores con transición de vistas: fundido cruzado (la pantalla vieja se desvanece sobre la nueva, nunca se ve el fondo) */
     .vt .vista-anim{animation:none}
-    ::view-transition-old(root),::view-transition-new(root){animation-duration:.26s;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+    /* Igual que la animación original (entra subiendo y apareciendo), pero con la pantalla anterior debajo en vez del fondo negro */
+    @keyframes vtEntra{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    ::view-transition-old(root){animation:none;opacity:1}
+    ::view-transition-new(root){animation:vtEntra .22s ease-out both}
+    .tabbar{view-transition-name:barra}
+    ::view-transition-group(barra),::view-transition-old(barra),::view-transition-new(barra){animation-duration:.18s}
     @media(prefers-reduced-motion:reduce){.vista-anim{animation:none}}
     /* Al cambiar de mes: lo de abajo entra suave, tarjeta por tarjeta */
     @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
