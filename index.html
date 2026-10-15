@@ -65,6 +65,9 @@
     /* Transición suave al cambiar de pestaña */
     @keyframes vistaIn{from{transform:translateY(10px)}to{transform:none}}
     .vista-anim{animation:vistaIn .24s cubic-bezier(.2,.8,.2,1)}
+    /* Navegadores con transición de vistas: fundido cruzado (la pantalla vieja se desvanece sobre la nueva, nunca se ve el fondo) */
+    .vt .vista-anim{animation:none}
+    ::view-transition-old(root),::view-transition-new(root){animation-duration:.26s;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
     @media(prefers-reduced-motion:reduce){.vista-anim{animation:none}}
     /* Al cambiar de mes: lo de abajo entra suave, tarjeta por tarjeta */
     @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
@@ -1667,7 +1670,14 @@ function App() {
   </div>`;
 
   const vista = vistaActual;
-  const irA = v => { setVistaActual(v); window.scrollTo(0,0); };
+  const irA = v => {
+    const cambiar = () => { setVistaActual(v); window.scrollTo(0,0); };
+    if(document.startViewTransition && !reducirMov()){
+      document.documentElement.classList.add("vt");
+      try{ document.startViewTransition(()=>{ ReactDOM.flushSync(cambiar); }); return; }catch(e){}
+    }
+    cambiar();
+  };
   // Deslizar de lado en Inicio y Calendario para cambiar de mes (la pantalla sigue al dedo)
   const reducirMov = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const partes = () => { const c=contenido.current; if(!c) return {mov:null,fade:[]}; return {mov:c.querySelector("[data-swipe-mover]")||c, fade:[...c.querySelectorAll("[data-swipe-fade]")]}; };
