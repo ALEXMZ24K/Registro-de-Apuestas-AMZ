@@ -496,9 +496,40 @@ function Escudo({e,s=28}) {
   return html`<span style=${{width:s,height:s,borderRadius:"50%",background:(e&&e.c)||"var(--br2)",color:"#fff",fontSize:Math.max(7,Math.round(s*.3)),fontWeight:900,display:"inline-flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>${String((e&&(e.a||e.n))||"?").slice(0,3).toUpperCase()}</span>`;
 }
 // Lee el pick y dice cómo va (solo cuando lo entiende con seguridad)
-const pistaPick = (a,ev,v) => {
+// Detecta picks de un tramo del partido: cuarto, mitad/tiempo, periodo o primeras 5 entradas
+const ORD = {primer:1,primero:1,primera:1,segundo:2,segunda:2,tercer:3,tercero:3,tercera:3,cuarto:4,cuarta:4};
+const tramoPick = (t, ev) => {
+  const fut=esFut(ev.k), beis=String(ev.k).startsWith("baseball");
+  let m, n, tipo, txt;
+  if((m=t.match(/\s(f5|(?:(?:las\s+)?primeras?\s+)?5\s+entradas|primeras?\s+cinco\s+entradas)\s/)) && beis){ return {quita:m[1], per:[1,2,3,4,5], hasta:5, label:"5 entradas"}; }
+  if((m=t.match(/\s(?:(\d)\s*(?:er|era|ra|ro|do|da|to|ta|o|a|º|°)?|(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]))\s+(cuarto|mitad|tiempo|periodo|half|quarter|qtr)\s/))){ n=m[1]?Number(m[1]):ORD[m[2]]; tipo=m[3]; txt=m[0]; }
+  else if((m=t.match(/\s(?:([1-4])\s*(q|h)|(q|h)\s*([1-4]))\s/))){ n=Number(m[1]||m[4]); tipo=(m[2]||m[3])==="q"?"cuarto":"mitad"; txt=m[0]; }
+  else return null;
+  if(!n||n<1||n>4) return null;
+  if(/cuarto|quarter|qtr/.test(tipo)){ if(fut||beis) return null; return {quita:txt, per:[n], hasta:n, label:["1er","2º","3er","4º"][n-1]+" cuarto"}; }
+  if(/periodo/.test(tipo)) return {quita:txt, per:[n], hasta:n, label:["1er","2º","3er","4º"][n-1]+" periodo"};
+  if(n>2||beis) return null;
+  if(fut) return {quita:txt, per:[n], hasta:n, label:(n===1?"1er":"2º")+" tiempo"};
+  return n===1 ? {quita:txt, per:[1,2], hasta:2, label:"1ª mitad"} : {quita:txt, per:[3,4,5,6,7,8], hasta:99, label:"2ª mitad"};
+};
+const pistaPick = (a,ev,v,sinTramo) => {
   if(!v||!ev) return null; const hs=Number(v.hs), as=Number(v.as); if(v.hs===""||v.as===""||isNaN(hs)||isNaN(as)) return null;
   const t=" "+normTxt(a.descripcion||"")+" ", fin=v.st==="post";
+  // Picks de un cuarto / mitad / 5 entradas: se califican con el marcador de ese tramo
+  const tr = !sinTramo && tramoPick(t, ev);
+  if(tr){
+    if(!Array.isArray(v.hl)||!Array.isArray(v.al)) return null;
+    const per=Number(v.per)||0, cierre=/^(end|halftime|ht)\b|end of|final/i.test(String(v.det||""));
+    const empezo = fin || per>=tr.per[0], listoT = fin || per>tr.hasta || (per===tr.hasta && cierre);
+    if(!empezo) return {txt:tr.label+" · todavía no empieza", ok:0};
+    const suma = arr => tr.per.reduce((s,p)=>s+(Number(arr[p-1])||0),0), ph=suma(v.hl), pa=suma(v.al);
+    const p = pistaPick({descripcion:t.replace(tr.quita," ")}, ev, {st:listoT?"post":"in", hs:ph, as:pa}, true);
+    if(!p||p.stats) return null;
+    const marc = tr.label+" "+(esFut(ev.k)?ph+"-"+pa:pa+"-"+ph);
+    if((listoT||p.listo) && p.ok===1) return {...p, txt:"¡Ganaste! · "+marc, listo:1};
+    if(listoT && p.ok===-1) return {...p, txt:"Perdiste · "+marc};
+    return {...p, txt:marc+" · "+p.txt};
+  }
   const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
   const hit=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t));
   const H=hit(ev.h), A=hit(ev.a), uno=H!==A;
