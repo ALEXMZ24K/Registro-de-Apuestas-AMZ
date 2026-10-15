@@ -654,9 +654,10 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
 
 
 // ── Calendario mensual ──
-function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR}) {
+function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR, onIr, resMes}) {
   const vistas = todas||apuestas;
   const [sel, setSel] = useState(null);
+  const [selector, setSelector] = useState(null); // año que se ve en el selector de mes
   useEffect(()=>{ setSel(null); },[mes,ano]);
 
   const offset = (new Date(ano, mes, 1).getDay()+6)%7; // semana empieza en lunes
@@ -680,7 +681,23 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
   const netoSel = sel ? (OCULTAR ? sumPct(delMes(apuestas,sel)) : delMes(apuestas,sel).reduce((s,a)=>s+gan(a),0)) : 0;
   const diaNombre = sel ? ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][new Date(ano,mes,sel).getDay()] : "";
 
+  const hoyM = new Date();
   return html`<div>
+    ${selector!==null && html`<${Hoja} onClose=${()=>setSelector(null)} maxW=${480}>
+      <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+        <button style=${S.sqBtn} onClick=${()=>setSelector(y=>y-1)} aria-label="Año anterior">‹</button>
+        <b style=${{fontSize:22,color:"#fff"}}>${selector}</b>
+        <button style=${S.sqBtn} onClick=${()=>setSelector(y=>y+1)} aria-label="Año siguiente">›</button>
+      </div>
+      <div style=${{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+        ${MESES.map((nm,i)=>{ const r=resMes?resMes(selector,i):null, on=i===mes&&selector===ano, esHoy=i===hoyM.getMonth()&&selector===hoyM.getFullYear();
+          return html`<button key=${i} onClick=${()=>{ onIr&&onIr(i,selector); setSelector(null); }} style=${{background:on?"var(--ac)":"var(--card)",border:"1px solid "+(on?"var(--ac)":esHoy?"var(--ac)":"var(--br)"),borderRadius:14,padding:"12px 6px",cursor:"pointer",fontFamily:"inherit",minHeight:64}}>
+            <div style=${{fontSize:15,fontWeight:800,color:on?"var(--onac)":"#fff"}}>${MESES_CORTO[i]}</div>
+            <div style=${{fontSize:12,fontWeight:700,marginTop:4,color:on?"var(--onac)":r===null?"var(--mu3)":r>0?"#2fe0a0":r<0?"#ff5d7a":"var(--mu)"}}>${r===null?"—":OCULTAR?fmtPct(r):fmtK(r)}</div>
+          </button>`; })}
+      </div>
+      <button onClick=${()=>{ onHoy&&onHoy(); setSelector(null); }} style=${{...S.btnSecondary,width:"100%",marginTop:14,minHeight:46}}>Ir a hoy</button>
+    </${Hoja}>`}
     <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"6px 0 14px"}}>
       <h1 style=${S.pageTitle}>Calendario</h1>
       <button onClick=${onHoy} style=${S.pillBtn}>Hoy</button>
@@ -688,7 +705,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
     <div data-swipe-mover>
     <div style=${S.monthRow}>
       <button style=${S.sqBtn} onClick=${onPrev} aria-label="Mes anterior">‹</button>
-      <b style=${{fontSize:18,color:"#fff"}}>${MESES[mes]} ${ano}</b>
+      <button onClick=${()=>setSelector(ano)} style=${{background:"none",border:"none",color:"#fff",fontSize:18,fontWeight:800,fontFamily:"inherit",cursor:"pointer",padding:"6px 10px",borderRadius:10,display:"flex",alignItems:"center",gap:6}}>${MESES[mes]} ${ano} <span style=${{fontSize:12,color:"var(--mu)"}}>▾</span></button>
       <button style=${S.sqBtn} onClick=${onNext} aria-label="Mes siguiente">›</button>
     </div>
     <div style=${{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:5,marginBottom:5}}>
@@ -1698,6 +1715,9 @@ function App() {
     if(vista===v){ if(v==="anual" && busca && window.scrollY<40) setBusca(""); window.scrollTo({top:0,behavior:"smooth"}); return; }
     irA(v);
   };
+  // Resultado de un mes (para el selector de mes del calendario); null si no hay picks terminados
+  const resMes = (y,m) => { const l=apuestas.filter(a=>{ const f=parseFecha(a.fecha); return f.y===y&&f.m===m&&cuentaAp(a)&&!noMet(a)&&(a.resultado==="Ganada"||a.resultado==="Perdida"); });
+    if(!l.length) return null; return OCULTAR ? sumPct(l) : l.reduce((s,a)=>s+gananciaAp(a),0); };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
   const pctMes = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
@@ -1856,7 +1876,7 @@ function App() {
 
       <!-- CALENDARIO -->
       ${vista==="calendario" && html`<div>
-        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${()=>mesAnimado(false)} onNext=${()=>mesAnimado(true)} onHoy=${irHoy} renderAR=${renderAR}/>
+        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${()=>mesAnimado(false)} onNext=${()=>mesAnimado(true)} onHoy=${irHoy} renderAR=${renderAR} onIr=${(m,y)=>{ setMesSeleccionado(m); setAnoSeleccionado(y); }} resMes=${resMes}/>
         ${porDeporteMes.length>0 && html`<div style=${{marginTop:22}}>
           <${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>
           ${deporteFiltro && html`<div style=${{marginTop:-16,marginBottom:20}}>
