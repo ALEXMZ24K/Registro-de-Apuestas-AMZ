@@ -525,8 +525,8 @@ const pistaPick = (a,ev,v) => {
     if(H&&!A) val=vh; else if(A&&!H) val=va; else if(!H&&!A){ let pre=t.slice(0,t.indexOf(lin[0])); ["total","partido","juego","del","el","vs","entre","ambos","equipos","mas de","menos de"].forEach(x=>{ pre=pre.split(x).join(" "); }); if(pre.replace(/[^a-z]/g,"").length>3) return null; val=vh+va; } else return null;
     if(isNaN(val)) return null;
     const under = /under|menos de|baja/.test(lin[1]||""), L = lin[2]!==undefined ? Number(lin[2]) : Number(lin[1])-0.5;
-    if(!under){ const nec=Math.floor(L)+1; return val>=nec ? {txt:"¡Ganaste! · "+val+" "+stK[1], ok:1, listo:1, prog:[val,nec]} : {txt:val+" de "+nec+" "+stK[1], ok:fin?-1:0, prog:[val,nec]}; }
-    const mx=Math.floor(L); return val>mx ? {txt:"Se pasó · "+val+" "+stK[1], ok:-1} : {txt:val+" "+stK[1]+" · máximo "+mx, ok:fin?1:0};
+    if(!under){ const nec=Math.floor(L)+1; return val>=nec ? {txt:"¡Ganaste! · "+val+" "+stK[1], ok:1, listo:1, prog:[val,nec], stats:1} : {txt:val+" de "+nec+" "+stK[1], ok:fin?-1:0, prog:[val,nec], stats:1}; }
+    const mx=Math.floor(L); return val>mx ? {txt:"Se pasó · "+val+" "+stK[1], ok:-1, stats:1} : {txt:val+" "+stK[1]+" · máximo "+mx, ok:fin?1:0, stats:1};
   }
   if(/tiempo|mitad|cuarto|entrada|inning|periodo|\s(1h|2h|1q|2q|3q|4q|half)\s|corner|tarjeta|remate|tiro|asistencia|rebote|yarda|ponche|hit|anota primero|primer/.test(t)) return null;
   const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt);
@@ -549,6 +549,26 @@ const pistaPick = (a,ev,v) => {
   if(mio<otro) return {txt:fin?"Perdió":"Va abajo", ok:fin?-1:0};
   return {txt:fin?"Empate":"Va empatado", ok:fin&&esFut(ev.k)?-1:0};
 };
+// Calificación automática: decide el resultado de un pick cuando su partido terminó, SOLO si la app lo entiende con seguridad.
+// No califica picks basados en estadísticas (remates, córners, tarjetas): ESPN puede contar distinto que la casa de apuestas.
+// Regresa {res, patas} / {patas} (parlay con legs nuevas resueltas) / null.
+const finalLimpio = v => !!v && v.st==="post" && v.hs!=="" && v.as!=="" && v.hs!=null && v.as!=null && !/postp|cancel|susp|aplaz|abandon|forfeit|delay/i.test(v.det||"");
+const resultadoAuto = (a, vivoMap) => {
+  if(a.resultado!=="Pendiente") return null;
+  const decide = (desc, ev) => { if(!ev||!ev.id) return 0; const v=vivoMap[ev.id]; if(!finalLimpio(v)) return 0;
+    const p=pistaPick({descripcion:desc}, ev, v); if(!p||p.stats) return 0; return p.ok===1?1:p.ok===-1?-1:0; };
+  if(!esCombo(a)){ const d=decide(a.descripcion, a.evento); return d===1?{res:"Ganada"}:d===-1?{res:"Perdida"}:null; }
+  if(!Array.isArray(a.patas)) return null;
+  let cambio=false;
+  const patas = a.patas.map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p};
+    if(o.desc&&String(o.desc).trim()&&!o.res){ const d=decide(o.desc,o.evento); if(d){ o.res=d===1?"G":"P"; cambio=true; } } return o; });
+  const vis = patas.filter(p=>p.desc&&String(p.desc).trim());
+  if(!vis.length) return null;
+  if(vis.some(p=>p.res==="P")) return {res:"Perdida", patas};
+  if(vis.every(p=>p.res==="G")) return {res:"Ganada", patas};
+  return cambio ? {patas} : null;
+};
+
 function MarcadorVivo({ev,v}) {
   const [l,r] = lados(ev,v);
   const eq = e => html`<div style=${{flex:1,minWidth:0,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}><${Escudo} e=${e} s=${30}/><span style=${{fontSize:12,color:"var(--mu2)",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${e.n}</span></div>`;
@@ -629,7 +649,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
             : html`<div style=${{color:cr,fontWeight:800,fontSize:16,whiteSpace:"nowrap",lineHeight:"21px",textDecoration:metida?"none":"line-through"}}>${montoTxt}</div>`}
         </div>
         <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,marginTop:5,fontSize:12,color:"var(--mu)"}}>
-          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${a.resultado==="Nula" && html`<b style=${{fontSize:10,color:cr,marginRight:6}}>NULA</b>`}${sinFecha?"":f.d+" "+MESES_CORTO[f.m]+(subLinea?" · ":"")}${marcar(subLinea,q)}</span>
+          <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${a.resultado==="Nula" && html`<b style=${{fontSize:10,color:cr,marginRight:6}}>NULA</b>`}${a.auto && !pend && html`<b title="Calificado automáticamente" style=${{fontSize:9,color:"var(--mu)",border:"1px solid var(--br2)",borderRadius:5,padding:"0 4px",marginRight:6}}>AUTO</b>`}${sinFecha?"":f.d+" "+MESES_CORTO[f.m]+(subLinea?" · ":"")}${marcar(subLinea,q)}</span>
           <b style=${{whiteSpace:"nowrap",fontSize:13,color:"var(--mu2)",flexShrink:0}}>${fmtMomio(a.cuota)}</b>
         </div>
         ${enVivo && html`<${MarcadorVivo} ev=${ev} v=${vivo}/>`}
@@ -1538,6 +1558,19 @@ function App() {
       const abiertas = ps.map((p,i)=>p.evento&&p.evento.id&&!p.res?vs[i]:undefined).filter(x=>x!==undefined);
       return (abiertas.length?abiertas:con).every(v=>v&&v.st==="post") ? "post" : ""; }
     const v=vivoDe(a); if(!v) return ""; if(v.st==="in") return "in"; return pend&&v.st==="post"?"post":""; };
+  // Calificar solo: en el celular de Alex (admin principal), cuando termina un partido se califica el pick si la app lo entiende con seguridad
+  const autoHechos = useRef({});
+  useEffect(()=>{
+    if(!user || (user.email||"").toLowerCase()!==ADMIN_EMAILS[0] || prefs.autoCalificar===false) return;
+    apuestas.forEach(a=>{
+      if(!a._docId || a.resultado!=="Pendiente") return;
+      const r = resultadoAuto(a, vivo); if(!r) return;
+      const firma = a._docId+"|"+(r.res||"")+"|"+JSON.stringify((r.patas||[]).map(p=>p.res||""));
+      if(autoHechos.current[firma]) return; autoHechos.current[firma]=true;
+      if(r.res) cambiarResultado(a.id, r.res, {auto:true, patas:r.patas});
+      else db.collection("apuestas").doc(a._docId).update({patas:r.patas}).catch(()=>{});
+    });
+  },[vivo]);
   // Admin: si un pick ya calificado termina su partido, se guarda el marcador final
   useEffect(()=>{
     if(!isAdmin) return;
@@ -1703,14 +1736,15 @@ function App() {
     db.collection("apuestas").doc(ap._docId).update({patas:lista});
   };
 
-  const cambiarResultado = (id,resultado) => {
+  const cambiarResultado = (id,resultado,opc={}) => {
     const ap=apuestas.find(a=>a.id===id);
     if(!ap?._docId) return;
-    const cambios = {resultado};
+    const cambios = {resultado, auto: !!opc.auto};
+    if(opc.patas) cambios.patas = opc.patas;
     const vf = ap.evento && vivo[ap.evento.id];
     if(vf && vf.st==="post" && vf.hs!=="" && vf.as!=="") cambios.evento = {...ap.evento, fin:{hs:vf.hs, as:vf.as}};
     const finPata = p => { const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; const v=o.evento&&vivo[o.evento.id]; if(v&&v.st==="post"&&v.hs!=="") o.evento={...o.evento,fin:{hs:v.hs,as:v.as}}; return o; };
-    if(Array.isArray(ap.patas) && ap.patas.some(p=>p&&p.evento)) cambios.patas = ap.patas.map(finPata);
+    if(Array.isArray(ap.patas) && ap.patas.some(p=>p&&p.evento)) cambios.patas = (cambios.patas||ap.patas).map(finPata);
     // Parlay ganado → todas sus patas ganaron: las que estén vacías se marcan ✓
     if(resultado==="Ganada" && (ap.tipo==="Parlay/Combinada"||ap.tipo==="Freebet") && Array.isArray(ap.patas) && ap.patas.length){
       cambios.patas = (cambios.patas||ap.patas).map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; if(o.desc&&String(o.desc).trim()&&!o.res) o.res="G"; return o; });
@@ -2278,6 +2312,8 @@ function App() {
         ])}
 
         ${isAdmin && grupoMas("Admin",[
+          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"🤖",t:"Calificar solo",sub:"Al terminar el partido, si la app entiende el pick",onClick:()=>setPref("autoCalificar",prefs.autoCalificar===false),der:html`<span style=${{width:46,height:28,borderRadius:14,background:prefs.autoCalificar!==false?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
+            <span style=${{position:"absolute",top:3,left:prefs.autoCalificar!==false?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span></span>`}),
           filaMas({e:"📊",t:"Respaldo para Excel",sub:respaldo.csv||"Todos los picks en un archivo CSV",onClick:()=>descargarRespaldo("csv")}),
           filaMas({e:"💾",t:"Copia completa",sub:respaldo.json||"Archivo JSON para poder restaurar todo",onClick:()=>descargarRespaldo("json")}),
         ])}

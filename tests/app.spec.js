@@ -49,6 +49,45 @@ test.describe('Cuentas', () => {
   });
 });
 
+test.describe('Calificar solo', () => {
+  test('decide solo cuando está seguro', async ({ page }) => {
+    await abrir(page);
+    const r = await page.evaluate(() => {
+      const ev = id => ({ id, k: 'soccer/mex.1', h: { n: 'Tigres', full: 'Tigres UANL', a: 'TIG' }, a: { n: 'Toluca', full: 'Toluca', a: 'TOL' } });
+      const fin = (hs, as, extra = {}) => ({ st: 'post', hs: String(hs), as: String(as), det: 'FT', ...extra });
+      const vivo = { e1: fin(2, 0), e2: fin(1, 1), e3: { st: 'in', hs: '1', as: '0', det: "67'" }, e4: fin(0, 0, { det: 'Postponed' }),
+        e5: fin(0, 0, { eh: { shotsOnTarget: '6' }, ea: {} }), e6: fin(0, 2) };
+      const pick = (descripcion, id) => ({ resultado: 'Pendiente', tipo: 'Moneyline', descripcion, evento: ev(id) });
+      const res = x => { const o = resultadoAuto(x, vivo); return o ? (o.res || 'patas') : null; };
+      const parlay = (legs) => ({ resultado: 'Pendiente', tipo: 'Parlay/Combinada', patas: legs.map(([desc, id]) => ({ desc, deporte: 'Fútbol', evento: id ? ev(id) : null })) });
+      return {
+        mlGana: res(pick('Tigres ML', 'e1')),
+        mlEmpate: res(pick('Tigres ML', 'e2')),
+        enJuego: res(pick('Tigres ML', 'e3')),
+        pospuesto: res(pick('Tigres ML', 'e4')),
+        remates: res(pick('Tigres Más de 3.5 remates a puerta', 'e5')),
+        over: res(pick('Over 1.5 goles', 'e1')),
+        jugador: res(pick('Gignac anota', 'e1')),
+        yaCalificado: resultadoAuto({ ...pick('Tigres ML', 'e1'), resultado: 'Ganada' }, vivo),
+        parlayPierde: res(parlay([['Tigres ML', 'e6'], ['Over 2.5 goles', 'e3']])),
+        parlayGana: res(parlay([['Tigres ML', 'e1'], ['Ambos equipos marcan: No', 'e1']])),
+        parlayFalta: res(parlay([['Tigres ML', 'e1'], ['Pumas ML', null]])),
+      };
+    });
+    expect(r.mlGana).toBe('Ganada');
+    expect(r.mlEmpate).toBe('Perdida');
+    expect(r.enJuego).toBeNull();
+    expect(r.pospuesto).toBeNull();
+    expect(r.remates).toBeNull();
+    expect(r.over).toBe('Ganada');
+    expect(r.jugador).toBeNull();
+    expect(r.yaCalificado).toBeNull();
+    expect(r.parlayPierde).toBe('Perdida');
+    expect(r.parlayGana).toBe('Ganada');
+    expect(r.parlayFalta).toBe('patas');
+  });
+});
+
 test.describe('Pantallas (admin)', () => {
   test('Inicio carga con picks y sin errores', async ({ page }) => {
     const errores = await abrir(page);
