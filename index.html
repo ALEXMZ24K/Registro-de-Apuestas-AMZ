@@ -1803,7 +1803,9 @@ function App() {
   const fmtSigno = n => (n>=0?"+":"")+fmt(n);
   const tocarChip = () => { if(!user){ loginGoogle(); return; } abrirBankModal(); };
   const chipTxt = !user ? "Entrar" : bankrollMes>0 ? (ocultar?"Bank ✎":fmt(bankrollMes+stats.neto)+" ✎") : "Poner bank ＋";
-  const errPush = e => e.message==="PERM" ? "No diste permiso. Actívalo en Ajustes del celular → Notificaciones → AlexPicks (o en el navegador)." : e.message==="NOSOP" ? "Este navegador no soporta notificaciones." : "No se pudo conectar. Intenta de nuevo en un momento.";
+  const errPush = e => e.message==="PERM" ? (/android/i.test(navigator.userAgent)
+      ? "Las notificaciones están bloqueadas. En Chrome abre esta página → toca el ícono a la izquierda de la dirección → Permisos → Notificaciones → Permitir. Si usas la app instalada: Ajustes → Apps → AlexPicks → Notificaciones → actívalas, y también en \"Configuración adicional en la app\". Luego vuelve a tocar Activar."
+      : "No diste permiso. Actívalo en Ajustes del iPhone → Notificaciones → AlexPicks y vuelve a tocar Activar.") : e.message==="NOSOP" ? "Este navegador no soporta notificaciones." : "No se pudo conectar. Intenta de nuevo en un momento.";
   const activarPush = async (tipos=pushTipos) => {
     setPushEstado({cargando:true,msg:""});
     try{ await pushSuscribir(tipos, perfilPush); setPushOn(true); try{ localStorage.setItem("pushTipos",JSON.stringify(tipos)); }catch(e){} setPushEstado({cargando:false,msg:"✅ ¡Listo! Te llegarán avisos en este celular."}); }
