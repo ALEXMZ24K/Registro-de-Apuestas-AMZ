@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admins: solo estas cuentas de Google (con correo verificado) pueden crear, editar o borrar picks
+    function esAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['alexitozenil@gmail.com', 'prokiller548@gmail.com'];
+    }
+
+    // Picks: todos los pueden ver; solo los admins los cambian
+    match /apuestas/{id} {
+      allow read: if true;
+      allow create, update, delete: if esAdmin();
+    }
+
+    // Configuración (bank del admin): todos la ven; solo los admins la cambian
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    // Cada usuario solo puede ver y cambiar SU propia ficha (su bank, preferencias, "no la metí")
+    match /usuarios/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Todo lo demás: cerrado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

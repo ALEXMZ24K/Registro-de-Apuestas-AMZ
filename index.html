@@ -1112,6 +1112,7 @@ function App() {
   const [ia,setIa] = useState({estado:null,msg:""});
   const [menuNueva,setMenuNueva] = useState(false); // hoja del ＋: captura o a mano
   const inputFoto = useRef(null);
+  const [respaldo,setRespaldo] = useState("");
   const btnAno = useRef(null), listaAno = useRef(null);
   const [vivo,setVivo] = useState({});          // marcador en vivo por id de partido ESPN
   const [elegir,setElegir] = useState(null);    // selector de partido dentro de Nueva apuesta: {dia,dep,q}
@@ -1865,6 +1866,24 @@ function App() {
       const t0=Date.now(); const esperar=()=>{ if(Math.abs(window.scrollY-destino)<4 || Date.now()-t0>700) cerrar(); else requestAnimationFrame(esperar); }; requestAnimationFrame(esperar);
     } else cerrar();
   };
+  // Respaldo: descarga TODOS los picks (no solo los meses cargados) en CSV para Excel y en JSON completo
+  const descargarRespaldo = async () => {
+    if(respaldo==="Preparando…") return;
+    setRespaldo("Preparando…");
+    try{
+      const snap = await db.collection("apuestas").get();
+      const lista = snap.docs.map(d=>({...d.data(),_docId:d.id})).sort((x,y)=>(x.fecha||"").localeCompare(y.fecha||""));
+      const hoy = isoLocal(new Date());
+      const bajar = (txt,nombre,tipo) => { const b=new Blob([txt],{type:tipo}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); };
+      const esc = v => { const t=String(v==null?"":v); return /[",\n;]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t; };
+      const cols = ["fecha","deporte","tipo","descripcion","partido","monto","cuota","resultado"];
+      const filas = lista.map(a=>[...cols.map(c=>a[c]), esCombo(a)?patasDe(a).map(p=>p.desc+(p.res?" ["+p.res+"]":"")).join(" | "):"", a.evento&&a.evento.fin?lados(a.evento,null).map(x=>x.s).join("-"):""]);
+      const csv = "\uFEFF"+[[...cols.map(c=>({monto:"% del bank",cuota:"momio"})[c]||c),"legs","marcador final"].map(esc).join(","),...filas.map(f=>f.map(esc).join(","))].join("\n");
+      bajar(csv,"alexpicks-respaldo-"+hoy+".csv","text/csv;charset=utf-8");
+      bajar(JSON.stringify(lista,null,1),"alexpicks-respaldo-"+hoy+".json","application/json");
+      setRespaldo("✓ Listo: "+lista.length+" picks descargados ("+hoy+")");
+    }catch(e){ setRespaldo("⚠️ No se pudo descargar. Intenta de nuevo."); }
+  };
   const irHoy = () => { setMesSeleccionado(new Date().getMonth()); setAnoSeleccionado(new Date().getFullYear()); };
   const sinBank = usaBankPropio && !bankrollMes;
   const pctMes = bankrollMes>0 ? stats.neto/bankrollMes*100 : null;
@@ -2238,6 +2257,10 @@ function App() {
           filaMas({e:"🚀",t:"Abrir la app en",val:prefs.inicio==="calendario"?"Calendario":"Inicio",onClick:()=>setHojaMas("inicio")}),
           filaMas({e:"🎨",t:"Tema",onClick:()=>setHojaMas("tema"),val:html`<span style=${{display:"inline-flex",alignItems:"center",gap:6}}>
             <span style=${{width:12,height:12,borderRadius:"50%",background:TEMAS[temaKey].g1}}></span><span style=${{width:12,height:12,borderRadius:"50%",background:TEMAS[temaKey].ac,marginLeft:-3}}></span>${TEMAS[temaKey].nombre.split(" ")[0]}</span>`}),
+        ])}
+
+        ${isAdmin && grupoMas("Admin",[
+          filaMas({e:"💾",t:"Descargar respaldo",sub:respaldo||"Todos los picks en Excel (CSV) y copia completa (JSON)",onClick:descargarRespaldo}),
         ])}
 
         ${grupoMas("Ayuda",[
