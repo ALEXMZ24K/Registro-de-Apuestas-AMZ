@@ -751,8 +751,7 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
           <b style=${{fontSize:18,color:"#fff"}}>${diaNombre} ${sel} de ${MESES[mes].toLowerCase()}</b>
           <b style=${{fontSize:16,color:netoSel>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${OCULTAR?fmtPct(netoSel):(netoSel>=0?"+":"")+fmt(netoSel)}</b>
         </div>
-        ${apsSel.slice().reverse().map(a=>renderAR(a,false))}
-        <div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:4}}>${apsSel.length} ${apsSel.length===1?"pick":"picks"} este día</div>
+        ${apsSel.slice().reverse().map(a=>renderAR(a,false,undefined,true))}
         <button onClick=${()=>setSel(null)} style=${{...S.btnSecondary,width:"100%",marginTop:12,minHeight:46}}>Cerrar</button>
     </${Hoja}>`}
   </div>`;
