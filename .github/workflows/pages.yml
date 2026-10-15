@@ -1,13 +1,20 @@
-name: Deploy to GitHub Pages
+# Publica la app: la versión real (rama main) en la raíz y la versión de prueba (rama prueba) en /prueba/
+name: Publicar en GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, prueba]
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -16,10 +23,22 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: App real (main)
+        uses: actions/checkout@v4
+        with: { ref: main, path: _site }
+      - name: App de prueba (prueba)
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with: { ref: prueba, path: _prueba }
+      - name: Juntar en un solo sitio
+        run: |
+          rm -rf _site/.git _site/tests _site/node_modules
+          if [ -d _prueba ]; then
+            rm -rf _prueba/.git _prueba/tests _prueba/node_modules _prueba/.github
+            mkdir -p _site/prueba && cp -r _prueba/. _site/prueba/
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
+        with: { path: '_site' }
       - id: deployment
         uses: actions/deploy-pages@v4

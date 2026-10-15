@@ -9,6 +9,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script>
+    // MODO PRUEBA (en /prueba/ o con ?prueba=1): reemplaza Firebase por una base de datos falsa con picks de ejemplo; nunca toca los datos reales
+    window.ES_PRUEBA = /\/prueba\//.test(location.pathname) || /[?&]prueba=1\b/.test(location.search);
+    if(window.ES_PRUEBA) document.write('<script src="fake-firebase.js"><\/script>');
+  </script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/htm@3/dist/htm.js"></script>
@@ -185,6 +190,7 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 
 // Notificación push propia de la app (vía el Worker de Cloudflare; solo admins pueden enviar)
 async function pushNotificar(tipo, title, body, tag, extra) {
+  if(window.ES_PRUEBA) return; // en modo prueba nunca se avisa a la gente real
   try {
     if(!auth.currentUser) return;
     const idToken = await auth.currentUser.getIdToken();
@@ -194,7 +200,7 @@ async function pushNotificar(tipo, title, body, tag, extra) {
 }
 // Suscribir / desuscribir este celular a las notificaciones push
 const b64uABytes = s => { s=s.replace(/-/g,"+").replace(/_/g,"/"); s+="=".repeat((4-s.length%4)%4); const r=atob(s); return Uint8Array.from(r,c=>c.charCodeAt(0)); };
-const pushSoportado = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const pushSoportado = () => !window.ES_PRUEBA && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 async function pushSuscribir(tipos, perfil) {
   if(!pushSoportado()) throw new Error("NOSOP");
   const perm = await Notification.requestPermission();

@@ -1,0 +1,42 @@
+# El robot: cada cambio en la rama "prueba" se prueba solo. Si todo pasa, se pasa a la app real (main),
+# salvo que el mensaje del cambio diga [revisar] (entonces espera el visto bueno de Alex).
+name: Robot de pruebas
+
+on:
+  push:
+    branches: [prueba]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npx playwright test
+      - name: Guardar capturas y reporte
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: reporte-robot, path: playwright-report, retention-days: 14 }
+
+  pasar-a-la-app-real:
+    needs: probar
+    if: ${{ !contains(github.event.head_commit.message, '[revisar]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Pasar prueba → main
+        run: git push origin HEAD:main
+
+  publicar:
+    needs: pasar-a-la-app-real
+    uses: ./.github/workflows/pages.yml
