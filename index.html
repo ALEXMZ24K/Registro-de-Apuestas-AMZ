@@ -685,7 +685,7 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
           </div>
         </div>
       `}
-      <button onClick=${e=>{e.stopPropagation(); onShare&&onShare();}} style=${{...S.actBtn,width:"100%",minHeight:42,marginBottom:editable?10:0}}><${IcoT} k="share" s=${16}/>Compartir pick</button>
+      ${admin && html`<button onClick=${e=>{e.stopPropagation(); onShare&&onShare();}} style=${{...S.actBtn,width:"100%",minHeight:42,marginBottom:editable?10:0}}><${IcoT} k="share" s=${16}/>Compartir pick</button>`}
       ${editable && html`<div style=${{display:"flex",flexDirection:"column",gap:10}}>
         <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
           ${["Ganada","Perdida","Pendiente","Nula"].map(r=>html`<button key=${r} onClick=${()=>onToggle(r)}
@@ -960,8 +960,8 @@ async function dibujarPick(o){
 // Hoja para compartir un pick: vista previa, formato y botón para mandarla
 function CompartirPick({a, onClose}) {
   const [formato,setFormato] = useState(()=>{ try{ return localStorage.getItem("fmtPick")||"historia"; }catch(e){ return "historia"; } });
-  const [img,setImg] = useState(null); const archivo = useRef(null);
-  useEffect(()=>{ let vivo=true; setImg(null);
+  const [img,setImg] = useState(null), [listo,setListo] = useState(false); const archivo = useRef(null);
+  useEffect(()=>{ let vivo=true; setImg(null); setListo(false); archivo.current=null; // el archivo del formato anterior ya no sirve
     const combo = esCombo(a), patas = combo ? patasDe(a) : [], sp = combo ? null : separarPick(a), ev = !combo && a.evento && a.evento.id ? a.evento : null;
     const f = parseFecha(a.fecha), d = new Date(f.y,f.m,f.d), hoy = new Date();
     const fechaTxt = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][d.getDay()]+" "+f.d+" de "+MESES[f.m].toLowerCase();
@@ -977,7 +977,7 @@ function CompartirPick({a, onClose}) {
       pick: combo ? (a.tipo==="Freebet"?"Freebet":"Parlay")+" "+fmtMomio(a.cuota) : sp.pick, legs: combo ? patas : null,
       res, final: fin, datos };
     dibujarPick(o).then(cv=>{ if(!vivo) return; setImg(cv.toDataURL("image/png"));
-      cv.toBlob(b=>{ if(b&&vivo) archivo.current=new File([b],"alexpicks-pick.png",{type:"image/png"}); },"image/png"); });
+      cv.toBlob(b=>{ if(b&&vivo){ archivo.current=new File([b],"alexpicks-pick-"+formato+".png",{type:"image/png"}); setListo(true); } },"image/png"); });
     return ()=>{ vivo=false; };
   },[a,formato]);
   const cambiar = v => { setFormato(v); try{ localStorage.setItem("fmtPick",v); }catch(e){} };
@@ -991,7 +991,7 @@ function CompartirPick({a, onClose}) {
     <div style=${{display:"flex",justifyContent:"center",alignItems:"center",minHeight:240,marginBottom:12}}>
       ${img ? html`<img src=${img} alt="Vista previa" style=${{maxWidth:"100%",maxHeight:"52vh",borderRadius:14,border:"1px solid var(--br)"}}/>` : html`<span className="sk" style=${{width:formato==="historia"?180:240,height:formato==="historia"?320:300,borderRadius:14}}></span>`}
     </div>
-    <button onClick=${mandar} disabled=${!img} style=${{...S.btnPrimary,width:"100%",minHeight:52,fontSize:16,borderRadius:14}}><${IcoT} k="share" s=${18}/>Compartir</button>
+    <button onClick=${mandar} disabled=${!listo} style=${{...S.btnPrimary,width:"100%",minHeight:52,fontSize:16,borderRadius:14,opacity:listo?1:.5}}><${IcoT} k="share" s=${18}/>${listo?"Compartir":"Preparando…"}</button>
   </${Hoja}>`;
 }
 

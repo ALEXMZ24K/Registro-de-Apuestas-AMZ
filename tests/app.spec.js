@@ -342,8 +342,14 @@ test.describe('La metí', () => {
 });
 
 test.describe('Compartir un pick', () => {
+  test('a un amigo no le sale el botón', async ({ page }) => {
+    await abrir(page, 'amigo');
+    await page.getByText('Rays ML').first().click();
+    await expect(page.getByText(/Apostado/i).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Compartir pick' })).toHaveCount(0);
+  });
   test('arma la imagen en historia y cuadrada', async ({ page }, info) => {
-    const errores = await abrir(page, 'amigo');
+    const errores = await abrir(page);
     await page.evaluate(async () => {
       const h = new Date(); const f = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
       const ev = { id: 'x1', k: 'baseball/mlb', f: f.replace(/-/g, ''), t: new Date(h.getTime() + 3600e3).toISOString(), liga: 'MLB', h: { n: 'Dodgers', full: 'Los Angeles Dodgers', a: 'LAD', c: '#005a9c' }, a: { n: 'Brewers', full: 'Milwaukee Brewers', a: 'MIL', c: '#12284b' } };
@@ -356,8 +362,11 @@ test.describe('Compartir un pick', () => {
     await expect(img).toBeVisible({ timeout: 10000 });
     await img.screenshot({ path: `capturas/${n}-pick-historia.png` });
     await page.getByRole('button', { name: 'Cuadrada', exact: true }).click();
-    await page.waitForTimeout(800);
+    await expect(page.getByRole('button', { name: 'Compartir', exact: true })).toBeEnabled({ timeout: 10000 });
     await expect(img).toBeVisible();
+    // La cuadrada debe ser 1080×1350, no la de historia
+    const tam = await img.evaluate(i => i.naturalWidth + 'x' + i.naturalHeight);
+    expect(tam).toBe('1080x1350');
     await img.screenshot({ path: `capturas/${n}-pick-cuadrada.png` });
     // El partido inventado hace que la app pida el marcador al Worker desde el servidor del robot (Cloudflare lo bloquea ahí; en la app real no)
     expect(errores.filter(e => !/access control|marcador/.test(e))).toEqual([]);
