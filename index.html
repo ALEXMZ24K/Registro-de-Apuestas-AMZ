@@ -950,8 +950,11 @@ async function dibujarPick(o){
       x.textAlign="center"; x.fillStyle=MU; x.font=F(500,32); x.fillText(l,X+bw/2,y+52);
       x.fillStyle=col||"#fff"; let s=50; x.font=F(800,s); while(x.measureText(v).width>bw-24&&s>28){ x.font=F(800,s-=4); } x.fillText(v,X+bw/2,y+116); }); }]);
   const gapB = hist?44:30, alto=bloques.reduce((t,b)=>t+b[0],0)+gapB*(bloques.length-1);
-  const top=P+170, bottom=H-P-70; let y=top+Math.max(0,(bottom-top-alto)/2);
-  bloques.forEach(([h,f])=>{ f(y); y+=h+gapB; });
+  // Si no cabe (p. ej. cuadrada con marcador final y nombre largo), todo el contenido se achica parejo
+  const top=P+170, bottom=H-P-80, esp=bottom-top, k=Math.min(1, esp/alto);
+  x.save(); x.translate(W/2, top+Math.max(0,(esp-alto*k)/2)); x.scale(k,k); x.translate(-W/2, 0);
+  let y=0; bloques.forEach(([h,f])=>{ f(y); y+=h+gapB; });
+  x.restore();
   // Firma
   x.textAlign="center"; x.font=F(500,34); const f1="Sigue mis picks · ", f2="AlexPicks"; const w1=x.measureText(f1).width; x.font=F(800,34); const w2=x.measureText(f2).width;
   const sx=(W-w1-w2)/2; x.textAlign="left"; x.font=F(500,34); x.fillStyle="#6e727c"; x.fillText(f1,sx,H-P); x.font=F(800,34); x.fillStyle="#fff"; x.fillText(f2,sx+w1,H-P);
