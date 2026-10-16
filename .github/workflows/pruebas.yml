@@ -52,6 +52,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with: { name: reporte-robot, path: playwright-report, retention-days: 14 }
+      - name: Subir capturas a la rama "capturas" (para revisarlas)
+        if: always()
+        run: |
+          [ -d capturas ] || exit 0
+          cd capturas && git init -q && git checkout -q -b capturas
+          git -c user.name=robot -c user.email=robot@users.noreply.github.com add -A
+          git -c user.name=robot -c user.email=robot@users.noreply.github.com commit -qm "Capturas $GITHUB_SHA"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" capturas
 
   pasar-a-la-app-real:
     needs: [actualizar-app-de-prueba, probar]

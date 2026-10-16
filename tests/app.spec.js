@@ -199,3 +199,21 @@ test.describe('Amigo', () => {
     expect(errores).toEqual([]);
   });
 });
+
+// Capturas para revisar a ojo cómo se ve la app (se guardan como "capturas" en GitHub Actions)
+test.describe('Capturas', () => {
+  test('pantallas principales', async ({ page }, info) => {
+    const n = info.project.name.replace(/\W+/g, '-');
+    await abrir(page);
+    await page.screenshot({ path: `capturas/${n}-inicio.png` });
+    await page.getByText('Pumas ML').first().click();
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `capturas/${n}-pick.png` });
+    await tab(page, 'Anual').click();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `capturas/${n}-anual.png`, fullPage: true });
+    await tab(page, 'Más').click();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `capturas/${n}-mas.png`, fullPage: true });
+  });
+});
