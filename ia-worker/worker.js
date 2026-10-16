@@ -1,3 +1,4 @@
+// Se publica solo desde GitHub (Cloudflare Workers Builds) al cambiar main.
 // AlexPicks · Cloudflare Worker
 //  POST /            → Lee la foto de un boleto con IA (solo admins). Secreto: ANTHROPIC_API_KEY
 //  GET  /vapid       → Llave pública para notificaciones push
