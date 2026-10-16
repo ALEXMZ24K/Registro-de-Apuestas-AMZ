@@ -86,7 +86,7 @@ export function cambiosDe(a, r, ev) {
 export function avisoDe(a, res, bankAdmin) {
   const c = Number(a.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
   const pct = res === "Ganada" ? "+" + (Number(a.monto || 0) * (dec - 1)).toFixed(1) + "% del bank" : "-" + Number(a.monto || 0) + "% del bank";
-  return { tipo: "resultados", title: (res === "Ganada" ? "✅ ¡Ganada!" : "❌ Perdida"), body: a.descripcion + " · " + pct, tag: "res-" + a.id, url: "./",
+  return { tipo: "resultados", title: (res === "Ganada" ? "¡Ganada!" : "Perdida"), body: a.descripcion + " · " + pct, tag: "res-" + a.id, url: "./",
     apuesta: { id: a.id, monto: a.monto, cuota: a.cuota, fecha: a.fecha, resultado: res, descripcion: a.descripcion }, bankAdmin: bankAdmin || {} };
 }
 

@@ -622,7 +622,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
         ${enVivo && pista && pista.prog && html`<div style=${{height:5,borderRadius:3,background:"var(--br2)",margin:"6px 18px 2px",overflow:"hidden"}}><div style=${{height:5,borderRadius:3,background:pista.listo?"#2fe0a0":"var(--mu2)",width:Math.min(100,pista.prog[0]/pista.prog[1]*100)+"%",transition:"width .4s, background .4s"}}></div></div>`}
         ${terminado && html`<div style=${{display:"flex",justifyContent:"space-between",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid var(--br)",fontSize:12,color:"var(--mu)"}}>
           <span style=${{display:"flex",alignItems:"center",gap:6}}><${Escudo} e=${lados(ev,vivo)[0]} s=${16}/><b style=${{color:"#fff"}}>${finTxt.replace("Final ","")}</b><${Escudo} e=${lados(ev,vivo)[1]} s=${16}/> Final</span>
-          <span>${pista?pista.txt:(admin?"":"Esperando resultado")}</span>
+          <span>${pista?pista.txt+(admin&&(pista.stats||pista.ok===0)?" · califícalo tú":""):(admin?"Este lo calificas tú":"Esperando resultado")}</span>
         </div>`}
         ${legsVivo.length>0 && html`<div style=${{marginTop:8}}>${legsVivo.map(({p,v},i)=>{ const [l,r]=lados(p.evento,v||null); const ps=v&&v.st!=="pre"?pistaPick({descripcion:p.desc},p.evento,v):null;
           const yaRes = p.res==="G"?"✓":p.res==="P"?"✕":"";
@@ -1564,7 +1564,8 @@ function App() {
     if(autoEst&&!autoEst.configurado) return "Falta conectarlo en Cloudflare";
     const e=autoEst&&autoEst.estado; if(!e) return autoCfg.real?"Activo":"Modo prueba";
     if(e.modo==="error") return "Hubo un problema · tócalo para ver";
-    return (autoCfg.real?"Activo":"Modo prueba")+" · revisó "+haceMin(e.t); })();
+    if(Date.now()-e.t>25*60000) return "No ha revisado en "+haceMin(e.t).replace("hace ","")+" · tócalo";
+    return (autoCfg.real?"Activo":"Modo prueba")+" · revisa cada 3 min"; })();
   // Admin: si un pick ya calificado termina su partido, se guarda el marcador final
   useEffect(()=>{
     if(!isAdmin) return;
@@ -1706,7 +1707,7 @@ function App() {
       const esC = nueva.tipo==="Parlay/Combinada"||nueva.tipo==="Freebet";
       const nP = (nueva.patas||[]).filter(p=>p.desc&&p.desc.trim()).length;
       pushNotificar("picks",
-        "Nuevo pick",
+        esC ? (nueva.tipo==="Freebet"?"Nueva freebet":"Nuevo parlay") : "Nuevo pick"+(nueva.deporte?" · "+nueva.deporte:""),
         (esC?(nueva.tipo==="Freebet"?"Freebet":"Parlay")+" de "+nP+" picks: "+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):nueva.descripcion+(nueva.partido?" ("+nueva.partido+")":""))+" · Momio "+momioStr+" · "+nueva.monto+"% del bank",
         "pick-"+Date.now());
     }
@@ -1760,14 +1761,13 @@ function App() {
     }
     db.collection("apuestas").doc(ap._docId).update(cambios);
     if(resultado==="Ganada"||resultado==="Perdida"||resultado==="Nula") {
-      const emoji = resultado==="Ganada"?"✅":resultado==="Nula"?"🔄":"❌";
       const m = apMonto(ap,bankrollMes);
       const ganancia = resultado==="Ganada"
         ? Math.round(m*momioToDec(ap.cuota)-m)
         : -m;
       const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
       const pctRes = resultado==="Ganada" ? "+"+(Number(ap.monto||0)*(momioToDec(ap.cuota)-1)).toFixed(1)+"% del bank" : resultado==="Nula" ? "Se devuelve lo apostado" : "-"+Number(ap.monto||0)+"% del bank";
-      const enviar = () => pushNotificar("resultados", emoji+" "+(resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id,
+      const enviar = () => pushNotificar("resultados", (resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id,
         {apuesta:{id:ap.id, monto:ap.monto, cuota:ap.cuota, fecha:ap.fecha, resultado, descripcion:ap.descripcion}, bankAdmin:bankrolls});
       // Si había otro aviso esperando de OTRO pick, sale ya; si era de este mismo pick, se reemplaza
       if(avisoPend.current && avisoPend.current.id!==ap.id) soltarAviso();
@@ -2373,7 +2373,7 @@ function App() {
                   ${(e.hechos||[]).length ? e.hechos.slice(0,6).map(x=>fila(x.d,x.res)) : html`<div style=${{fontSize:13,color:"var(--mu)"}}>Todavía no ha calificado ninguno.</div>`}
                   <button onClick=${()=>ponerAuto({real:false})} style=${{background:"none",border:"none",color:"var(--mu)",fontSize:13,marginTop:10,padding:0,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>Volver a modo prueba</button>
                 </div>`}
-                ${e.t && html`<div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:4}}>Última revisión: ${haceMin(e.t)}</div>`}
+                ${e.t && html`<div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:4}}>Revisa cada 3 minutos${Date.now()-e.t>25*60000?html` · <span style=${{color:"#ff5d7a"}}>la última vez fue ${haceMin(e.t)}</span>`:""}</div>`}
               </div>`; })()}
             ${hojaMas==="tema" && html`<div style=${{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10}}>
               ${Object.keys(TEMAS).map(k=>{ const t=TEMAS[k]; const on=k===temaKey; return html`<button key=${k} onClick=${()=>setPref("tema",k)}
