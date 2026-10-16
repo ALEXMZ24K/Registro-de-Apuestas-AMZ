@@ -52,6 +52,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with: { name: reporte-robot, path: playwright-report, retention-days: 14 }
+      - name: Guardar capturas de pantalla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: capturas, path: capturas, retention-days: 14, if-no-files-found: ignore }
 
   pasar-a-la-app-real:
     needs: [actualizar-app-de-prueba, probar]
