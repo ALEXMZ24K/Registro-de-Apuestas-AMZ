@@ -1805,8 +1805,10 @@ function App() {
       const image = await fotoABase64(file);
       setIa(x=>({...x,paso:1}));
       const idToken = await auth.currentUser.getIdToken();
-      const r = await fetch(IA_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+      // Si la conexión se cae (p. ej. "Load failed"), se reintenta una vez sola
+      const pedir = () => fetch(IA_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
         body:JSON.stringify({image,mediaType:"image/jpeg",hoy:new Date().toLocaleDateString("en-CA")})});
+      let r; try{ r = await pedir(); }catch(e1){ await new Promise(ok=>setTimeout(ok,1200)); try{ r = await pedir(); }catch(e2){ throw new Error("No hubo conexión. Revisa tu internet e inténtalo de nuevo."); } }
       const d = await r.json().catch(()=>({}));
       if(!r.ok || !d.apuesta) throw new Error((d.error||"No se pudo leer el boleto")+(d.detalle?" — "+d.detalle:"")+" ("+r.status+")");
       const b = d.apuesta;
