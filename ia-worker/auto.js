@@ -138,6 +138,16 @@ export async function calificarTodo(env, { marcadores, avisarTodos }) {
       const w = await fs(token, url, { method: "PATCH", body: JSON.stringify({ fields }) });
       if (!w.ok) continue; // si Alex lo cambió justo antes (o falló), no se toca ni se avisa
       if (r.res) {
+        // Resumen del mes (lo usa la pestaña Anual): se cambia el resultado de este pick
+        try {
+          const km = String(a.fecha || "").slice(0, 7), rres = await fs(token, "/config/resumen-" + km);
+          if (rres.ok && rres.d.fields && rres.d.fields.p) {
+            const filas = deFS(rres.d.fields.p) || [];
+            const i = filas.findIndex(f => f && String(f.id) === String(a.id));
+            if (i >= 0) { filas[i] = { ...filas[i], resultado: r.res };
+              await fs(token, "/config/resumen-" + km + "?updateMask.fieldPaths=p&updateMask.fieldPaths=t", { method: "PATCH", body: JSON.stringify({ fields: { p: aFS(filas), t: aFS(Date.now()) } }) }); }
+          }
+        } catch {}
         if (!bankAdmin) bankAdmin = (await leerDoc(token, "/config/bankrolls")) || {};
         try { await avisarTodos(env, avisoDe(a, r.res, bankAdmin)); } catch {}
         hechos.push({ d: a.descripcion || "Parlay", res: r.res, t: Date.now() });

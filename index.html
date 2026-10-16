@@ -1179,14 +1179,27 @@ function App() {
   const claveMes = (y,m) => y+"-"+String(m+1).padStart(2,"0");
   const keyHoy = claveMes(new Date().getFullYear(), new Date().getMonth());
   const keySel = claveMes(anoSeleccionado, mesSeleccionado);
+  // Resumen por mes (config/resumen-AAAA-MM): solo id, fecha, deporte, resultado, % y momio de cada pick.
+  // undefined = todavía no llega · null = ese mes aún no tiene resumen · [] = lista de picks resumidos
+  const [resumenes,setResumenes] = useState({});
+  const resListen = useRef({});
+  const escucharResumen = k => { if(resListen.current[k]) return;
+    resListen.current[k] = db.collection("config").doc("resumen-"+k).onSnapshot(sn=>{
+      const d = sn.exists ? sn.data() : null; setResumenes(prev=>({...prev,[k]: d && Array.isArray(d.p) ? d.p : null}));
+    },()=>setResumenes(prev=>({...prev,[k]:null}))); };
+  useEffect(()=>{ if(vistaActual!=="anual") return; for(let i=0;i<12;i++) escucharResumen(claveMes(anoSeleccionado,i)); },[vistaActual,anoSeleccionado]);
+  useEffect(()=>()=>{ Object.values(resListen.current).forEach(u=>{ try{u();}catch(e){} }); },[]);
   const clavesActivas = useMemo(()=>{
     const k = new Set([keyHoy, keySel, ...mesesExtra]);
     // Los primeros días del mes también el mes pasado (partidos en vivo de picks de fin de mes)
     const h=new Date(); if(h.getDate()<=3){ const p=new Date(h.getFullYear(),h.getMonth()-1,1); k.add(claveMes(p.getFullYear(),p.getMonth())); }
-    if(vistaActual==="anual") for(let i=0;i<12;i++) k.add(claveMes(anoSeleccionado,i));
+    // Anual: lee el resumen de cada mes (pocos datos). El mes completo solo se baja si no tiene resumen todavía,
+    // o si se pide "Ver todos los picks" o se busca algo.
+    if(vistaActual==="anual") for(let i=0;i<12;i++){ const km=claveMes(anoSeleccionado,i);
+      if(verTodasAno || busca.trim() || resumenes[km]===null) k.add(km); }
     if(vistaActual==="anual" && buscaTodo) k.add("*");
     return [...k].sort().join(",");
-  },[keyHoy,keySel,mesesExtra,vistaActual,anoSeleccionado,buscaTodo]);
+  },[keyHoy,keySel,mesesExtra,vistaActual,anoSeleccionado,buscaTodo,verTodasAno,busca,resumenes]);
   const listeners = useRef({});
   useEffect(()=>{
     clavesActivas.split(",").forEach(k=>{
@@ -1225,6 +1238,18 @@ function App() {
   };
   const setMomioDec = dec => setPref("momio", dec?"decimal":"americano");
   const isAdmin = !!user && ADMIN_EMAILS.includes((user.email||"").toLowerCase());
+  // Admin: mantiene al día el resumen de cada mes que tiene cargado (Anual lo usa en todos los celulares)
+  const filaRes = a => [a.id??null, a.fecha||"", a.deporte||"", a.resultado||"", Number(a.monto)||0, Number(a.cuota)||0];
+  const firmaRes = l => JSON.stringify((l||[]).map(filaRes).sort((x,y)=>String(x[1]).localeCompare(String(y[1]))||String(x[0]).localeCompare(String(y[0]))));
+  useEffect(()=>{ if(!isAdmin) return;
+    const ks = Object.keys(meses).filter(k=>/^\d{4}-\d{2}$/.test(k));
+    ks.forEach(escucharResumen);
+    const t = setTimeout(()=>{ ks.forEach(k=>{ if(resumenes[k]===undefined) return;
+      const lista = meses[k]||[]; if(!lista.length && !resumenes[k]) return;
+      if(firmaRes(lista)===firmaRes(resumenes[k])) return;
+      const p = lista.map(a=>{ const [id,fecha,deporte,resultado,monto,cuota]=filaRes(a); return {id,fecha,deporte,resultado,monto,cuota}; });
+      db.collection("config").doc("resumen-"+k).set({p, t:Date.now()}).catch(()=>{}); }); },2500);
+    return ()=>clearTimeout(t); },[isAdmin,meses,resumenes]);
   const modoEdicion = isAdmin;
   const usaBankPropio = !!user && !isAdmin;
 
@@ -1344,7 +1369,11 @@ function App() {
   const noMetidasMes = apuestasMesLista.length - apuestasMes.length;
   const apuestasAntes = useMemo(()=>apuestasMesTodas.filter(a=>!cuentaAp(a)),[apuestasMesTodas,...dep]);
 
-  const apuestasAno = useMemo(()=>apuestas.filter(a=>parseFecha(a.fecha).y===anoSeleccionado).filter(cuentaAnual),[apuestas,anoSeleccionado,...dep]);
+  const baseAno = useMemo(()=>{ const out=[];
+    for(let i=0;i<12;i++){ const km=claveMes(anoSeleccionado,i);
+      if(meses[km]) out.push(...meses[km]); else if(Array.isArray(resumenes[km])) out.push(...resumenes[km].map(r=>({...r,_lite:true}))); }
+    return out.sort((x,y)=>(x.fecha||"").localeCompare(y.fecha||"")||(Number(x.id)||0)-(Number(y.id)||0)); },[meses,resumenes,anoSeleccionado]);
+  const apuestasAno = useMemo(()=>baseAno.filter(cuentaAnual),[baseAno,...dep]);
   const stats = useMemo(()=>calcStats(apuestasMes,bankDe),[apuestasMes,...dep]);
   const simNeto = (usaBankPropio&&bankrollMes>0&&apuestasAntes.length>0) ? calcStats(apuestasMesTodas.filter(a=>!noMet(a)),bankDe).neto : null;
 
@@ -1410,9 +1439,9 @@ function App() {
   },[apuestasAno]);
 
   const datosPorMes = useMemo(()=>MESES_CORTO.map((mes,i)=>{
-    const lista=apuestas.filter(a=>{const {y,m}=parseFecha(a.fecha);return m===i&&y===anoSeleccionado;}).filter(cuentaAnual);
+    const lista=apuestasAno.filter(a=>parseFecha(a.fecha).m===i);
     return {mes,...calcStats(lista,bankDe)};
-  }),[apuestas,anoSeleccionado,...dep]);
+  }),[apuestasAno,...dep]);
 
   const porDeporteMes = useMemo(()=>DEPORTES.map(d=>{
     const ap=apuestasMes.filter(a=>a.deporte===d);
@@ -2235,7 +2264,7 @@ function App() {
             <b style=${{fontSize:15}}>Todos los picks de ${anoSeleccionado} (${apuestasAno.length})</b>
             <span style=${{color:"var(--ac)",fontWeight:700}}>${verTodasAno?"Ocultar":"Ver"}</span>
           </button>
-          <div ref=${listaAno}>${verTodasAno && [...apuestasAno].reverse().map(a=>renderAR(a,false))}</div>
+          <div ref=${listaAno}>${verTodasAno && [...apuestasAno].filter(a=>!a._lite).reverse().map(a=>renderAR(a,false))}</div>
         </div>`}
         </div>`}
       </div>`}
