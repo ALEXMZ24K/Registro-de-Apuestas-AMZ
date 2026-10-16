@@ -229,3 +229,19 @@ test.describe('Capturas', () => {
     await page.screenshot({ path: `capturas/${n}-mas.png`, fullPage: true });
   });
 });
+
+test.describe('Android: botón atrás', () => {
+  test('cierra la hoja, luego vuelve a Inicio', async ({ page }, info) => {
+    test.skip(!/Android|Pixel/i.test(info.project.name), 'Solo en Android');
+    const errores = await abrir(page);
+    await tab(page, 'Más').click();
+    await page.getByText('Tema', { exact: true }).first().click();
+    await expect(page.getByText('Todo negro')).toBeVisible();
+    await page.evaluate(() => history.back());
+    await expect(page.getByText('Todo negro')).toHaveCount(0);
+    await expect(page.getByText('Respaldo para Excel')).toBeVisible(); // sigue en Más
+    await page.evaluate(() => history.back());
+    await expect(page.getByText(/Picks de /).first()).toBeVisible(); // volvió a Inicio
+    expect(errores).toEqual([]);
+  });
+});

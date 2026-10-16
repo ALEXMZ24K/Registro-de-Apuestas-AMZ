@@ -885,6 +885,7 @@ const TUTORIAL = [
 ];
 
 function Tutorial({onClose}) {
+  useAtras(true, onClose);
   const [i,setI] = useState(0);
   const [x0,setX0] = useState(null);
   const s = TUTORIAL[i], ult = i===TUTORIAL.length-1;
@@ -913,6 +914,7 @@ function Tutorial({onClose}) {
 }
 
 function Recorrido({pasos,onClose}) {
+  useAtras(true, onClose);
   const [i,setI] = useState(0);
   const [r,setR] = useState(null);
   const p = pasos[i];
@@ -992,6 +994,29 @@ function Contador({valor, formato, dur=800, inicial=0}) {
 }
 
 // ── Hoja que sube desde abajo y se cierra jalándola hacia abajo ──
+// ── Botón / gesto "atrás" de Android: cierra lo que está abierto en vez de salirse de la app ──
+// Solo en Android (en iPhone no hay botón atrás y todo se queda igual).
+const ES_ANDROID = /android/i.test(navigator.userAgent) && !window.ES_PRUEBA_SIN_ATRAS;
+const Atras = { pila: [], guard: false, ignorar: 0, vista: "inicio", volverVista: null,
+  // Deja una entrada en el historial solo cuando hay algo que cerrar o no estamos en Inicio
+  sync(){ if(!ES_ANDROID) return; const hay = Atras.pila.length>0 || Atras.vista!=="inicio";
+    if(hay && !Atras.guard){ try{ history.pushState({alexAtras:1},""); Atras.guard=true; }catch(e){} }
+    else if(!hay && Atras.guard){ Atras.guard=false; Atras.ignorar++; history.back(); } },
+  abrir(fn){ Atras.pila.push(fn); Atras.sync(); return ()=>{ const i=Atras.pila.lastIndexOf(fn); if(i>=0) Atras.pila.splice(i,1); setTimeout(()=>Atras.sync(),0); }; }
+};
+if(ES_ANDROID) window.addEventListener("popstate", ()=>{
+  if(Atras.ignorar>0){ Atras.ignorar--; return; }
+  Atras.guard=false;
+  const fn = Atras.pila[Atras.pila.length-1];
+  if(fn) fn(); else if(Atras.vista!=="inicio" && Atras.volverVista) Atras.volverVista();
+  setTimeout(()=>Atras.sync(),0);
+});
+// Registra algo que "atrás" debe cerrar mientras esté abierto
+function useAtras(abierto, cerrar) {
+  const ref = useRef(cerrar); ref.current = cerrar;
+  useEffect(()=>{ if(!abierto||!ES_ANDROID) return; return Atras.abrir(()=>ref.current&&ref.current()); },[abierto]);
+}
+
 function Hoja({onClose, children, maxW=640}) {
   const panel = useRef(null), fondo = useRef(null), drag = useRef(null), cerrando = useRef(false);
   // Mientras la hoja está abierta, lo de atrás no se mueve
@@ -1030,6 +1055,7 @@ function Hoja({onClose, children, maxW=640}) {
     if(f){ f.style.animation="none"; f.style.transition="opacity .22s"; f.style.opacity="0"; }
     setTimeout(onClose,210);
   };
+  useAtras(true, cerrar);
   const ini = e => {
     const p=panel.current; if(!p || e.touches.length!==1) return;
     const enManija = !!e.target.closest("[data-manija]");
@@ -1735,6 +1761,8 @@ function App() {
   const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
 
   // Pantalla de carga: siluetas de la app que brillan mientras llegan los picks
+  // Android: "atrás" desde Compartir/Ayuda vuelve a Más; desde otra pestaña, a Inicio
+  useEffect(()=>{ Atras.vista = vistaActual; Atras.volverVista = () => Atras.irA && Atras.irA(vistaActual==="compartir"||vistaActual==="ayuda"?"mas":"inicio"); Atras.sync(); },[vistaActual]);
   if(cargando && vistaActual==="calendario") return html`<div style=${S.root}>
     <main style=${S.main}>
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"6px 0 14px"}}>
@@ -1798,6 +1826,7 @@ function App() {
     }
     cambiar();
   };
+  Atras.irA = irA;
   // Deslizar de lado en Inicio y Calendario para cambiar de mes (la pantalla sigue al dedo)
   const reducirMov = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const partes = () => { const c=contenido.current; if(!c) return {mov:null,fade:[]}; return {mov:c.querySelector("[data-swipe-mover]")||c, fade:[...c.querySelectorAll("[data-swipe-fade]")]}; };
