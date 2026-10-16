@@ -47,7 +47,8 @@ jobs:
         with: { node-version: 20 }
       - run: npm install --no-audit --no-fund
       - run: npx playwright install --with-deps chromium webkit
-      - run: npx playwright test
+      - run: mkdir -p capturas && npx playwright test --reporter=list,json
+        env: { PLAYWRIGHT_JSON_OUTPUT_NAME: capturas/resultados.json }
       - name: Guardar capturas y reporte
         if: always()
         uses: actions/upload-artifact@v4
