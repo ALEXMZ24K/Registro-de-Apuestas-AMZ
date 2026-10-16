@@ -1,0 +1,14 @@
+# Configuración del Worker "alexpicks-ia". Cloudflare lo publica solo cuando cambia algo en main.
+# La llave ANTHROPIC_API_KEY NO va aquí: vive como secreto en Cloudflare y se conserva sola.
+name = "alexpicks-ia"
+main = "worker.js"
+compatibility_date = "2026-10-13"
+keep_vars = true
+
+# Almacén de las suscripciones de notificaciones
+[[kv_namespaces]]
+binding = "PUSH"
+id = "ddf6b3f3a9d34eea9c204c6ce422a630"
+
+[observability]
+enabled = true
