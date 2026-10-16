@@ -7,7 +7,11 @@
 //  POST /notificar   → Envía una notificación a todos los suscritos (solo admins)
 //  GET  /partidos[?k=liga&d=AAAAMMDD] → Ligas disponibles, o partidos del día de una liga (ESPN)
 //  GET  /marcador?q=k~fecha~id,… → Marcador en vivo de los partidos elegidos
+//  GET  /auto-estado → Cómo va la calificación automática (última revisión, últimos picks calificados)
+//  Cron (cada 3 min) → Califica solos los picks que terminaron. Secreto: FIREBASE_SA (cuenta de servicio de Firebase)
 // Las suscripciones y las llaves de notificación viven en el KV vinculado como PUSH.
+
+import { calificarTodo, estadoAuto } from "./auto.js";
 
 const ORIGENES = ["https://alexmz24k.github.io"];
 const ADMINS = ["alexitozenil@gmail.com", "prokiller548@gmail.com"];
@@ -116,6 +120,44 @@ async function enviarPush(v, sub, datos) {
 }
 const PUSH_HOSTS = [/\.push\.apple\.com$/, /^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/, /^web\.push\.apple\.com$/];
 
+// Envía una notificación a todos los celulares suscritos (en resultados, con el dinero de cada quien)
+async function avisarTodos(env, body) {
+  const { tipo = "picks", title = "AlexPicks", body: texto = "", url = "./", tag, apuesta, bankAdmin } = body;
+  // Mensaje personalizado con el dinero de cada quien (solo resultados)
+  const pesos = n => "$" + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const textoPara = reg => {
+    if (tipo !== "resultados" || !apuesta) return texto;
+    const pf = reg.perfil || {};
+    const [yy, mm] = String(apuesta.fecha || "").split("-").map(Number);
+    const clave = yy + "-" + (mm - 1);
+    const desc = apuesta.descripcion || "";
+    if (pf.noMet && pf.noMet.includes(String(apuesta.id))) return desc + " · (no la metiste)";
+    const ini = pf.inicios && pf.inicios[clave];
+    if (ini && String(apuesta.fecha) < ini) return texto;
+    const bank = Number((pf.admin ? (bankAdmin || {}) : (pf.bancos || {}))[clave]) || 0;
+    if (!(bank > 0)) return texto;
+    const monto = bank * (Number(apuesta.monto) || 0) / 100;
+    const c = Number(apuesta.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
+    if (apuesta.resultado === "Ganada") return desc + " · Ganaste +" + pesos(monto * (dec - 1));
+    if (apuesta.resultado === "Perdida") return desc + " · Perdiste -" + pesos(monto);
+    if (apuesta.resultado === "Nula") return desc + " · Se te devuelven " + pesos(monto);
+    return texto;
+  };
+  const v = await llavesVapid(env);
+  let cursor, claves = [];
+  do { const l = await env.PUSH.list({ prefix: "s:", cursor }); claves.push(...l.keys.map(k => k.name)); cursor = l.list_complete ? null : l.cursor; } while (cursor);
+  let enviados = 0, borrados = 0, fallidos = 0;
+  await Promise.all(claves.map(async k => {
+    const reg = await env.PUSH.get(k, "json"); if (!reg || reg.tipos?.[tipo] === false) return;
+    try {
+      const r = await enviarPush(v, reg.sub, { title, body: textoPara(reg), url, tag });
+      if (r.status === 404 || r.status === 410) { await env.PUSH.delete(k); borrados++; }
+      else if (r.ok) enviados++; else fallidos++;
+    } catch { fallidos++; }
+  }));
+  return { enviados, borrados, fallidos, total: claves.length };
+}
+
 async function rutasPush(request, env, origin, ruta) {
   if (!env.PUSH) return json({ error: "Falta vincular el KV 'PUSH' al Worker" }, 500, origin);
   if (ruta === "/vapid") return json({ publicKey: (await llavesVapid(env)).publicKey }, 200, origin);
@@ -137,40 +179,7 @@ async function rutasPush(request, env, origin, ruta) {
   }
   if (ruta === "/notificar") {
     if (!(await emailAdmin(request))) return json({ error: "Solo los admins pueden notificar" }, 403, origin);
-    const { tipo = "picks", title = "AlexPicks", body: texto = "", url = "./", tag, apuesta, bankAdmin } = body;
-    // Mensaje personalizado con el dinero de cada quien (solo resultados)
-    const pesos = n => "$" + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    const textoPara = reg => {
-      if (tipo !== "resultados" || !apuesta) return texto;
-      const pf = reg.perfil || {};
-      const [yy, mm] = String(apuesta.fecha || "").split("-").map(Number);
-      const clave = yy + "-" + (mm - 1);
-      const desc = apuesta.descripcion || "";
-      if (pf.noMet && pf.noMet.includes(String(apuesta.id))) return desc + " · (no la metiste)";
-      const ini = pf.inicios && pf.inicios[clave];
-      if (ini && String(apuesta.fecha) < ini) return texto;
-      const bank = Number((pf.admin ? (bankAdmin || {}) : (pf.bancos || {}))[clave]) || 0;
-      if (!(bank > 0)) return texto;
-      const monto = bank * (Number(apuesta.monto) || 0) / 100;
-      const c = Number(apuesta.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
-      if (apuesta.resultado === "Ganada") return desc + " · Ganaste +" + pesos(monto * (dec - 1));
-      if (apuesta.resultado === "Perdida") return desc + " · Perdiste -" + pesos(monto);
-      if (apuesta.resultado === "Nula") return desc + " · Se te devuelven " + pesos(monto);
-      return texto;
-    };
-    const v = await llavesVapid(env);
-    let cursor, claves = [];
-    do { const l = await env.PUSH.list({ prefix: "s:", cursor }); claves.push(...l.keys.map(k => k.name)); cursor = l.list_complete ? null : l.cursor; } while (cursor);
-    let enviados = 0, borrados = 0, fallidos = 0;
-    await Promise.all(claves.map(async k => {
-      const reg = await env.PUSH.get(k, "json"); if (!reg || reg.tipos?.[tipo] === false) return;
-      try {
-        const r = await enviarPush(v, reg.sub, { title, body: textoPara(reg), url, tag });
-        if (r.status === 404 || r.status === 410) { await env.PUSH.delete(k); borrados++; }
-        else if (r.ok) enviados++; else fallidos++;
-      } catch { fallidos++; }
-    }));
-    return json({ ok: true, enviados, borrados, fallidos, total: claves.length }, 200, origin);
+    return json({ ok: true, ...(await avisarTodos(env, body)) }, 200, origin);
   }
   return json({ error: "Ruta no encontrada" }, 404, origin);
 }
@@ -208,21 +217,9 @@ async function scoreboard(k, fecha, ttl) {
   const d = await r.json().catch(() => null);
   return ((d && d.events) || []).map(evNorm);
 }
-async function rutasMarcador(request, origin, ruta) {
-  const u = new URL(request.url);
-  const resp = (obj, seg) => new Response(JSON.stringify(obj), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=" + seg, ...cors(origin) } });
-  if (ruta === "/partidos") {
-    // Sin liga: solo la lista de ligas. Con liga: los partidos de ese día (una liga por llamada = poco CPU)
-    const k = u.searchParams.get("k");
-    if (!k) return resp({ ok: true, ligas: LIGAS.map(([k, liga, dep]) => ({ k, liga, dep })) }, 3600);
-    const lg = LIGAS.find(l => l[0] === k);
-    const d = (u.searchParams.get("d") || "").replace(/\D/g, "").slice(0, 8);
-    if (!lg || d.length !== 8) return json({ error: "Datos inválidos" }, 400, origin);
-    let ev = []; try { ev = await scoreboard(k, d, 60); } catch {}
-    return resp({ ok: true, ev }, 60);
-  }
-  // /marcador?q=soccer/mex.1~20261013~401234,...
-  const pedidos = (u.searchParams.get("q") || "").split(",").map(x => x.split("~")).filter(x => x.length === 3 && LIGAS.some(l => l[0] === x[0])).slice(0, 30);
+// Marcador (y estadísticas) de una lista de partidos "liga~AAAAMMDD~id"
+async function marcadores(lista) {
+  const pedidos = lista.map(x => x.split("~")).filter(x => x.length === 3 && LIGAS.some(l => l[0] === x[0])).slice(0, 30);
   const grupos = {};
   pedidos.forEach(([k, f, id]) => { (grupos[k + "~" + f] = grupos[k + "~" + f] || []).push(id); });
   const ev = {}, faltan = [];
@@ -246,16 +243,39 @@ async function rutasMarcador(request, origin, ruta) {
       if (h) ev[x.id].eh = h; if (a) ev[x.id].ea = a;
     } catch {}
   }));
+  return ev;
+}
+async function rutasMarcador(request, origin, ruta) {
+  const u = new URL(request.url);
+  const resp = (obj, seg) => new Response(JSON.stringify(obj), { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=" + seg, ...cors(origin) } });
+  if (ruta === "/partidos") {
+    // Sin liga: solo la lista de ligas. Con liga: los partidos de ese día (una liga por llamada = poco CPU)
+    const k = u.searchParams.get("k");
+    if (!k) return resp({ ok: true, ligas: LIGAS.map(([k, liga, dep]) => ({ k, liga, dep })) }, 3600);
+    const lg = LIGAS.find(l => l[0] === k);
+    const d = (u.searchParams.get("d") || "").replace(/\D/g, "").slice(0, 8);
+    if (!lg || d.length !== 8) return json({ error: "Datos inválidos" }, 400, origin);
+    let ev = []; try { ev = await scoreboard(k, d, 60); } catch {}
+    return resp({ ok: true, ev }, 60);
+  }
+  // /marcador?q=soccer/mex.1~20261013~401234,...
+  const ev = await marcadores((u.searchParams.get("q") || "").split(","));
   return resp({ ok: true, ev }, 25);
 }
 
+
 export default {
+  // Cada pocos minutos: califica solos los picks cuyo partido ya terminó (ver auto.js)
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(calificarTodo(env, { marcadores, avisarTodos }));
+  },
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") return new Response(null, { headers: cors(origin) });
     if (!ORIGENES.includes(origin)) return json({ error: "Origen no permitido" }, 403, origin);
     const ruta = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
     if (ruta === "/partidos" || ruta === "/marcador") return rutasMarcador(request, origin, ruta);
+    if (ruta === "/auto-estado") return json({ ok: true, ...(await estadoAuto(env)) }, 200, origin);
     if (ruta !== "/") return rutasPush(request, env, origin, ruta);
     if (request.method !== "POST") return json({ error: "Usa POST" }, 405, origin);
     if (!env.ANTHROPIC_API_KEY) return json({ error: "Falta el secreto ANTHROPIC_API_KEY en Cloudflare" }, 500, origin);
