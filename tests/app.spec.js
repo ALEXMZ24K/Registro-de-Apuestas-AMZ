@@ -165,6 +165,16 @@ test.describe('Pantallas (admin)', () => {
     expect(errores).toEqual([]);
   });
 
+  test('ocultar y mostrar los picks del mes', async ({ page }) => {
+    const errores = await abrir(page);
+    await page.getByRole('button', { name: 'Ocultar', exact: true }).click();
+    await expect(page.getByText('Pumas ML')).toHaveCount(0);
+    await expect(page.getByText(/picks ocultos/)).toBeVisible();
+    await page.getByRole('button', { name: 'Mostrar', exact: true }).click();
+    await expect(page.getByText('Pumas ML').first()).toBeVisible();
+    expect(errores).toEqual([]);
+  });
+
   test('pestañas: Calendario, Anual y Más', async ({ page }) => {
     const errores = await abrir(page);
     await tab(page, 'Calendario').click();
