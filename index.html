@@ -944,7 +944,7 @@ async function dibujarPick(o){
       x.font=F(800,40); x.fillStyle=p.res==="G"?G:p.res==="P"?R:MU; x.fillText(m,P+20,Y);
       x.font=F(500,40); x.fillStyle="#dfe2e8"; let t=p.desc; while(x.measureText(t).width>W-2*P-90&&t.length>4) t=t.slice(0,-2); if(t!==p.desc) t=t.trim()+"…"; x.fillText(t,P+80,Y); }); }]);
   }
-  if(o.final) bloques.push([130,y=>{ x.textAlign="center"; x.fillStyle=MU; x.font=F(500,34); x.fillText("Final",W/2,y+36); x.fillStyle="#fff"; x.font=F(900,76); x.fillText(o.final,W/2,y+116); }]);
+  if(o.final) bloques.push([130,y=>{ x.textAlign="center"; x.fillStyle=MU; x.font=F(500,34); x.fillText(o.finalLbl||"Final",W/2,y+36); x.fillStyle="#fff"; x.font=F(900,76); x.fillText(o.final,W/2,y+116); }]);
   bloques.push([170,y=>{ const cs=o.datos, gap=22, bw=(W-2*P-gap*(cs.length-1))/cs.length;
     cs.forEach(([l,v,col],i)=>{ const X=P+i*(bw+gap); x.fillStyle="#141518"; rr(x,X,y,bw,150,30); x.fill(); x.lineWidth=2; x.strokeStyle="#232529"; x.stroke();
       x.textAlign="center"; x.fillStyle=MU; x.font=F(500,32); x.fillText(l,X+bw/2,y+52);
@@ -967,7 +967,7 @@ function CompartirPick({a, onClose}) {
     const fechaTxt = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][d.getDay()]+" "+f.d+" de "+MESES[f.m].toLowerCase();
     const dec = momioToDec(a.cuota)||1, pct = Number(a.monto||0);
     const res = a.resultado==="Pendiente" ? null : a.resultado;
-    const fin = ev && ev.fin && ev.fin.hs!=="" ? (()=>{ const [l,r]=lados(ev,null); return l.s+" – "+r.s; })() : null;
+    let fin = ev && ev.fin && ev.fin.hs!=="" ? (()=>{ const [l,r]=lados(ev,null); return l.s+" – "+r.s; })() : null, finalLbl = "Final";
     const datos = !res ? [["Momio",fmtMomio(a.cuota)],["Apuesta",(pct%1?pct.toFixed(1):pct)+"% del bank"],...(ev&&ev.t?[["Hora",horaLocal(ev.t)]]:[])]
       : [["Momio",fmtMomio(a.cuota)],[res==="Ganada"?"Ganancia":res==="Perdida"?"Resultado":"Resultado", res==="Ganada"?"+"+(pct*(dec-1)).toFixed(1)+"%":res==="Perdida"?"-"+pct+"%":"0%", res==="Ganada"?"#2fe0a0":res==="Perdida"?"#ff5d7a":"#f5c842"]];
     const o = { formato, fechaTxt, hoy: f.y===hoy.getFullYear()&&f.m===hoy.getMonth()&&f.d===hoy.getDate(),
@@ -976,7 +976,16 @@ function CompartirPick({a, onClose}) {
       eq: ev ? lados(ev,null) : null, sep: ev ? (esFut(ev.k)?"vs":"@") : "", partido: !ev && sp ? sp.partido : "",
       pick: combo ? (a.tipo==="Freebet"?"Freebet":"Parlay")+" "+fmtMomio(a.cuota) : sp.pick, legs: combo ? patas : null,
       res, final: fin, datos };
-    dibujarPick(o).then(cv=>{ if(!vivo) return; setImg(cv.toDataURL("image/png"));
+    // Picks de cuarto / mitad / tiempo / 5 entradas: se muestra el marcador de ESE tramo (se pide a ESPN por el Worker)
+    const tr = res && ev && sp ? tramoPick(" "+normTxt(a.descripcion||sp.pick)+" ", ev) : null;
+    const tramo = !tr ? Promise.resolve() : Promise.race([
+      fetch(IA_URL+"/marcador?q="+encodeURIComponent(ev.k+"~"+ev.f+"~"+ev.id)).then(r=>r.json()).then(d=>{ const v=d&&d.ev&&d.ev[ev.id];
+        if(!v||!Array.isArray(v.hl)||!Array.isArray(v.al)) return;
+        const suma = arr => tr.per.reduce((t,p)=>t+(Number(arr[p-1])||0),0), ph=suma(v.hl), pa=suma(v.al);
+        o.final = esFut(ev.k) ? ph+" – "+pa : pa+" – "+ph; o.finalLbl = tr.label.charAt(0).toUpperCase()+tr.label.slice(1); }).catch(()=>{}),
+      new Promise(ok=>setTimeout(ok,3500)) ]);
+    o.finalLbl = finalLbl;
+    tramo.then(()=>dibujarPick(o)).then(cv=>{ if(!vivo) return; setImg(cv.toDataURL("image/png"));
       cv.toBlob(b=>{ if(b&&vivo){ archivo.current=new File([b],"alexpicks-pick-"+formato+".png",{type:"image/png"}); setListo(true); } },"image/png"); });
     return ()=>{ vivo=false; };
   },[a,formato]);
