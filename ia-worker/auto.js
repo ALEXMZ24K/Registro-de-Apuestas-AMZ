@@ -104,13 +104,32 @@ async function guardarEstado(env, nuevo) {
   if (cambio || !viejo.t || Date.now() - viejo.t > 15 * 60000) await env.PUSH.put("_auto", JSON.stringify(e));
 }
 
+// "Empieza en 15 min": una sola vez por pick (se recuerda 2 días en el KV)
+export async function recordatorios(env, picks, avisar, ahora = Date.now()) {
+  for (const a of picks) {
+    const evs = [a.evento, ...(Array.isArray(a.patas) ? a.patas : []).map(p => p && typeof p === "object" ? p.evento : null)]
+      .filter(e => e && e.t && !e.fin && !isNaN(Date.parse(e.t)));
+    if (!evs.length) continue;
+    const ini = Math.min(...evs.map(e => Date.parse(e.t))), faltan = ini - ahora;
+    if (!(faltan > 60000 && faltan <= 18 * 60000)) continue;
+    const k = "r:" + a.id;
+    if (await env.PUSH.get(k)) continue;
+    await env.PUSH.put(k, "1", { expirationTtl: 172800 });
+    const min = Math.round(faltan / 60000), ev0 = evs.find(e => Date.parse(e.t) === ini);
+    const partido = ev0 && ev0.h && ev0.a ? (C.esFut(ev0.k) ? ev0.h.n + " vs " + ev0.a.n : ev0.a.n + " @ " + ev0.h.n) : "";
+    const combo = C.esCombo(a);
+    await avisar(env, { tipo: "recordatorios", url: "./", tag: "rec-" + a.id,
+      title: (combo ? (a.tipo === "Freebet" ? "Tu freebet" : "Tu parlay") + " empieza en " : "Empieza en ") + min + " min",
+      body: combo ? "Primer partido: " + partido : (a.descripcion || "Tu pick") + (partido ? " · " + partido : "") });
+  }
+}
+
 export async function calificarTodo(env, { marcadores, avisarTodos }) {
   const t = Date.now();
   if (!env.FIREBASE_SA) return guardarEstado(env, { t, modo: "sin-configurar", error: "Falta el secreto FIREBASE_SA en Cloudflare" });
   try {
     const token = await tokenGoogle(env);
     const cfg = (await leerDoc(token, "/config/auto")) || {};
-    if (cfg.calificar === false) return guardarEstado(env, { t, modo: "apagado" });
     const real = cfg.real === true;
 
     // Picks pendientes (solo de los últimos días y con partido elegido)
@@ -120,6 +139,9 @@ export async function calificarTodo(env, { marcadores, avisarTodos }) {
     const lim = fechaMx(DIAS);
     const picks = (Array.isArray(q.d) ? q.d : []).filter(x => x.document).map(x => ({ ...deCampos(x.document.fields || {}), _ruta: x.document.name.split("/documents")[1], _upd: x.document.updateTime }))
       .filter(a => String(a.fecha || "") >= lim);
+    // Aviso a tus amigos ~15 min antes de que empiece el partido (aunque "Calificar solo" esté apagado)
+    try { await recordatorios(env, picks, avisarTodos); } catch {}
+    if (cfg.calificar === false) return guardarEstado(env, { t, modo: "apagado" });
     const eventos = [...new Set(picks.flatMap(a => [a.evento, ...(Array.isArray(a.patas) ? a.patas : []).map(p => p && typeof p === "object" ? p.evento : null)])
       .filter(e => e && e.id && e.k && e.f && !e.fin).map(e => e.k + "~" + e.f + "~" + e.id))];
     if (!eventos.length) return guardarEstado(env, { t, modo: real ? "real" : "prueba", pendientes: picks.length, seria: [] });
