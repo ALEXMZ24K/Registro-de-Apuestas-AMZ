@@ -149,6 +149,22 @@ test.describe('Pantallas (admin)', () => {
     expect(errores).toEqual([]);
   });
 
+  test('deshacer al calificar y al borrar', async ({ page }) => {
+    const errores = await abrir(page);
+    await page.getByText('Pumas ML').first().click();
+    await page.getByRole('button', { name: 'Ganada', exact: true }).first().click();
+    await expect(page.getByText('+$1,050').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Deshacer' }).click();
+    await expect(page.getByRole('button', { name: 'Deshacer' })).toHaveCount(0);
+    await expect(page.getByText('GANA').first()).toBeVisible(); // volvió a pendiente
+    await page.getByRole('button', { name: 'Borrar' }).first().click();
+    await page.getByRole('button', { name: 'Eliminar', exact: true }).click();
+    await expect(page.getByText('Pick borrado')).toBeVisible();
+    await page.getByRole('button', { name: 'Deshacer' }).click();
+    await expect(page.getByText('Pumas ML').first()).toBeVisible();
+    expect(errores).toEqual([]);
+  });
+
   test('pestañas: Calendario, Anual y Más', async ({ page }) => {
     const errores = await abrir(page);
     await tab(page, 'Calendario').click();

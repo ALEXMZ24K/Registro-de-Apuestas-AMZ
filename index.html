@@ -205,7 +205,7 @@ async function pushNotificar(tipo, title, body, tag, extra) {
   try {
     if(!auth.currentUser) return;
     const idToken = await auth.currentUser.getIdToken();
-    await fetch(IA_URL+"/notificar",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+    await fetch(IA_URL+"/notificar",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
       body:JSON.stringify({tipo,title,body,tag,url:"./",...(extra||{})})});
   } catch(e) { console.log("Push error:", e); }
 }
@@ -1714,8 +1714,9 @@ function App() {
   };
 
   const eliminar = id => {
-    const docId=apuestas.find(a=>a.id===id)?._docId;
-    if(docId) db.collection("apuestas").doc(docId).delete();
+    const ap=apuestas.find(a=>a.id===id), docId=ap?._docId;
+    if(docId){ const copia=sinGuion(ap); db.collection("apuestas").doc(docId).delete();
+      ofrecerDeshacer("Pick borrado", ()=>db.collection("apuestas").doc(docId).set(copia)); }
     setDeleteConfirm(null);
   };
 
@@ -1730,9 +1731,23 @@ function App() {
     db.collection("apuestas").doc(ap._docId).update({patas:lista});
   };
 
+  // ── Deshacer: al calificar o borrar un pick sale unos segundos un aviso con "Deshacer" ──
+  // El aviso a los amigos se manda hasta que pasa ese tiempo, así si deshaces no les llega nada.
+  const [deshacer,setDeshacer] = useState(null);
+  const avisoPend = useRef(null), deshacerT = useRef(null);
+  const soltarAviso = () => { const a=avisoPend.current; if(!a) return; clearTimeout(a.t); avisoPend.current=null; a.enviar(); };
+  useEffect(()=>{ const f=()=>{ if(document.visibilityState==="hidden") soltarAviso(); };
+    document.addEventListener("visibilitychange",f); window.addEventListener("pagehide",soltarAviso);
+    return ()=>{ document.removeEventListener("visibilitychange",f); window.removeEventListener("pagehide",soltarAviso); }; },[]);
+  const ofrecerDeshacer = (txt, fn) => { clearTimeout(deshacerT.current); setDeshacer({txt, fn, k:Date.now()}); deshacerT.current=setTimeout(()=>setDeshacer(null),6000); };
+  const usarDeshacer = () => { const d=deshacer; clearTimeout(deshacerT.current); setDeshacer(null); if(d&&d.fn) d.fn(); };
+  const sinGuion = o => { const r={}; Object.keys(o).forEach(k=>{ if(!k.startsWith("_")&&o[k]!==undefined) r[k]=o[k]; }); return r; };
+
   const cambiarResultado = (id,resultado,opc={}) => {
     const ap=apuestas.find(a=>a.id===id);
     if(!ap?._docId) return;
+    const del = firebase.firestore.FieldValue.delete();
+    const previo = {resultado:ap.resultado, auto:ap.auto===undefined?del:ap.auto, patas:ap.patas===undefined?del:ap.patas, evento:ap.evento===undefined?del:ap.evento};
     const cambios = {resultado, auto: !!opc.auto};
     if(opc.patas) cambios.patas = opc.patas;
     const vf = ap.evento && vivo[ap.evento.id];
@@ -1752,9 +1767,18 @@ function App() {
         : -m;
       const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
       const pctRes = resultado==="Ganada" ? "+"+(Number(ap.monto||0)*(momioToDec(ap.cuota)-1)).toFixed(1)+"% del bank" : resultado==="Nula" ? "Se devuelve lo apostado" : "-"+Number(ap.monto||0)+"% del bank";
-      pushNotificar("resultados", emoji+" "+(resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id,
+      const enviar = () => pushNotificar("resultados", emoji+" "+(resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id,
         {apuesta:{id:ap.id, monto:ap.monto, cuota:ap.cuota, fecha:ap.fecha, resultado, descripcion:ap.descripcion}, bankAdmin:bankrolls});
+      // Si había otro aviso esperando de OTRO pick, sale ya; si era de este mismo pick, se reemplaza
+      if(avisoPend.current && avisoPend.current.id!==ap.id) soltarAviso();
+      else if(avisoPend.current) { clearTimeout(avisoPend.current.t); avisoPend.current=null; }
+      const pend = {id:ap.id, enviar, t:setTimeout(()=>{ if(avisoPend.current===pend) avisoPend.current=null; enviar(); },6500)};
+      avisoPend.current = pend;
     }
+    if(resultado!==ap.resultado) ofrecerDeshacer((ap.descripcion||"Pick")+" · "+(resultado==="Pendiente"?"pendiente":resultado.toLowerCase()), ()=>{
+      if(avisoPend.current && avisoPend.current.id===ap.id){ clearTimeout(avisoPend.current.t); avisoPend.current=null; }
+      db.collection("apuestas").doc(ap._docId).update(previo);
+    });
   };
 
   const prevMes = () => { if(mesSeleccionado===0){setMesSeleccionado(11);setAnoSeleccionado(y=>y-1);}else setMesSeleccionado(m=>m-1); };
@@ -2367,6 +2391,12 @@ function App() {
     </main>
     <div className="nueva-spacer"></div>
 
+    ${deshacer && html`<div key=${deshacer.k} role="status" style=${{position:"fixed",left:12,right:12,bottom:"calc(92px + env(safe-area-inset-bottom))",zIndex:150,display:"flex",justifyContent:"center",pointerEvents:"none"}}>
+      <div style=${{pointerEvents:"auto",display:"flex",alignItems:"center",gap:12,maxWidth:520,width:"100%",background:"#1d1f23",border:"1px solid #2e3036",borderRadius:14,padding:"10px 10px 10px 16px",boxShadow:"0 8px 30px rgba(0,0,0,.45)",animation:"vistaIn .22s ease-out"}}>
+        <span style=${{flex:1,minWidth:0,fontSize:14,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${deshacer.txt}</span>
+        <button onClick=${usarDeshacer} style=${{background:"none",border:"none",color:"var(--ac)",fontWeight:800,fontSize:14,padding:"8px 10px",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Deshacer</button>
+      </div>
+    </div>`}
     <nav className="tabbar">
       <div className="tabbar-in">
         <button className=${vista==="inicio"?"on":""} onClick=${()=>tab("inicio")}><span className="ic"><${Ico} k="home" s=${24} w=${1.7}/></span>Inicio</button>
