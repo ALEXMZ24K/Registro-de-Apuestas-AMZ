@@ -152,6 +152,18 @@ test.describe('Pantallas (admin)', () => {
     expect(errores).toEqual([]);
   });
 
+  test('Calificar solo: modo prueba y activarlo', async ({ page }) => {
+    const errores = await abrir(page);
+    await tab(page, 'Más').click();
+    await page.getByText('Calificar solo').click();
+    await expect(page.getByText('Activarlo de verdad')).toBeVisible();
+    await page.getByText('Activarlo de verdad').click();
+    await expect(page.getByText('ÚLTIMOS CALIFICADOS')).toBeVisible();
+    await page.getByText('Apagado', { exact: true }).click();
+    await expect(page.getByText('ÚLTIMOS CALIFICADOS')).toHaveCount(0);
+    expect(errores).toEqual([]);
+  });
+
   test('crear un pick a mano', async ({ page }) => {
     const errores = await abrir(page);
     await page.locator('#t-tab-plus').click();
