@@ -577,7 +577,7 @@ function Desplegable({abierto, contenido}) {
   return html`<div ref=${ref}>${contenido()}</div>`;
 }
 
-function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,vivoPatas,estadoVivo,admin}) {
+function ARbase({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,vivoPatas,estadoVivo,admin}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
   const show = open||expanded;
@@ -702,6 +702,13 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
 
 
 // ── Calendario mensual ──
+// La tarjeta solo se vuelve a dibujar si cambió algo suyo (antes se redibujaban todas al tocar "La metí")
+const AR = React.memo(ARbase, (p,n)=>{
+  for(const k in n){ if(typeof n[k]==="function") continue;
+    if(k==="vivoPatas"){ const x=p[k]||[], y=n[k]||[]; if(x.length!==y.length || x.some((v,i)=>v!==y[i])) return false; continue; }
+    if(p[k]!==n[k]) return false; }
+  return true; });
+
 function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR, onIr, resMes, pedirAno, cargandoMes}) {
   const vistas = todas||apuestas;
   const [sel, setSel] = useState(null);
@@ -1308,10 +1315,12 @@ function App() {
   const cuentaAnual = a => !usaBankPropio || (bankReal(a)>0 && cuentaAp(a) && !noMet(a));
   const toggleMetida = (a, el) => {
     if(!usaBankPropio) return;
+    // Cambia en pantalla al instante (Firebase lo confirma después)
+    setNoMetidas(prev=>{ const n={...prev}; if(n[a.id]) delete n[a.id]; else n[a.id]=true; return n; });
     // Mantener quieto el pick en pantalla aunque cambie lo de arriba (p. ej. la línea "Sin contar…")
     if(el){
       const top0 = el.getBoundingClientRect().top, t0 = performance.now();
-      const fijar = () => { const d = el.getBoundingClientRect().top - top0; if(Math.abs(d)>0.5) window.scrollBy(0,d); if(performance.now()-t0<700) requestAnimationFrame(fijar); };
+      const fijar = () => { const d = el.getBoundingClientRect().top - top0; if(Math.abs(d)>0.5) window.scrollBy(0,d); if(performance.now()-t0<450) requestAnimationFrame(fijar); };
       requestAnimationFrame(fijar);
     }
     // Aviso abajo con la ganancia del mes subiendo/bajando en vivo
@@ -1618,7 +1627,9 @@ function App() {
 
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
-  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} onEdit=${()=>openModal(a)} onDelete=${()=>setDeleteConfirm(a.id)} onToggle=${r=>cambiarResultado(a.id,r)} onPata=${i=>cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion} vivo=${vivoDe(a)} vivoPatas=${vivoPatas(a)} estadoVivo=${estadoVivo(a)} admin=${isAdmin}/>`;
+  // Las acciones de la tarjeta pasan por esta referencia, así siempre usan los datos más nuevos aunque la tarjeta no se redibuje
+  const acc = useRef({});
+  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} oc=${OCULTAR} md=${MOMIO_DEC} onEdit=${()=>acc.current.openModal(a)} onDelete=${()=>acc.current.setDeleteConfirm(a.id)} onToggle=${r=>acc.current.cambiarResultado(a.id,r)} onPata=${i=>acc.current.cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>acc.current.toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion} vivo=${vivoDe(a)} vivoPatas=${vivoPatas(a)} estadoVivo=${estadoVivo(a)} admin=${isAdmin}/>`;
   const porDia = lista => { const m=new Map(); lista.forEach(a=>{ if(!m.has(a.fecha)) m.set(a.fecha,[]); m.get(a.fecha).push(a); }); return [...m.entries()]; };
   const nombreDia = fe => { const f=parseFecha(fe), d=new Date(f.y,f.m,f.d), h=new Date(); h.setHours(0,0,0,0);
     const dif=Math.round((h-d)/864e5), base=f.d+" "+MESES_CORTO[f.m];
@@ -1818,6 +1829,7 @@ function App() {
     });
   };
 
+  acc.current = {openModal, setDeleteConfirm, cambiarResultado, cambiarPata, toggleMetida};
   const prevMes = () => { if(mesSeleccionado===0){setMesSeleccionado(11);setAnoSeleccionado(y=>y-1);}else setMesSeleccionado(m=>m-1); };
   const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
 
