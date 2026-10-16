@@ -296,3 +296,25 @@ test.describe('Abrir y cerrar picks calificados solos', () => {
     expect(errores).toEqual([]);
   });
 });
+
+test.describe('Anual con resumen por mes', () => {
+  test('da el mismo balance leyendo resúmenes que leyendo todos los picks', async ({ page }) => {
+    const errores = await abrir(page);
+    await tab(page, 'Anual').click();
+    const balance = page.getByText(/BALANCE \d{4}/).locator('xpath=following-sibling::*[1]');
+    await expect(page.getByText(/BALANCE \d{4}/)).toBeVisible();
+    await page.waitForTimeout(2000); // el número se anima al aparecer
+    const antes = await balance.innerText();
+    const todos = await page.getByText(/Todos los picks de \d{4}/).innerText();
+    // El admin escribe los resúmenes de los meses que tiene cargados
+    await page.waitForFunction(() => (localStorage.getItem('alexpicks-prueba-db') || '').includes('resumen-'), null, { timeout: 15000 });
+    // Al volver a abrir, Anual ya usa los resúmenes en vez de bajar cada mes
+    await page.goto('/?prueba=1&rol=admin');
+    await expect(page.getByText(/GANANCIA DE|RESULTADO DE/).first()).toBeVisible({ timeout: 20000 });
+    await tab(page, 'Anual').click();
+    await page.waitForTimeout(800);
+    await expect(balance).toHaveText(antes);
+    await expect(page.getByText(/Todos los picks de \d{4}/)).toHaveText(todos);
+    expect(errores).toEqual([]);
+  });
+});
