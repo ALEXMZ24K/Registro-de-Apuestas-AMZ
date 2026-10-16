@@ -1031,7 +1031,7 @@ function Recorrido({pasos,onClose}) {
         <button onClick=${onClose} style=${{background:"none",border:"none",color:"#8a91ab",fontSize:14,padding:"8px 0",cursor:"pointer",fontFamily:"inherit"}}>${ult?"":"Saltar"}</button>
         <div style=${{display:"flex",gap:8}}>
           ${i>0 && html`<button onClick=${()=>setI(i-1)} style=${{background:"#eef1f8",color:"#3a4366",border:"none",borderRadius:10,padding:"10px 14px",fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>Atrás</button>`}
-          <button onClick=${()=>ult?onClose():setI(i+1)} style=${{background:"#3b6fd8",color:"#fff",border:"none",borderRadius:10,padding:"10px 16px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>${ult?"¡Listo!":"Siguiente"}</button>
+          <button onClick=${()=>ult?onClose():setI(i+1)} style=${{background:"#3b6fd8",color:"#fff",border:"none",borderRadius:10,padding:"10px 16px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>${ult?"Listo":"Siguiente"}</button>
         </div>
       </div>
     </div>
@@ -2021,15 +2021,16 @@ function App() {
     <span style=${{width:24,height:24,borderRadius:"50%",border:"2px solid "+(on?"var(--ac)":"var(--mu3)"),background:on?"var(--ac)":"transparent",color:"var(--onac)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:900,flexShrink:0}}>${on?"✓":""}</span>
   </button>`;
   const pasosRecorrido = [
-    {id:"t-chip", t:"Tu bank 💰", d:user?"Tócalo para poner o cambiar tu bank del mes. Con él se calculan tus pesos en cada pick.":"Toca aquí para entrar con Google y poner tu propio bank."},
-    {id:"t-hero", t:"Tu resultado del mes", d:"Lo que llevas ganado o perdido. Desliza de lado (o usa ‹ ›) para cambiar de mes. Al terminar el recorrido, toca acierto, racha, picks o momio para ver qué significa cada uno."},
-    {id:"t-forma", t:"Tus últimos 6", d:"Cómo te fue en tus últimos 6 picks: verde es ganado y rojo es perdido. La apuesta más nueva se muestra a la derecha."},
-    {id:"t-picks", t:"Los picks", d:"Van agrupados por día, con lo que ganaste ese día a la derecha. El color es el resultado y abajo a la derecha va el momio. Toca una tarjeta para ver lo apostado, el cobro y la ganancia."},
+    {id:"t-chip", t:"Tu bank", d:user?"Toca aquí para poner tu bank del mes. Con él se calcula cuánto ganas o pierdes en cada pick.":"Toca aquí para entrar con Google y poner tu propio bank."},
+    {id:"t-hero", t:"Tu mes", d:"Aquí ves cuánto llevas ganado o perdido este mes. Desliza a los lados para ver otros meses."},
+    {id:"t-forma", t:"Tus últimos 6", d:"Tus últimos 6 picks: verde si ganó, rojo si perdió. El más reciente es el de la derecha."},
+    {id:"t-picks", t:"Tus picks", d:"Están ordenados por día, y a la derecha ves cuánto ganaste ese día. La rayita de color te dice si el pick ganó o perdió. Tócalo para ver los detalles."},
     ...(()=>{ if(!usaBankPropio) return []; const pk=apuestasMesLista.slice().reverse().find(cuentaAp); if(!pk) return [];
-      return [{id:"t-meti-"+pk.id, antes:()=>window.dispatchEvent(new CustomEvent("abrir-pick",{detail:pk.id})), t:"¿No metiste un pick? 🚫", d:"Dentro de cada pick está este switch. Si no lo jugaste, apágalo: se queda en la lista pero ya no cuenta en tu ganancia, acierto ni racha. Si te equivocas, lo vuelves a prender."}]; })(),
-    {id:"t-tab-cal", t:"Calendario", d:"Tus resultados día por día. Verde ganó, rojo perdió; toca un día para ver sus picks."},
-    {id:"t-tab-anual", t:"Anual", d:"Cómo vas en el año: balance por mes y por deporte."},
-    {id:"t-tab-mas", t:"Más", d:"Tu bank, compartir tu mes, tema de colores, ocultar montos, notificaciones y esta ayuda."},
+      return [{id:"t-meti-"+pk.id, antes:()=>window.dispatchEvent(new CustomEvent("abrir-pick",{detail:pk.id})), t:"¿No jugaste un pick?", d:"Si no jugaste un pick, apaga este switch. Ya no contará en tu ganancia ni en tus estadísticas. Puedes volver a prenderlo cuando quieras."}]; })(),
+    {id:"t-tab-cal", t:"Calendario", d:"Tu mes día por día: verde si ganaste, rojo si perdiste. Toca un día para ver sus picks."},
+    {id:"t-tab-anual", t:"Anual", d:"Cómo vas en el año, mes por mes y por deporte."},
+    {id:"t-tab-mas", t:"Más", d:"Aquí cambias tu bank, el tema, las notificaciones y más."},
+    {id:"t-stats", t:"Tip", d:"Toca cualquier número de arriba, como acierto o racha, para ver qué significa."},
   ].filter(x=>x.antes||document.getElementById(x.id)||vista!=="inicio");
   const iniciarRecorrido = () => { irA("inicio"); setTimeout(()=>setVerRecorrido(true),120); };
   const FAQ = [
@@ -2087,7 +2088,7 @@ function App() {
           </div>
           ${noMetidasMes>0 && html`<div style=${{fontSize:12,color:"#dfe7ff",marginTop:4}}>Sin contar ${noMetidasMes} ${noMetidasMes===1?"pick que no metiste":"picks que no metiste"}</div>`}
           ${usaBankPropio&&bankrollMes>0 && html`<button onClick=${abrirBankModal} style=${{background:"none",border:"none",color:"#dfe7ff",fontSize:12,padding:"6px 0 0",cursor:"pointer",fontFamily:"inherit"}}>${iniciosUser[bankKey]?"Cuentas desde el "+fmtDia(iniciosUser[bankKey]):"Cuentas desde el día 1"} · <b style=${{color:"var(--ac2)"}}>Cambiar</b></button>`}
-          <div style=${{display:"flex",gap:8,marginTop:12}}>
+          <div id="t-stats" style=${{display:"flex",gap:8,marginTop:12}}>
             ${[[stats.efectividad+"%","Acierto","acierto"],[rachaActual.racha>0?(rachaActual.tipo==="Ganada"?"🔥 ":rachaActual.tipo==="Perdida"?"🥶 ":"")+rachaActual.racha:"—","Racha","racha"],[String(stats.total),"Picks","picks"],[momioPromedioMes!==null?fmtMomio(momioPromedioMes):"—","Momio prom.","momio"]].map(([v,l,k])=>miniDato(v,l,k,"mes"))}
           </div>
           ${formaReciente.length>0 && html`<div id="t-forma" style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,fontSize:11,color:"#dfe7ff"}}>
