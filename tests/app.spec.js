@@ -165,6 +165,16 @@ test.describe('Pantallas (admin)', () => {
     expect(errores).toEqual([]);
   });
 
+  test('ocultar y mostrar los picks del mes', async ({ page }) => {
+    const errores = await abrir(page);
+    await page.getByRole('button', { name: 'Ocultar', exact: true }).click();
+    await expect(page.getByText('Pumas ML')).toHaveCount(0);
+    await expect(page.getByText(/picks ocultos/)).toBeVisible();
+    await page.getByRole('button', { name: 'Mostrar', exact: true }).click();
+    await expect(page.getByText('Pumas ML').first()).toBeVisible();
+    expect(errores).toEqual([]);
+  });
+
   test('pestañas: Calendario, Anual y Más', async ({ page }) => {
     const errores = await abrir(page);
     await tab(page, 'Calendario').click();
@@ -258,6 +268,31 @@ test.describe('Android: botón atrás', () => {
     await expect(page.getByText('Respaldo para Excel')).toBeVisible(); // sigue en Más
     await page.evaluate(() => history.back());
     await expect(page.getByText(/Picks de /).first()).toBeVisible(); // volvió a Inicio
+    expect(errores).toEqual([]);
+  });
+});
+
+test.describe('Abrir y cerrar picks calificados solos', () => {
+  test('pick con partido y AUTO se abre y se cierra', async ({ page }, info) => {
+    const errores = await abrir(page);
+    await page.evaluate(async () => {
+      const hoy = new Date(); const f = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+      const ev = { id: 'x1', k: 'baseball/mlb', f: f.replace(/-/g, ''), t: hoy.toISOString(), h: { n: 'Dodgers', full: 'Los Angeles Dodgers', a: 'LAD' }, a: { n: 'Brewers', full: 'Milwaukee Brewers', a: 'MIL' }, fin: { hs: '4', as: '6' } };
+      await firebase.firestore().collection('apuestas').add({ id: 999001, fecha: f, deporte: 'Béisbol', tipo: 'Moneyline', descripcion: 'Probador ML', partido: 'Brewers @ Dodgers', monto: 3, cuota: -150, resultado: 'Perdida', auto: true, evento: ev });
+      await firebase.firestore().collection('apuestas').add({ id: 999002, fecha: f, deporte: 'Béisbol', tipo: 'Moneyline', descripcion: 'Segundo ML', partido: 'Brewers @ Dodgers', monto: 3, cuota: -150, resultado: 'Perdida', auto: true, evento: ev });
+    });
+    const n = info.project.name;
+    await page.getByText('Probador ML').first().click();
+    await expect(page.getByText(/Apostado/i).first()).toBeVisible();
+    await page.screenshot({ path: `capturas/${n}-abierto.png` });
+    await page.getByText('Probador ML').first().click();
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: `capturas/${n}-cerrado.png` });
+    await expect(page.getByText(/Apostado/i)).toHaveCount(0, { timeout: 3000 });
+    await page.getByText('Segundo ML').first().click();
+    await page.waitForTimeout(400);
+    await page.getByText('Segundo ML').first().click();
+    await expect(page.getByText(/Apostado/i)).toHaveCount(0, { timeout: 3000 });
     expect(errores).toEqual([]);
   });
 });
