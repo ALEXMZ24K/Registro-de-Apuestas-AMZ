@@ -194,9 +194,10 @@ const valor = x => (x && typeof x === "object") ? (x.displayValue ?? x.value ?? 
 function evNorm(e) {
   const c = (e.competitions || [])[0] || {}, st = c.status || e.status || {}, cs = c.competitors || [];
   const eq = x => { const t = x.team || x.athlete || {}; return { id: String(t.id || ""), est: estMapa(x.statistics), n: t.shortDisplayName || t.displayName || "", full: t.displayName || "", a: t.abbreviation || "",
-    l: t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "", c: t.color ? "#" + t.color : "", s: String(valor(x.score)) }; };
+    l: t.logo || (t.logos && t.logos[0] && t.logos[0].href) || "", c: t.color ? "#" + t.color : "", s: String(valor(x.score)),
+    ls: (x.linescores || []).map(l => Number(l.value ?? l.displayValue) || 0) }; };
   const h = cs.find(x => x.homeAway === "home") || cs[0] || {}, a = cs.find(x => x.homeAway === "away") || cs[1] || {};
-  return { id: String(e.id), t: e.date, st: (st.type && st.type.state) || "pre", det: (st.type && (st.type.shortDetail || st.type.detail)) || "", clk: st.displayClock || "", h: eq(h), a: eq(a) };
+  return { id: String(e.id), t: e.date, st: (st.type && st.type.state) || "pre", det: (st.type && (st.type.shortDetail || st.type.detail)) || "", clk: st.displayClock || "", per: Number(st.period) || 0, h: eq(h), a: eq(a) };
 }
 async function scoreboard(k, fecha, ttl) {
   const lg = LIGAS.find(l => l[0] === k);
@@ -227,7 +228,7 @@ async function rutasMarcador(request, origin, ruta) {
   await Promise.all(Object.keys(grupos).map(async g => {
     const [k, f] = g.split("~");
     try { (await scoreboard(k, f.replace(/\D/g, "").slice(0, 8), 25)).forEach(e => { if (grupos[g].includes(e.id)) {
-      ev[e.id] = { st: e.st, det: e.det, clk: e.clk, hs: e.h.s, as: e.a.s, t: e.t, eh: e.h.est, ea: e.a.est };
+      ev[e.id] = { st: e.st, det: e.det, clk: e.clk, hs: e.h.s, as: e.a.s, t: e.t, eh: e.h.est, ea: e.a.est, per: e.per, hl: e.h.ls, al: e.a.ls };
       // Si el marcador no trae tiros a puerta, se piden al detalle del partido (solo fútbol en juego o terminado)
       if (k.startsWith("soccer") && e.st !== "pre" && !("shotsOnTarget" in e.h.est)) faltan.push({ k, id: e.id, hid: e.h.id, aid: e.a.id });
     } }); } catch {}

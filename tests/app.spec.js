@@ -17,6 +17,7 @@ test.describe('Cuentas', () => {
     const r = await page.evaluate(() => {
       const ev = { k: 'soccer/mex.1', h: { n: 'Tigres', full: 'Tigres UANL', a: 'TIG' }, a: { n: 'Toluca', full: 'Toluca', a: 'TOL' } };
       const nfl = { k: 'football/nfl', h: { n: 'Bills', full: 'Buffalo Bills', a: 'BUF' }, a: { n: 'Chiefs', full: 'Kansas City Chiefs', a: 'KC' } };
+      const nba = { k: 'basketball/nba', h: { n: 'Raptors', full: 'Toronto Raptors', a: 'TOR' }, a: { n: 'Knicks', full: 'New York Knicks', a: 'NY' } };
       const v = (hs, as, st = 'in', extra = {}) => ({ hs: String(hs), as: String(as), st, ...extra });
       const p = (d, e, vv) => { const x = pistaPick({ descripcion: d }, e, vv); return x ? x.txt : null; };
       return {
@@ -32,6 +33,16 @@ test.describe('Cuentas', () => {
         btts: p('Ambos equipos marcan: Sí', ev, v(0, 1)),
         remates: p('Tigres Más de 3.5 remates a puerta', ev, v(0, 0, 'in', { eh: { shotsOnTarget: '4' }, ea: {} })),
         jugador: p('Messi Over 0.5 goles', ev, v(1, 0)),
+        mlFin: p('Tigres ML', ev, v(1, 2, 'post')),
+        overFin: p('Over 2.5 goles', ev, v(1, 0, 'post')),
+        underPasa: p('Under 2.5 goles', ev, v(2, 1)),
+        spreadFin: p('Chiefs -3.5', nfl, v(17, 24, 'post')),
+        cuartoVa: p('Knicks ganan 1 cuarto', nba, v(9, 12, 'in', { per: 1, det: '8:45 - 1st', hl: [9], al: [12] })),
+        cuartoGana: p('Knicks 1er cuarto', nba, v(40, 50, 'in', { per: 2, det: '5:00 - 2nd', hl: [20, 20], al: [28, 22] })),
+        cuartoNoEmpieza: p('Knicks 2do cuarto', nba, v(9, 12, 'in', { per: 1, det: '8:45 - 1st', hl: [9], al: [12] })),
+        cuartoSinDatos: p('Knicks ganan 1 cuarto', nba, v(9, 12)),
+        mitadOver: p('1ra mitad over 100.5 puntos', nba, v(60, 45, 'in', { per: 2, det: 'Halftime', hl: [30, 30], al: [20, 25] })),
+        primerTiempo: p('Tigres ML primer tiempo', ev, v(1, 1, 'in', { per: 2, det: "60'", hl: [1, 0], al: [0, 1] })),
       };
     });
     expect(r.dec140).toBe('1.714');
@@ -39,13 +50,64 @@ test.describe('Cuentas', () => {
     expect(r.gan).toBe('1.429');
     expect(r.per).toBe(-2);
     expect(r.nula).toBe(0);
-    expect(r.ml).toBe('Va arriba');
+    expect(r.ml).toBe('Va ganando');
     expect(r.over).toBe('2 de 3 goles');
     expect(r.overGanado).toContain('¡Ganaste!');
-    expect(r.spread).toBe('No cubre todavía');
+    expect(r.spread).toBe('No está cubriendo');
     expect(r.btts).toBe('Falta que anote Tigres');
     expect(r.remates).toContain('¡Ganaste!');
     expect(r.jugador).toBeNull();
+    expect(r.mlFin).toBe('Perdiste · 1-2');
+    expect(r.overFin).toBe('Perdiste · quedó en 1 gol');
+    expect(r.underPasa).toBe('Perdiste · van 3 goles');
+    expect(r.spreadFin).toBe('¡Ganaste! · cubrió (24-17)');
+    expect(r.cuartoVa).toBe('1er cuarto 12-9 · Va ganando');
+    expect(r.cuartoGana).toBe('¡Ganaste! · 1er cuarto 28-20');
+    expect(r.cuartoNoEmpieza).toBe('2º cuarto · aún no empieza');
+    expect(r.cuartoSinDatos).toBeNull();
+    expect(r.mitadOver).toBe('¡Ganaste! · 1ª mitad 45-60');
+    expect(r.primerTiempo).toBe('¡Ganaste! · 1er tiempo 1-0');
+  });
+});
+
+test.describe('Calificar solo', () => {
+  test('decide solo cuando está seguro', async ({ page }) => {
+    await abrir(page);
+    const r = await page.evaluate(() => {
+      const ev = id => ({ id, k: 'soccer/mex.1', h: { n: 'Tigres', full: 'Tigres UANL', a: 'TIG' }, a: { n: 'Toluca', full: 'Toluca', a: 'TOL' } });
+      const fin = (hs, as, extra = {}) => ({ st: 'post', hs: String(hs), as: String(as), det: 'FT', ...extra });
+      const vivo = { e1: fin(2, 0), e2: fin(1, 1), e3: { st: 'in', hs: '1', as: '0', det: "67'" }, e4: fin(0, 0, { det: 'Postponed' }),
+        e5: fin(0, 0, { eh: { shotsOnTarget: '6' }, ea: {} }), e6: fin(0, 2), e7: fin(1, 2, { per: 2, hl: [1, 0], al: [0, 2] }) };
+      const pick = (descripcion, id) => ({ resultado: 'Pendiente', tipo: 'Moneyline', descripcion, evento: ev(id) });
+      const res = x => { const o = resultadoAuto(x, vivo); return o ? (o.res || 'patas') : null; };
+      const parlay = (legs) => ({ resultado: 'Pendiente', tipo: 'Parlay/Combinada', patas: legs.map(([desc, id]) => ({ desc, deporte: 'Fútbol', evento: id ? ev(id) : null })) });
+      return {
+        mlGana: res(pick('Tigres ML', 'e1')),
+        mlEmpate: res(pick('Tigres ML', 'e2')),
+        enJuego: res(pick('Tigres ML', 'e3')),
+        pospuesto: res(pick('Tigres ML', 'e4')),
+        remates: res(pick('Tigres Más de 3.5 remates a puerta', 'e5')),
+        over: res(pick('Over 1.5 goles', 'e1')),
+        jugador: res(pick('Gignac anota', 'e1')),
+        yaCalificado: resultadoAuto({ ...pick('Tigres ML', 'e1'), resultado: 'Ganada' }, vivo),
+        parlayPierde: res(parlay([['Tigres ML', 'e6'], ['Over 2.5 goles', 'e3']])),
+        parlayGana: res(parlay([['Tigres ML', 'e1'], ['Ambos equipos marcan: No', 'e1']])),
+        parlayFalta: res(parlay([['Tigres ML', 'e1'], ['Pumas ML', null]])),
+        tiempoAuto: res(pick('Toluca gana 2do tiempo', 'e7')),
+      };
+    });
+    expect(r.mlGana).toBe('Ganada');
+    expect(r.mlEmpate).toBe('Perdida');
+    expect(r.enJuego).toBeNull();
+    expect(r.pospuesto).toBeNull();
+    expect(r.remates).toBeNull();
+    expect(r.over).toBe('Ganada');
+    expect(r.jugador).toBeNull();
+    expect(r.yaCalificado).toBeNull();
+    expect(r.parlayPierde).toBe('Perdida');
+    expect(r.parlayGana).toBe('Ganada');
+    expect(r.parlayFalta).toBe('patas');
+    expect(r.tiempoAuto).toBe('Ganada');
   });
 });
 
