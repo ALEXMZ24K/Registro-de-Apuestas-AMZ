@@ -340,3 +340,26 @@ test.describe('La metí', () => {
     expect(errores).toEqual([]);
   });
 });
+
+test.describe('Compartir un pick', () => {
+  test('arma la imagen en historia y cuadrada', async ({ page }, info) => {
+    const errores = await abrir(page, 'amigo');
+    await page.evaluate(async () => {
+      const h = new Date(); const f = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+      const ev = { id: 'x1', k: 'baseball/mlb', f: f.replace(/-/g, ''), t: new Date(h.getTime() + 3600e3).toISOString(), liga: 'MLB', h: { n: 'Dodgers', full: 'Los Angeles Dodgers', a: 'LAD', c: '#005a9c' }, a: { n: 'Brewers', full: 'Milwaukee Brewers', a: 'MIL', c: '#12284b' } };
+      await firebase.firestore().collection('apuestas').add({ id: 999001, fecha: f, deporte: 'Béisbol', tipo: 'Moneyline', descripcion: 'Dodgers ML', partido: 'Brewers @ Dodgers', monto: 2, cuota: -150, resultado: 'Pendiente', evento: ev });
+    });
+    const n = info.project.name;
+    await page.getByText('Dodgers ML').first().click();
+    await page.getByRole('button', { name: 'Compartir pick' }).first().click();
+    const img = page.locator('img[alt="Vista previa"]');
+    await expect(img).toBeVisible({ timeout: 10000 });
+    await img.screenshot({ path: `capturas/${n}-pick-historia.png` });
+    await page.getByRole('button', { name: 'Cuadrada', exact: true }).click();
+    await page.waitForTimeout(800);
+    await expect(img).toBeVisible();
+    await img.screenshot({ path: `capturas/${n}-pick-cuadrada.png` });
+    await page.goBack().catch(() => {});
+    expect(errores).toEqual([]);
+  });
+});
