@@ -13,6 +13,6 @@ id = "ddf6b3f3a9d34eea9c204c6ce422a630"
 [observability]
 enabled = true
 
-# Calificación automática: revisa cada 3 minutos los picks pendientes (ver auto.js)
+# Cada minuto: cada 3 min califica los picks pendientes (auto.js) y los otros minutos manda avisos en tandas
 [triggers]
-crons = ["*/3 * * * *"]
+crons = ["* * * * *"]
