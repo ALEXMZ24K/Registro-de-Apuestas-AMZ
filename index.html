@@ -2152,7 +2152,7 @@ function App() {
     catch(e){ setPushEstado({cargando:false,error:true,msg:errPush(e)}); }
   };
   const desactivarPush = async () => { setPushEstado({cargando:true,msg:""}); await pushDesuscribir(); setPushOn(false); setPushEstado({cargando:false,msg:"Notificaciones desactivadas en este celular."}); };
-  const cambiarTipoPush = k => { const t={...pushTipos,[k]:!pushTipos[k]}; setPushTipos(t); try{ localStorage.setItem("pushTipos",JSON.stringify(t)); }catch(e){} if(pushOn) activarPush(t); };
+  const cambiarTipoPush = k => { const t={...pushTipos,[k]:pushTipos[k]===false}; setPushTipos(t); try{ localStorage.setItem("pushTipos",JSON.stringify(t)); }catch(e){} if(pushOn) activarPush(t); };
   // Datos del cuadro azul: se tocan para ver qué significan
   const miniDato = (v,l,clave,ctx) => html`<button key=${l} onClick=${()=>setInfoDato({clave,ctx})} style=${{...S.miniStat,border:"none",color:"#fff",fontFamily:"inherit",cursor:"pointer"}}>
     <b style=${{fontSize:15,color:"#fff"}}>${v}</b><div style=${{fontSize:10,opacity:.8,marginTop:2,whiteSpace:"nowrap"}}>${l}</div></button>`;
@@ -2623,9 +2623,9 @@ function App() {
           : html`<div style=${{marginBottom:14}}>
               <div style=${{fontSize:14,color:"var(--mu)",lineHeight:1.45,marginBottom:12}}>${pushOn?"Están activadas en este celular. Elige qué te avisamos:":"Recibe un aviso en este celular con cada pick nuevo y cada resultado, como cualquier app."}</div>
               <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,overflow:"hidden",marginBottom:12}}>
-                ${[["picks","Picks nuevos"],["resultados","Resultados (ganada / perdida)"]].map(([k,l],i)=>html`<button key=${k} onClick=${()=>cambiarTipoPush(k)} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",borderTop:i?"1px solid var(--br)":"none",padding:"12px 14px",color:"#fff",fontFamily:"inherit",fontSize:15,cursor:"pointer"}}>
+                ${[["picks","Picks nuevos"],["resultados","Resultados (ganada / perdida)"],["recordatorios","15 min antes del partido"]].map(([k,l],i)=>html`<button key=${k} onClick=${()=>cambiarTipoPush(k)} style=${{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",borderTop:i?"1px solid var(--br)":"none",padding:"12px 14px",color:"#fff",fontFamily:"inherit",fontSize:15,cursor:"pointer"}}>
                   <span>${l}</span>
-                  <span style=${{width:46,height:28,borderRadius:14,background:pushTipos[k]?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}><span style=${{position:"absolute",top:3,left:pushTipos[k]?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span></span>
+                  <span style=${{width:46,height:28,borderRadius:14,background:pushTipos[k]!==false?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}><span style=${{position:"absolute",top:3,left:pushTipos[k]!==false?21:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span></span>
                 </button>`)}
               </div>
               ${pushOn

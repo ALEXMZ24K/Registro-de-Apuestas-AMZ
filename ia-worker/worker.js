@@ -190,7 +190,7 @@ async function rutasPush(request, env, origin, ruta) {
     const sub = body.subscription;
     let host = ""; try { host = new URL(sub.endpoint).hostname; } catch { }
     if (!sub || !sub.keys || !sub.keys.p256dh || !sub.keys.auth || !PUSH_HOSTS.some(r => r.test(host))) return json({ error: "Suscripción inválida" }, 400, origin);
-    const tipos = { picks: body.tipos?.picks !== false, resultados: body.tipos?.resultados !== false };
+    const tipos = { picks: body.tipos?.picks !== false, resultados: body.tipos?.resultados !== false, recordatorios: body.tipos?.recordatorios !== false };
     // Perfil para personalizar los avisos de resultado (bank por mes, día de inicio y picks que no metió)
     const pf = body.perfil || {};
     const perfil = { admin: !!pf.admin, bancos: pf.bancos && typeof pf.bancos === "object" ? pf.bancos : {}, inicios: pf.inicios && typeof pf.inicios === "object" ? pf.inicios : {}, noMet: Array.isArray(pf.noMet) ? pf.noMet.slice(-500).map(String) : [] };
