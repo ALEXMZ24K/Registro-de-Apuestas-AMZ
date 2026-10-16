@@ -323,3 +323,20 @@ test.describe('Anual con resumen por mes', () => {
     expect(errores).toEqual([]);
   });
 });
+
+test.describe('La metí', () => {
+  test('tocar muchas veces seguidas deja el último estado y se guarda', async ({ page }) => {
+    const errores = await abrir(page, 'amigo');
+    await page.getByText('Rays ML').first().click();
+    const sw = page.getByRole('button', { name: /La metí|No la metí/ }).first();
+    await expect(sw).toBeVisible();
+    for (let i = 0; i < 5; i++) await sw.click(); // 5 toques: termina en "No la metí"
+    await expect(page.getByText('No la metí').first()).toBeVisible();
+    await page.waitForTimeout(1500);
+    await page.goto('/?prueba=1&rol=amigo');
+    await expect(page.getByText(/GANANCIA DE|RESULTADO DE/).first()).toBeVisible({ timeout: 20000 });
+    await page.getByText('Rays ML').first().click();
+    await expect(page.getByText('No la metí').first()).toBeVisible();
+    expect(errores).toEqual([]);
+  });
+});
