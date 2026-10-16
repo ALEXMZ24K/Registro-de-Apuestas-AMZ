@@ -8,7 +8,7 @@
 //  GET  /partidos[?k=liga&d=AAAAMMDD] → Ligas disponibles, o partidos del día de una liga (ESPN)
 //  GET  /marcador?q=k~fecha~id,… → Marcador en vivo de los partidos elegidos
 //  GET  /auto-estado → Cómo va la calificación automática (última revisión, últimos picks calificados)
-//  Cron (cada 3 min) → Califica solos los picks que terminaron. Secreto: FIREBASE_SA (cuenta de servicio de Firebase)
+//  Cron (cada minuto; califica cada 3 min, los demás manda avisos en tandas) → Califica solos los picks que terminaron. Secreto: FIREBASE_SA (cuenta de servicio de Firebase)
 // Las suscripciones y las llaves de notificación viven en el KV vinculado como PUSH.
 
 import { calificarTodo, estadoAuto } from "./auto.js";
@@ -120,8 +120,10 @@ async function enviarPush(v, sub, datos) {
 }
 const PUSH_HOSTS = [/\.push\.apple\.com$/, /^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/, /^web\.push\.apple\.com$/];
 
-// Envía una notificación a todos los celulares suscritos (en resultados, con el dinero de cada quien)
-async function avisarTodos(env, body) {
+// Envía una notificación a los celulares suscritos, en TANDAS: el plan gratis de Cloudflare permite máximo 50
+// conexiones hacia afuera por ejecución, así que cada llamada manda hasta 40 y dice desde dónde seguir ("siguiente").
+const TANDA = 40;
+async function avisarTodos(env, body, desde = "", max = TANDA) {
   const { tipo = "picks", title = "AlexPicks", body: texto = "", url = "./", tag, apuesta, bankAdmin } = body;
   // Mensaje personalizado con el dinero de cada quien (solo resultados)
   const pesos = n => "$" + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -146,8 +148,12 @@ async function avisarTodos(env, body) {
   const v = await llavesVapid(env);
   let cursor, claves = [];
   do { const l = await env.PUSH.list({ prefix: "s:", cursor }); claves.push(...l.keys.map(k => k.name)); cursor = l.list_complete ? null : l.cursor; } while (cursor);
+  claves.sort();
+  // Se sigue por NOMBRE de la suscripción (no por posición), así borrar las vencidas no hace que se salte a nadie
+  const parte = claves.filter(k => !desde || k > desde).slice(0, max);
+  const siguiente = parte.length && claves.indexOf(parte[parte.length - 1]) < claves.length - 1 ? parte[parte.length - 1] : null;
   let enviados = 0, borrados = 0, fallidos = 0;
-  await Promise.all(claves.map(async k => {
+  await Promise.all(parte.map(async k => {
     const reg = await env.PUSH.get(k, "json"); if (!reg || reg.tipos?.[tipo] === false) return;
     try {
       const r = await enviarPush(v, reg.sub, { title, body: textoPara(reg), url, tag });
@@ -155,7 +161,25 @@ async function avisarTodos(env, body) {
       else if (r.ok) enviados++; else fallidos++;
     } catch { fallidos++; }
   }));
-  return { enviados, borrados, fallidos, total: claves.length };
+  return { enviados, borrados, fallidos, total: claves.length, procesados: parte.length, siguiente };
+}
+// Avisos del Worker (calificación automática): se forman en una cola y salen en tandas, una por minuto
+async function encolarAviso(env, aviso) {
+  const cola = (await env.PUSH.get("_cola", "json")) || [];
+  cola.push({ aviso, desde: "" });
+  await env.PUSH.put("_cola", JSON.stringify(cola.slice(-200)));
+}
+async function procesarCola(env) {
+  const cola = await env.PUSH.get("_cola", "json");
+  if (!cola || !cola.length) return;
+  let presupuesto = TANDA;
+  while (cola.length && presupuesto > 0) {
+    const job = cola[0];
+    const r = await avisarTodos(env, job.aviso, job.desde || "", presupuesto);
+    presupuesto -= r.procesados;
+    if (r.siguiente) { job.desde = r.siguiente; if (!r.procesados) break; } else cola.shift();
+  }
+  if (cola.length) await env.PUSH.put("_cola", JSON.stringify(cola)); else await env.PUSH.delete("_cola");
 }
 
 async function rutasPush(request, env, origin, ruta) {
@@ -179,7 +203,7 @@ async function rutasPush(request, env, origin, ruta) {
   }
   if (ruta === "/notificar") {
     if (!(await emailAdmin(request))) return json({ error: "Solo los admins pueden notificar" }, 403, origin);
-    return json({ ok: true, ...(await avisarTodos(env, body)) }, 200, origin);
+    return json({ ok: true, ...(await avisarTodos(env, body, typeof body.desde === "string" ? body.desde : "")) }, 200, origin);
   }
   return json({ error: "Ruta no encontrada" }, 404, origin);
 }
@@ -266,8 +290,11 @@ async function rutasMarcador(request, origin, ruta) {
 
 export default {
   // Cada pocos minutos: califica solos los picks cuyo partido ya terminó (ver auto.js)
+  // Cada minuto: cada 3 min califica; los otros minutos manda la siguiente tanda de avisos pendientes
+  // (separado para no pasar el límite de 50 conexiones por ejecución)
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(calificarTodo(env, { marcadores, avisarTodos }));
+    const min = new Date(event.scheduledTime || Date.now()).getUTCMinutes();
+    ctx.waitUntil(min % 3 === 0 ? calificarTodo(env, { marcadores, avisarTodos: encolarAviso }) : procesarCola(env));
   },
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";

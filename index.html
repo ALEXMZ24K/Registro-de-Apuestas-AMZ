@@ -205,8 +205,14 @@ async function pushNotificar(tipo, title, body, tag, extra) {
   try {
     if(!auth.currentUser) return;
     const idToken = await auth.currentUser.getIdToken();
-    await fetch(IA_URL+"/notificar",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
-      body:JSON.stringify({tipo,title,body,tag,url:"./",...(extra||{})})});
+    // En tandas: el Worker manda hasta 40 por llamada y dice desde dónde seguir
+    let desde = "", vueltas = 0;
+    do {
+      const r = await fetch(IA_URL+"/notificar",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json","Authorization":"Bearer "+idToken},
+        body:JSON.stringify({tipo,title,body,tag,url:"./",...(extra||{}),desde})});
+      const d = await r.json().catch(()=>({}));
+      desde = d && typeof d.siguiente==="string" ? d.siguiente : "";
+    } while(desde && ++vueltas<100);
   } catch(e) { console.log("Push error:", e); }
 }
 // Suscribir / desuscribir este celular a las notificaciones push
@@ -298,16 +304,14 @@ const sumPct = lista => lista.reduce((s,a)=>s+gPct(a),0);
 // Paletas de color
 const TEMAS = {
   azul:   {nombre:"Azul eléctrico", bg:"#0a0f20",card:"#121a38",card2:"#141d40",card3:"#0e1530",br:"#243060",br2:"#2b3870",mu:"#8f9bc4",mu2:"#7c88b3",mu3:"#5a668f",ac:"#4a8dff",ac2:"#9ec1ff",onac:"#fff",g1:"#1d4fd8",g2:"#0f2160"},
-  violeta:{nombre:"Lima y violeta", bg:"#0f0b1e",card:"#1a1433",card2:"#1e1740",card3:"#140f2a",br:"#2f2559",br2:"#3a2e6b",mu:"#9a90c4",mu2:"#857bb0",mu3:"#5f5689",ac:"#c4f82a",ac2:"#c4f82a",onac:"#14102a",g1:"#3a1f8f",g2:"#1a1040"},
   dorado: {nombre:"Negro y oro",    bg:"#0c0a0a",card:"#1a1414",card2:"#201818",card3:"#140f0f",br:"#3a2a26",br2:"#4a3430",mu:"#b39f94",mu2:"#9c8a80",mu3:"#6e5f58",ac:"#e8b84a",ac2:"#f3d27a",onac:"#1a1200",g1:"#8a1428",g2:"#2a0a10"},
-  fucsia: {nombre:"Fucsia y noche", bg:"#0b0d1f",card:"#161a36",card2:"#1b1f40",card3:"#10132a",br:"#2b3160",br2:"#363d72",mu:"#9aa0c8",mu2:"#848ab3",mu3:"#5c628c",ac:"#ff3d9a",ac2:"#ff9ccc",onac:"#fff",g1:"#b0136a",g2:"#1a1446"},
-  naranja:{nombre:"Naranja y marino",bg:"#08121f",card:"#10213a",card2:"#142844",card3:"#0b1a2e",br:"#1f3a5f",br2:"#2a4a72",mu:"#8fa6c4",mu2:"#7a90b0",mu3:"#56698a",ac:"#ff8a1f",ac2:"#ffbe7a",onac:"#1a0d00",g1:"#e0631a",g2:"#0c2848"},
-  negroazul:{nombre:"Negro y azul", bg:"#000000",card:"#0f0f10",card2:"#141415",card3:"#0a0a0b",br:"#222224",br2:"#2e2e31",mu:"#8e8e93",mu2:"#7d7d82",mu3:"#57575c",ac:"#4a8dff",ac2:"#9ec1ff",onac:"#fff",g1:"#1f4fd6",g2:"#0c2270"},
   negro:  {nombre:"Todo negro",     bg:"#000000",card:"#0e0e0f",card2:"#131314",card3:"#0a0a0a",br:"#1f1f21",br2:"#2b2b2e",mu:"#8a8a8f",mu2:"#78787d",mu3:"#545458",ac:"#4a8dff",ac2:"#7fb0ff",onac:"#fff",g1:"#121213",g2:"#0b0b0c",herob:"#262628"},
   blanconegro:{nombre:"Negro y blanco",bg:"#000000",card:"#0d0d0d",card2:"#121212",card3:"#090909",br:"#1d1d1d",br2:"#2a2a2a",mu:"#8a8a8a",mu2:"#777777",mu3:"#525252",ac:"#ffffff",ac2:"#ffffff",onac:"#000",g1:"#111111",g2:"#0a0a0a",herob:"#2a2a2a"},
   menta:  {nombre:"Menta y negro",  bg:"#0a0f0e",card:"#121c1a",card2:"#162321",card3:"#0e1614",br:"#22362f",br2:"#2c443c",mu:"#8fb3a8",mu2:"#7a9d93",mu3:"#56756c",ac:"#3ff0c0",ac2:"#9ff7de",onac:"#04140f",g1:"#0f8a6a",g2:"#08201a"},
 };
-const aplicarTema = k => { const t=TEMAS[k]||TEMAS.azul; const r=document.documentElement.style; Object.keys(t).forEach(c=>{ if(c!=="nombre") r.setProperty("--"+c,t[c]); }); if(!t.herob) r.setProperty("--herob","transparent");
+// Temas que ya no existen → el más parecido (para quien los tenía elegidos)
+const ALIAS_TEMA = {negroazul:"negro", violeta:"azul", fucsia:"azul", naranja:"azul"};
+const aplicarTema = k => { const t=TEMAS[k]||TEMAS[ALIAS_TEMA[k]]||TEMAS.azul; const r=document.documentElement.style; Object.keys(t).forEach(c=>{ if(c!=="nombre") r.setProperty("--"+c,t[c]); }); if(!t.herob) r.setProperty("--herob","transparent");
   const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content",t.bg); };
 const leerPrefs = () => { let p={}; try{ p=JSON.parse(localStorage.getItem("prefs")||"{}")||{}; if(!p.momio && localStorage.getItem("formatoMomio")) p.momio=localStorage.getItem("formatoMomio"); }catch(e){} return p; };
 aplicarTema(leerPrefs().tema);
@@ -839,7 +843,7 @@ function dibujarResumen(o){
   // Tres datos
   y += hist?80:60;
   const bh = hist?170:150, gap=24, bw=(W-2*P-2*gap)/3;
-  [[o.record,"Récord"],[o.acierto+"%","Acierto"],[o.racha,"Racha"]].forEach(([v,l],i)=>{
+  [[o.record,"Récord"],[o.acierto+"%","Acierto"],[o.racha,o.rachaLbl||"Racha"]].forEach(([v,l],i)=>{
     const bx=P+i*(bw+gap);
     x.fillStyle="rgba(255,255,255,.1)"; rr(x,bx,y,bw,bh,34); x.fill();
     x.textAlign="center"; x.fillStyle="#fff"; x.font=F(800,hist?62:56); x.fillText(v,bx+bw/2,y+bh*0.52);
@@ -1108,7 +1112,7 @@ function App() {
   const [prefs,setPrefsState] = useState(leerPrefs);
   const momioDec = prefs.momio==="decimal";
   const ocultar = !!prefs.ocultar;
-  const temaKey = TEMAS[prefs.tema] ? prefs.tema : "azul";
+  const temaKey = TEMAS[prefs.tema] ? prefs.tema : (ALIAS_TEMA[prefs.tema]||"azul");
   MOMIO_DEC = momioDec;
   OCULTAR = ocultar;
   useEffect(()=>{ aplicarTema(temaKey); },[temaKey]);
@@ -1409,10 +1413,11 @@ function App() {
     const mp = mejorPickMes;
     const mejor = shareMejor && mp ? {texto:mp.a.descripcion, valor: sharePesos ? "+"+fmtReal(mp.g) : (bankrollMes>0?"+"+(mp.g/bankrollMes*100).toFixed(1)+"%":fmtMomio(mp.a.cuota))} : null;
     const racha = rachaActual.racha>0 ? String(rachaActual.racha) : "—";
+    const rachaLbl = rachaActual.racha>0 && rachaActual.tipo==="Ganada" ? "Ganados seguidos" : rachaActual.racha>0 && rachaActual.tipo==="Perdida" ? "Perdidos seguidos" : "Racha";
     const listo = (document.fonts&&document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     listo.then(()=>{
       if(!vivo) return;
-      const c = dibujarResumen({formato:shareFmt,mes:MESES[mesSeleccionado]+" "+anoSeleccionado,neto:stats.neto,pct,pesos:sharePesos,record:stats.ganadas+"-"+stats.perdidas,acierto:stats.efectividad,racha,forma,mejor,t:TEMAS[temaKey]});
+      const c = dibujarResumen({formato:shareFmt,mes:MESES[mesSeleccionado]+" "+anoSeleccionado,neto:stats.neto,pct,pesos:sharePesos,record:stats.ganadas+"-"+stats.perdidas,acierto:stats.efectividad,racha,rachaLbl,forma,mejor,t:TEMAS[temaKey]});
       setShareImg(c.toDataURL("image/png"));
       c.toBlob(b=>{ if(b&&vivo) shareFile.current=new File([b],"alexpicks-"+MESES[mesSeleccionado].toLowerCase()+"-"+anoSeleccionado+".png",{type:"image/png"}); },"image/png");
     });

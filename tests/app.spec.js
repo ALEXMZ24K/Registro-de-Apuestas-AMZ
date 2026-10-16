@@ -253,6 +253,11 @@ test.describe('Capturas', () => {
     await tab(page, 'Más').click();
     await page.waitForTimeout(600);
     await page.screenshot({ path: `capturas/${n}-mas.png`, fullPage: true });
+    await page.getByText('Compartir mi mes').click();
+    await page.waitForTimeout(1500);
+    const img = page.locator('img[src^="data:image/png"]').first();
+    await expect(img).toBeVisible();
+    await img.screenshot({ path: `capturas/${n}-compartir.png` });
   });
 });
 
