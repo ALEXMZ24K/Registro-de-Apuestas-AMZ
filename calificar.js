@@ -73,11 +73,12 @@ const pistaPick = (a,ev,v,sinTramo) => {
   if(/tiempo|mitad|cuarto|entrada|inning|periodo|\s(1h|2h|1q|2q|3q|4q|half)\s|corner|tarjeta|remate|tiro|asistencia|rebote|yarda|ponche|hit|anota primero|primer/.test(t)) return null;
   const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt);
   const ou=t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/);
-  if(ou){ // solo totales del partido: antes del over no puede ir un jugador, después solo goles/puntos/carreras
-    let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a),"vs","total","partido","juego","del","el"].forEach(x=>{ pre=pre.split(x).join(" "); });
-    const pos=t.slice(ou.index+ou[0].length).trim();
-    if(pre.replace(/[^a-z0-9]/g,"")!=="" || (pos && !/^(goles?|puntos?|pts|carreras?|runs?|totales?|en total)(\s|$)/.test(pos))) return null; }
-  if(ou && !uno){ const L=Number(ou[2]), tot=hs+as;
+  if(ou){ // totales del partido o de UN equipo: antes del over no puede ir un jugador, después solo goles/puntos/carreras
+    const conect = s => s.replace(/(^|\s)(vs|total|totales|partido|juego|del|de|el|la|los|para|equipo|anota|anotan|marca|marcan|mete|meten|hace|hacen|en)(?=\s|$)/g," ");
+    let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pre=pre.split(x).join(" "); }); pre=conect(pre);
+    let pos=" "+t.slice(ou.index+ou[0].length)+" "; [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pos=pos.split(x).join(" "); }); pos=conect(pos).trim();
+    if(pre.replace(/[^a-z0-9]/g,"")!=="" || (pos && !/^(goles?|puntos?|pts|carreras?|runs?)$/.test(pos))) return null; }
+  if(ou){ const L=Number(ou[2]), tot=uno?(H?hs:as):hs+as; // si nombra un solo equipo, cuenta solo lo de ese equipo
     if(/over|mas de|alta/.test(ou[1])){ const nec=Math.floor(L)+1;
       return tot>=nec ? {txt:"¡Ganaste! · "+cu(tot,un), ok:1, listo:1, prog:[tot,nec]} : {txt:fin?"Perdiste · quedó en "+cu(tot,un):tot+" de "+cu(nec,un), ok:fin?-1:0, prog:[tot,nec]}; }
     const mx=Math.floor(L); return tot>mx ? {txt:"Perdiste · van "+cu(tot,un), ok:-1} : {txt:fin?"¡Ganaste! · quedó en "+cu(tot,un):"Van "+cu(tot,un)+" · máximo "+mx, ok:fin?1:0, listo:fin?1:0}; }

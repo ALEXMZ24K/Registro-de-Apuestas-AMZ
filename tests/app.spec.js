@@ -34,6 +34,11 @@ test.describe('Cuentas', () => {
         remates: p('Tigres Más de 3.5 remates a puerta', ev, v(0, 0, 'in', { eh: { shotsOnTarget: '4' }, ea: {} })),
         jugador: p('Messi Over 0.5 goles', ev, v(1, 0)),
         mlFin: p('Tigres ML', ev, v(1, 2, 'post')),
+        equipoOver: p('Tigres over 1.5 goles', ev, v(1, 3)),
+        equipoGana: p('Tigres anotan más de 1.5 goles', ev, v(2, 0)),
+        equipoUnder: p('Toluca under 1.5 goles', ev, v(0, 2)),
+        equipoNba: p('Lakers over 110.5 puntos', { k: 'basketball/nba', h: { n: 'Raptors', full: 'Toronto Raptors', a: 'TOR' }, a: { n: 'Lakers', full: 'Los Angeles Lakers', a: 'LAL' } }, v(100, 95)),
+        jugador2: p('Gignac más de 0.5 goles', ev, v(1, 0)),
         overFin: p('Over 2.5 goles', ev, v(1, 0, 'post')),
         underPasa: p('Under 2.5 goles', ev, v(2, 1)),
         spreadFin: p('Chiefs -3.5', nfl, v(17, 24, 'post')),
@@ -58,6 +63,11 @@ test.describe('Cuentas', () => {
     expect(r.remates).toContain('¡Ganaste!');
     expect(r.jugador).toBeNull();
     expect(r.mlFin).toBe('Perdiste · 1-2');
+    expect(r.equipoOver).toBe('1 de 2 goles');
+    expect(r.equipoGana).toBe('¡Ganaste! · 2 goles');
+    expect(r.equipoUnder).toBe('Perdiste · van 2 goles');
+    expect(r.equipoNba).toBe('95 de 111 puntos');
+    expect(r.jugador2).toBeNull();
     expect(r.overFin).toBe('Perdiste · quedó en 1 gol');
     expect(r.underPasa).toBe('Perdiste · van 3 goles');
     expect(r.spreadFin).toBe('¡Ganaste! · cubrió (24-17)');
@@ -94,6 +104,7 @@ test.describe('Calificar solo', () => {
         parlayGana: res(parlay([['Tigres ML', 'e1'], ['Ambos equipos marcan: No', 'e1']])),
         parlayFalta: res(parlay([['Tigres ML', 'e1'], ['Pumas ML', null]])),
         tiempoAuto: res(pick('Toluca gana 2do tiempo', 'e7')),
+        equipoAuto: res(pick('Toluca más de 1.5 goles', 'e6')),
       };
     });
     expect(r.mlGana).toBe('Ganada');
@@ -108,6 +119,7 @@ test.describe('Calificar solo', () => {
     expect(r.parlayGana).toBe('Ganada');
     expect(r.parlayFalta).toBe('patas');
     expect(r.tiempoAuto).toBe('Ganada');
+    expect(r.equipoAuto).toBe('Ganada');
   });
 });
 
