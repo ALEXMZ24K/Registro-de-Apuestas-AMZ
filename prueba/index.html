@@ -1176,6 +1176,13 @@ function App() {
   const [bankrollsUser,setBankrollsUser] = useState({});
   const [iniciosUser,setIniciosUser] = useState({});
   const [noMetidas,setNoMetidas] = useState({});
+  // "La metí": cambios que todavía no se guardan (se guardan juntos cuando dejas de tocar)
+  const metPend = useRef({}), metTimer = useRef(null), metFijar = useRef(0);
+  const metGuardar = useRef(null);
+  useEffect(()=>{ const f=()=>{ if(document.visibilityState==="hidden" && metGuardar.current){ clearTimeout(metTimer.current); metGuardar.current(); } };
+    document.addEventListener("visibilitychange",f); window.addEventListener("pagehide",f);
+    return ()=>{ document.removeEventListener("visibilitychange",f); window.removeEventListener("pagehide",f); }; },[]);
+  const conPendientes = srv => { const m={...srv}; Object.keys(metPend.current).forEach(id=>{ if(metPend.current[id]) m[id]=true; else delete m[id]; }); return m; };
   const [avisoGan,setAvisoGan] = useState(null);
   const avisoTimer = useRef(null);
   const [bankModal,setBankModal] = useState(false);
@@ -1278,7 +1285,7 @@ function App() {
     const unsub = db.collection("usuarios").doc(user.uid).onSnapshot(snap=>{
       setBankrollsUser(snap.exists?(snap.data().bankrolls||{}):{});
       setIniciosUser(snap.exists?(snap.data().inicios||{}):{});
-      setNoMetidas(snap.exists?(snap.data().noMetidas||{}):{});
+      setNoMetidas(conPendientes(snap.exists?(snap.data().noMetidas||{}):{}));
     });
     return ()=>unsub();
   },[usaBankPropio,user&&user.uid]);
@@ -1315,24 +1322,33 @@ function App() {
   const cuentaAnual = a => !usaBankPropio || (bankReal(a)>0 && cuentaAp(a) && !noMet(a));
   const toggleMetida = (a, el) => {
     if(!usaBankPropio) return;
-    // Cambia en pantalla al instante (Firebase lo confirma después)
-    setNoMetidas(prev=>{ const n={...prev}; if(n[a.id]) delete n[a.id]; else n[a.id]=true; return n; });
+    // Cambia en pantalla al instante; se guarda en Firebase cuando dejas de tocar (así no brinca si tocas muchas veces)
+    const id = String(a.id);
+    const nuevo = !(id in metPend.current ? metPend.current[id] : !!noMetidas[a.id]);
+    metPend.current[id] = nuevo;
+    setNoMetidas(prev=>{ const n={...prev}; if(nuevo) n[id]=true; else delete n[id]; return n; });
+    clearTimeout(metTimer.current);
+    metGuardar.current = ()=>{ metGuardar.current = null;
+      const pend = {...metPend.current}, ids = Object.keys(pend); if(!ids.length) return;
+      const ref = db.collection("usuarios").doc(user.uid), upd = {}, solo = {};
+      ids.forEach(k=>{ upd["noMetidas."+k] = pend[k] ? true : firebase.firestore.FieldValue.delete(); if(pend[k]) solo[k]=true; });
+      ref.update(upd).catch(()=>ref.set({noMetidas:solo},{merge:true}).catch(()=>{})).finally(()=>{ ids.forEach(k=>{ if(metPend.current[k]===pend[k]) delete metPend.current[k]; }); });
+    };
+    metTimer.current = setTimeout(()=>metGuardar.current && metGuardar.current(), 700);
     // Mantener quieto el pick en pantalla aunque cambie lo de arriba (p. ej. la línea "Sin contar…")
     if(el){
+      cancelAnimationFrame(metFijar.current); // un solo ajuste a la vez aunque toques muchas veces
       const top0 = el.getBoundingClientRect().top, t0 = performance.now();
-      const fijar = () => { const d = el.getBoundingClientRect().top - top0; if(Math.abs(d)>0.5) window.scrollBy(0,d); if(performance.now()-t0<450) requestAnimationFrame(fijar); };
-      requestAnimationFrame(fijar);
+      const fijar = () => { const d = el.getBoundingClientRect().top - top0; if(Math.abs(d)>0.5) window.scrollBy(0,d); if(performance.now()-t0<450) metFijar.current=requestAnimationFrame(fijar); };
+      metFijar.current = requestAnimationFrame(fijar);
     }
     // Aviso abajo con la ganancia del mes subiendo/bajando en vivo
     const mismoMes = (()=>{ const {y,m}=parseFecha(a.fecha); return y===anoSeleccionado&&m===mesSeleccionado; })();
     if(mismoMes){
-      setAvisoGan({k:Date.now(), de: ocultar?stats.pct:stats.neto});
+      setAvisoGan(prev=>prev || {k:Date.now(), de: ocultar?stats.pct:stats.neto}); // si ya está visible, solo se actualiza el número
       clearTimeout(avisoTimer.current);
       avisoTimer.current = setTimeout(()=>setAvisoGan(null),3200);
     }
-    const ref = db.collection("usuarios").doc(user.uid);
-    if(noMetidas[a.id]) ref.update({["noMetidas."+a.id]: firebase.firestore.FieldValue.delete()}).catch(()=>{});
-    else ref.set({noMetidas:{[a.id]:true}},{merge:true}).catch(()=>{});
   };
   const fmtDia = iso => { const {m,d}=parseFecha(iso); return d+" "+MESES_CORTO[m].toLowerCase(); };
   const hoyISO = new Date().toLocaleDateString("en-CA");
