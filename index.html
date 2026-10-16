@@ -577,7 +577,7 @@ function Desplegable({abierto, contenido}) {
   return html`<div ref=${ref}>${contenido()}</div>`;
 }
 
-function ARbase({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,vivoPatas,estadoVivo,admin}) {
+function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,vivoPatas,estadoVivo,admin}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
   const show = open||expanded;
@@ -685,6 +685,7 @@ function ARbase({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMe
           </div>
         </div>
       `}
+      ${admin && html`<button onClick=${e=>{e.stopPropagation(); onShare&&onShare();}} style=${{...S.actBtn,width:"100%",minHeight:42,marginBottom:editable?10:0}}><${IcoT} k="share" s=${16}/>Compartir pick</button>`}
       ${editable && html`<div style=${{display:"flex",flexDirection:"column",gap:10}}>
         <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
           ${["Ganada","Perdida","Pendiente","Nula"].map(r=>html`<button key=${r} onClick=${()=>onToggle(r)}
@@ -894,6 +895,117 @@ const TUTORIAL = [
   {ic:"dot", t:"Colores y calendario", d:"Verde es ganado, rojo perdido y gris pendiente. En el calendario cada día se pinta según cómo te fue; tócalo para ver sus picks."},
   {ic:"bell", t:"No te pierdas un pick", d:"En Más → Notificaciones activas los avisos para que te llegue cada pick nuevo al celular."},
 ];
+
+// ── Imagen para compartir UN pick (historia 1080×1920 o cuadrada 1080×1350) ──
+const cargarImg = (src, cors) => new Promise(ok=>{ if(!src) return ok(null); const i=new Image(); if(cors) i.crossOrigin="anonymous";
+  const t=setTimeout(()=>ok(null),2500); i.onload=()=>{ clearTimeout(t); ok(i); }; i.onerror=()=>{ clearTimeout(t); ok(null); }; i.src=src; });
+const icoImg = (k, color) => cargarImg("data:image/svg+xml;charset=utf-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONOS[k]||""}</svg>`));
+async function dibujarPick(o){
+  const hist = o.formato==="historia";
+  const W=1080, H=hist?1920:1350, P=90;
+  const c=document.createElement("canvas"); c.width=W; c.height=H;
+  const x=c.getContext("2d");
+  const F=(w,s)=>`${w} ${s}px 'DM Sans','Helvetica Neue',Arial,sans-serif`;
+  const G="#2fe0a0", R="#ff5d7a", MU="#8b8f99";
+  const [logo, ico, lh, la] = await Promise.all([cargarImg("icon2-512.png"), icoImg(o.ico,MU), o.eq?cargarImg(o.eq[0].l,true):null, o.eq?cargarImg(o.eq[1].l,true):null]);
+  // Fondo
+  const g=x.createRadialGradient(W/2,0,0,W/2,0,H*0.9); g.addColorStop(0,"#171b24"); g.addColorStop(.55,"#050506"); g.addColorStop(1,"#000");
+  x.fillStyle=g; x.fillRect(0,0,W,H); x.textBaseline="alphabetic";
+  // Encabezado: logo, marca y fecha
+  if(logo){ x.save(); rr(x,P,P,130,130,32); x.clip(); x.drawImage(logo,P,P,130,130); x.restore(); }
+  x.textAlign="left"; x.fillStyle="#fff"; x.font=F(900,56); x.fillText("ALEXPICKS",P+160,P+70);
+  x.fillStyle=MU; x.font=F(500,36); x.fillText(o.fechaTxt,P+160,P+118);
+  // Contenido centrado
+  const bloques=[]; // [alto, dibujar(y)]
+  const pill=(txt,bg,fg)=>[80,y=>{ x.font=F(900,32); const w=x.measureText(txt).width+80; x.fillStyle=bg; rr(x,(W-w)/2,y,w,70,35); x.fill(); x.fillStyle=fg; x.textAlign="center"; x.fillText(txt.split("").join(String.fromCharCode(8202)),W/2,y+47); }];
+  const tag = o.res==="Ganada"?["GANADO",G,"#000"]:o.res==="Perdida"?["PERDIDO",R,"#000"]:o.res==="Nula"?["NULO","#f5c842","#000"]:[o.hoy?"PICK DEL DÍA":"PICK","#fff","#000"];
+  bloques.push(pill(...tag));
+  bloques.push([70,y=>{ x.font=F(600,38); const t=o.liga; const w=x.measureText(t).width; const sx=(W-w-62)/2; if(ico) x.drawImage(ico,sx,y+4,46,46); x.fillStyle=MU; x.textAlign="left"; x.fillText(t,sx+62,y+42); }]);
+  if(o.eq){
+    bloques.push([290,y=>{ const cx=[W/2-230,W/2+230], rad=88;
+      o.eq.forEach((e,i)=>{ const img=i?la:lh, X=cx[i], Y=y+rad+10;
+        x.beginPath(); x.arc(X,Y,rad,0,Math.PI*2); x.fillStyle=img?"rgba(255,255,255,.06)":(e.c||"#2a2c31"); x.fill();
+        x.lineWidth=4; x.strokeStyle="rgba(255,255,255,.14)"; x.stroke();
+        if(img){ const s=rad*1.35; x.drawImage(img,X-s/2,Y-s/2,s,s); }
+        else { x.fillStyle="#fff"; x.font=F(900,50); x.textAlign="center"; x.fillText(String(e.a||e.n||"?").slice(0,3).toUpperCase(),X,Y+18); }
+        x.fillStyle="#c9ccd3"; x.font=F(500,40); x.textAlign="center"; x.fillText(e.n||"",X,Y+rad+62); });
+      x.fillStyle="#55585f"; x.font=F(700,56); x.textAlign="center"; x.fillText(o.sep,W/2,y+rad+30); }]);
+  } else if(o.partido){
+    bloques.push([70,y=>{ x.fillStyle="#c9ccd3"; x.font=F(500,42); x.textAlign="center"; x.fillText(o.partido,W/2,y+46); }]);
+  }
+  // El pick en grande (hasta 2 líneas, se achica si no cabe)
+  const lineas=(t,f,max)=>{ x.font=f; const ps=String(t).split(" "), out=[]; let l=""; ps.forEach(p=>{ const n=l?l+" "+p:p; if(x.measureText(n).width>max&&l){ out.push(l); l=p; } else l=n; }); if(l) out.push(l); return out; };
+  let tam=118, ls; do { ls=lineas(o.pick,F(900,tam),W-2*P); if(ls.length<=2) break; tam-=8; } while(tam>60);
+  ls=ls.slice(0,3);
+  bloques.push([ls.length*tam*1.08+20,y=>{ x.fillStyle="#fff"; x.font=F(900,tam); x.textAlign="center"; ls.forEach((l,i)=>x.fillText(l,W/2,y+tam*(i+0.92)*1.08)); }]);
+  if(o.legs && o.legs.length){
+    const lg=o.legs.slice(0,6);
+    bloques.push([lg.length*62+10,y=>{ x.textAlign="left"; lg.forEach((p,i)=>{ const Y=y+i*62+44; const m=p.res==="G"?"✓":p.res==="P"?"✕":"•";
+      x.font=F(800,40); x.fillStyle=p.res==="G"?G:p.res==="P"?R:MU; x.fillText(m,P+20,Y);
+      x.font=F(500,40); x.fillStyle="#dfe2e8"; let t=p.desc; while(x.measureText(t).width>W-2*P-90&&t.length>4) t=t.slice(0,-2); if(t!==p.desc) t=t.trim()+"…"; x.fillText(t,P+80,Y); }); }]);
+  }
+  if(o.final) bloques.push([130,y=>{ x.textAlign="center"; x.fillStyle=MU; x.font=F(500,34); x.fillText(o.finalLbl||"Final",W/2,y+36); x.fillStyle="#fff"; x.font=F(900,76); x.fillText(o.final,W/2,y+116); }]);
+  bloques.push([170,y=>{ const cs=o.datos, gap=22, bw=(W-2*P-gap*(cs.length-1))/cs.length;
+    cs.forEach(([l,v,col],i)=>{ const X=P+i*(bw+gap); x.fillStyle="#141518"; rr(x,X,y,bw,150,30); x.fill(); x.lineWidth=2; x.strokeStyle="#232529"; x.stroke();
+      x.textAlign="center"; x.fillStyle=MU; x.font=F(500,32); x.fillText(l,X+bw/2,y+52);
+      x.fillStyle=col||"#fff"; let s=50; x.font=F(800,s); while(x.measureText(v).width>bw-24&&s>28){ x.font=F(800,s-=4); } x.fillText(v,X+bw/2,y+116); }); }]);
+  const gapB = hist?44:30, alto=bloques.reduce((t,b)=>t+b[0],0)+gapB*(bloques.length-1);
+  // Si no cabe (p. ej. cuadrada con marcador final y nombre largo), todo el contenido se achica parejo
+  const top=P+170, bottom=H-P-80, esp=bottom-top, k=Math.min(1, esp/alto);
+  x.save(); x.translate(W/2, top+Math.max(0,(esp-alto*k)/2)); x.scale(k,k); x.translate(-W/2, 0);
+  let y=0; bloques.forEach(([h,f])=>{ f(y); y+=h+gapB; });
+  x.restore();
+  // Firma
+  x.textAlign="center"; x.font=F(500,34); const f1="Sigue mis picks · ", f2="AlexPicks"; const w1=x.measureText(f1).width; x.font=F(800,34); const w2=x.measureText(f2).width;
+  const sx=(W-w1-w2)/2; x.textAlign="left"; x.font=F(500,34); x.fillStyle="#6e727c"; x.fillText(f1,sx,H-P); x.font=F(800,34); x.fillStyle="#fff"; x.fillText(f2,sx+w1,H-P);
+  return c;
+}
+// Hoja para compartir un pick: vista previa, formato y botón para mandarla
+function CompartirPick({a, onClose}) {
+  const [formato,setFormato] = useState(()=>{ try{ return localStorage.getItem("fmtPick")||"historia"; }catch(e){ return "historia"; } });
+  const [img,setImg] = useState(null), [listo,setListo] = useState(false); const archivo = useRef(null);
+  useEffect(()=>{ let vivo=true; setImg(null); setListo(false); archivo.current=null; // el archivo del formato anterior ya no sirve
+    const combo = esCombo(a), patas = combo ? patasDe(a) : [], sp = combo ? null : separarPick(a), ev = !combo && a.evento && a.evento.id ? a.evento : null;
+    const f = parseFecha(a.fecha), d = new Date(f.y,f.m,f.d), hoy = new Date();
+    const fechaTxt = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][d.getDay()]+" "+f.d+" de "+MESES[f.m].toLowerCase();
+    const dec = momioToDec(a.cuota)||1, pct = Number(a.monto||0);
+    const res = a.resultado==="Pendiente" ? null : a.resultado;
+    let fin = ev && ev.fin && ev.fin.hs!=="" ? (()=>{ const [l,r]=lados(ev,null); return l.s+" – "+r.s; })() : null, finalLbl = "Final";
+    const datos = !res ? [["Momio",fmtMomio(a.cuota)],["Apuesta",(pct%1?pct.toFixed(1):pct)+"% del bank"],...(ev&&ev.t?[["Hora",horaLocal(ev.t)]]:[])]
+      : [["Momio",fmtMomio(a.cuota)],[res==="Ganada"?"Ganancia":res==="Perdida"?"Resultado":"Resultado", res==="Ganada"?"+"+(pct*(dec-1)).toFixed(1)+"%":res==="Perdida"?"-"+pct+"%":"0%", res==="Ganada"?"#2fe0a0":res==="Perdida"?"#ff5d7a":"#f5c842"]];
+    const o = { formato, fechaTxt, hoy: f.y===hoy.getFullYear()&&f.m===hoy.getMonth()&&f.d===hoy.getDate(),
+      ico: combo?(a.tipo==="Freebet"?"gift":"parlay"):icoDep(a.deporte),
+      liga: combo ? (a.tipo==="Freebet"?"Freebet":"Parlay")+" · "+patas.length+" picks" : ((ev&&ev.liga)?ev.liga+" · ":"")+(a.deporte||""),
+      eq: ev ? lados(ev,null) : null, sep: ev ? (esFut(ev.k)?"vs":"@") : "", partido: !ev && sp ? sp.partido : "",
+      pick: combo ? (a.tipo==="Freebet"?"Freebet":"Parlay")+" "+fmtMomio(a.cuota) : sp.pick, legs: combo ? patas : null,
+      res, final: fin, datos };
+    // Picks de cuarto / mitad / tiempo / 5 entradas: se muestra el marcador de ESE tramo (se pide a ESPN por el Worker)
+    const tr = res && ev && sp ? tramoPick(" "+normTxt(a.descripcion||sp.pick)+" ", ev) : null;
+    const tramo = !tr ? Promise.resolve() : Promise.race([
+      fetch(IA_URL+"/marcador?q="+encodeURIComponent(ev.k+"~"+ev.f+"~"+ev.id)).then(r=>r.json()).then(d=>{ const v=d&&d.ev&&d.ev[ev.id];
+        if(!v||!Array.isArray(v.hl)||!Array.isArray(v.al)) return;
+        const suma = arr => tr.per.reduce((t,p)=>t+(Number(arr[p-1])||0),0), ph=suma(v.hl), pa=suma(v.al);
+        o.final = esFut(ev.k) ? ph+" – "+pa : pa+" – "+ph; o.finalLbl = tr.label.charAt(0).toUpperCase()+tr.label.slice(1); }).catch(()=>{}),
+      new Promise(ok=>setTimeout(ok,3500)) ]);
+    o.finalLbl = finalLbl;
+    tramo.then(()=>dibujarPick(o)).then(cv=>{ if(!vivo) return; setImg(cv.toDataURL("image/png"));
+      cv.toBlob(b=>{ if(b&&vivo){ archivo.current=new File([b],"alexpicks-pick-"+formato+".png",{type:"image/png"}); setListo(true); } },"image/png"); });
+    return ()=>{ vivo=false; };
+  },[a,formato]);
+  const cambiar = v => { setFormato(v); try{ localStorage.setItem("fmtPick",v); }catch(e){} };
+  const mandar = () => { const f=archivo.current;
+    if(f && navigator.canShare && navigator.canShare({files:[f]})) navigator.share({files:[f],title:"Pick de AlexPicks"}).catch(()=>{});
+    else if(img){ const l=document.createElement("a"); l.href=img; l.download="alexpicks-pick.png"; document.body.appendChild(l); l.click(); l.remove(); } };
+  const seg = (v,t) => html`<button key=${v} onClick=${()=>cambiar(v)} style=${{flex:1,minHeight:40,borderRadius:10,border:"none",background:formato===v?"var(--card)":"transparent",color:formato===v?"#fff":"var(--mu)",fontWeight:700,fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>${t}</button>`;
+  return html`<${Hoja} onClose=${onClose} maxW=${480}>
+    <b style=${{fontSize:19,color:"#fff",display:"block",marginBottom:12}}>Compartir pick</b>
+    <div style=${{display:"flex",gap:4,background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:4,marginBottom:12}}>${seg("historia","Historia")}${seg("cuadrada","Cuadrada")}</div>
+    <div style=${{display:"flex",justifyContent:"center",alignItems:"center",minHeight:240,marginBottom:12}}>
+      ${img ? html`<img src=${img} alt="Vista previa" style=${{maxWidth:"100%",maxHeight:"52vh",borderRadius:14,border:"1px solid var(--br)"}}/>` : html`<span className="sk" style=${{width:formato==="historia"?180:240,height:formato==="historia"?320:300,borderRadius:14}}></span>`}
+    </div>
+    <button onClick=${mandar} disabled=${!listo} style=${{...S.btnPrimary,width:"100%",minHeight:52,fontSize:16,borderRadius:14,opacity:listo?1:.5}}><${IcoT} k="share" s=${18}/>${listo?"Compartir":"Preparando…"}</button>
+  </${Hoja}>`;
+}
 
 function Tutorial({onClose}) {
   useAtras(true, onClose);
@@ -1167,6 +1279,7 @@ function App() {
   const [mesSeleccionado,setMesSeleccionado] = useState(new Date().getMonth());
   const [anoSeleccionado,setAnoSeleccionado] = useState(new Date().getFullYear());
   const [deleteConfirm,setDeleteConfirm] = useState(null);
+  const [pickCompartir,setPickCompartir] = useState(null);
   // Lista de "Picks del mes" escondida o visible (se recuerda en este celular)
   const [picksOcultos,setPicksOcultos] = useState(()=>{ try{ return localStorage.getItem("picksOcultos")==="1"; }catch(e){ return false; } });
   const togglePicks = () => setPicksOcultos(v=>{ const n=!v; try{ localStorage.setItem("picksOcultos",n?"1":"0"); }catch(e){} return n; });
@@ -1645,7 +1758,7 @@ function App() {
 
   // Las acciones de la tarjeta pasan por esta referencia, así siempre usan los datos más nuevos aunque la tarjeta no se redibuje
   const acc = useRef({});
-  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} oc=${OCULTAR} md=${MOMIO_DEC} onEdit=${()=>acc.current.openModal(a)} onDelete=${()=>acc.current.setDeleteConfirm(a.id)} onToggle=${r=>acc.current.cambiarResultado(a.id,r)} onPata=${i=>acc.current.cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>acc.current.toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion} vivo=${vivoDe(a)} vivoPatas=${vivoPatas(a)} estadoVivo=${estadoVivo(a)} admin=${isAdmin}/>`;
+  const renderAR = (a,exp,q,sinFecha) => html`<${AR} key=${a.id} a=${a} q=${q} sinFecha=${sinFecha} oc=${OCULTAR} md=${MOMIO_DEC} onShare=${()=>acc.current.setPickCompartir(a)} onEdit=${()=>acc.current.openModal(a)} onDelete=${()=>acc.current.setDeleteConfirm(a.id)} onToggle=${r=>acc.current.cambiarResultado(a.id,r)} onPata=${i=>acc.current.cambiarPata(a.id,i)} puedeMeter=${usaBankPropio && cuentaAp(a)} metida=${!noMet(a)} onMetida=${el=>acc.current.toggleMetida(a,el)} g=${gananciaAp(a)} monto=${apMonto(a,bankDe)} expanded=${exp} editable=${modoEdicion} vivo=${vivoDe(a)} vivoPatas=${vivoPatas(a)} estadoVivo=${estadoVivo(a)} admin=${isAdmin}/>`;
   const porDia = lista => { const m=new Map(); lista.forEach(a=>{ if(!m.has(a.fecha)) m.set(a.fecha,[]); m.get(a.fecha).push(a); }); return [...m.entries()]; };
   const nombreDia = fe => { const f=parseFecha(fe), d=new Date(f.y,f.m,f.d), h=new Date(); h.setHours(0,0,0,0);
     const dif=Math.round((h-d)/864e5), base=f.d+" "+MESES_CORTO[f.m];
@@ -1845,7 +1958,7 @@ function App() {
     });
   };
 
-  acc.current = {openModal, setDeleteConfirm, cambiarResultado, cambiarPata, toggleMetida};
+  acc.current = {setPickCompartir, openModal, setDeleteConfirm, cambiarResultado, cambiarPata, toggleMetida};
   const prevMes = () => { if(mesSeleccionado===0){setMesSeleccionado(11);setAnoSeleccionado(y=>y-1);}else setMesSeleccionado(m=>m-1); };
   const nextMes = () => { if(mesSeleccionado===11){setMesSeleccionado(0);setAnoSeleccionado(y=>y+1);}else setMesSeleccionado(m=>m+1); };
 
@@ -2692,6 +2805,7 @@ function App() {
     </${Hoja}>`}
 
     <!-- Modal eliminar -->
+    ${pickCompartir && html`<${CompartirPick} a=${pickCompartir} onClose=${()=>setPickCompartir(null)}/>`}
     ${deleteConfirm && html`<${Hoja} onClose=${()=>setDeleteConfirm(null)} maxW=${480}>
         <div style=${S.modalHeader}>
           <h2 style=${{...S.modalTitle,color:"#ff5d7a"}}>Eliminar apuesta</h2>

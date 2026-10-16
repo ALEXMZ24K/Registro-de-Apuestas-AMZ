@@ -340,3 +340,42 @@ test.describe('La metí', () => {
     expect(errores).toEqual([]);
   });
 });
+
+test.describe('Compartir un pick', () => {
+  test('a un amigo no le sale el botón', async ({ page }) => {
+    await abrir(page, 'amigo');
+    await page.getByText('Rays ML').first().click();
+    await expect(page.getByText(/Apostado/i).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Compartir pick' })).toHaveCount(0);
+  });
+  test('arma la imagen en historia y cuadrada', async ({ page }, info) => {
+    const errores = await abrir(page);
+    await page.evaluate(async () => {
+      const h = new Date(); const f = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+      const ev = { id: 'x1', k: 'baseball/mlb', f: f.replace(/-/g, ''), t: new Date(h.getTime() + 3600e3).toISOString(), liga: 'MLB', h: { n: 'Dodgers', full: 'Los Angeles Dodgers', a: 'LAD', c: '#005a9c' }, a: { n: 'Brewers', full: 'Milwaukee Brewers', a: 'MIL', c: '#12284b' } };
+      await firebase.firestore().collection('apuestas').add({ id: 999001, fecha: f, deporte: 'Béisbol', tipo: 'Moneyline', descripcion: 'Dodgers ML', partido: 'Brewers @ Dodgers', monto: 2, cuota: -150, resultado: 'Pendiente', evento: ev });
+      await firebase.firestore().collection('apuestas').add({ id: 999002, fecha: f, deporte: 'Béisbol', tipo: 'Moneyline', descripcion: 'Dodgers ganan con carrera de diferencia o más', partido: 'Brewers @ Dodgers', monto: 2, cuota: 120, resultado: 'Ganada', evento: { ...ev, id: 'x2', fin: { hs: '5', as: '3' } } });
+    });
+    const n = info.project.name;
+    await page.getByText('Dodgers ML').first().click();
+    await page.getByRole('button', { name: 'Compartir pick' }).first().click();
+    const img = page.locator('img[alt="Vista previa"]');
+    await expect(img).toBeVisible({ timeout: 10000 });
+    await img.screenshot({ path: `capturas/${n}-pick-historia.png` });
+    await page.getByRole('button', { name: 'Cuadrada', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Compartir', exact: true })).toBeEnabled({ timeout: 10000 });
+    await expect(img).toBeVisible();
+    // La cuadrada debe ser 1080×1350, no la de historia
+    const tam = await img.evaluate(i => i.naturalWidth + 'x' + i.naturalHeight);
+    expect(tam).toBe('1080x1350');
+    await page.goto('/?prueba=1&rol=admin');
+    await expect(page.getByText(/GANANCIA DE|RESULTADO DE/).first()).toBeVisible({ timeout: 20000 });
+    await page.getByText('Dodgers ganan con carrera').first().click();
+    await page.getByRole('button', { name: 'Compartir pick' }).first().click();
+    await expect(page.getByRole('button', { name: 'Compartir', exact: true })).toBeEnabled({ timeout: 10000 });
+    await img.screenshot({ path: `capturas/${n}-pick-ganado-cuadrada.png` });
+    await img.screenshot({ path: `capturas/${n}-pick-cuadrada.png` });
+    // El partido inventado hace que la app pida el marcador al Worker desde el servidor del robot (Cloudflare lo bloquea ahí; en la app real no)
+    expect(errores.filter(e => !/access control|marcador/.test(e))).toEqual([]);
+  });
+});
