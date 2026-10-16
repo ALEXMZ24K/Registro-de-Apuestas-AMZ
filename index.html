@@ -521,25 +521,28 @@ const pistaPick = (a,ev,v,sinTramo) => {
     if(!Array.isArray(v.hl)||!Array.isArray(v.al)) return null;
     const per=Number(v.per)||0, cierre=/^(end|halftime|ht)\b|end of|final/i.test(String(v.det||""));
     const empezo = fin || per>=tr.per[0], listoT = fin || per>tr.hasta || (per===tr.hasta && cierre);
-    if(!empezo) return {txt:tr.label+" · todavía no empieza", ok:0};
+    if(!empezo) return {txt:tr.label+" · aún no empieza", ok:0};
     const suma = arr => tr.per.reduce((s,p)=>s+(Number(arr[p-1])||0),0), ph=suma(v.hl), pa=suma(v.al);
     const p = pistaPick({descripcion:t.replace(tr.quita," ")}, ev, {st:listoT?"post":"in", hs:ph, as:pa}, true);
     if(!p||p.stats) return null;
     const marc = tr.label+" "+(esFut(ev.k)?ph+"-"+pa:pa+"-"+ph);
     if((listoT||p.listo) && p.ok===1) return {...p, txt:"¡Ganaste! · "+marc, listo:1};
-    if(listoT && p.ok===-1) return {...p, txt:"Perdiste · "+marc};
+    if(p.ok===-1 && (listoT||/^Perdiste/.test(p.txt))) return {...p, txt:"Perdiste · "+marc};
+    if(listoT) return {...p, txt:"Empate · "+marc};
     return {...p, txt:marc+" · "+p.txt};
   }
   const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
   const hit=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t));
   const H=hit(ev.h), A=hit(ev.a), uno=H!==A;
   const un=esFut(ev.k)?"goles":String(ev.k).startsWith("baseball")?"carreras":"puntos";
+  const cu=(n,pl)=>n+" "+(n===1?({goles:"gol",carreras:"carrera",puntos:"punto","remates a puerta":"remate a puerta",remates:"remate","córners":"córner",tarjetas:"tarjeta"}[pl]||pl):pl);
+  const sc=esFut(ev.k)?hs+"-"+as:as+"-"+hs;
   // Ambos equipos anotan (Sí / No)
   if(/ambos\s+(equipos\s+)?(marcan|anotan)|\sbtts\s|both teams to score/.test(t) && !/tiempo|mitad|\s(1h|2h|half)\s/.test(t)){
     const no = /(marcan|anotan|btts|score)\s*:?\s*no(\s|$)/.test(t) || /\sno\s+(marcan|anotan)/.test(t);
     const falta = hs===0&&as===0 ? "Falta que anoten los dos" : "Falta que anote "+(hs===0?ev.h.n:ev.a.n);
-    if(!no) return hs>0&&as>0 ? {txt:"¡Ganaste! · los dos ya anotaron", ok:1, listo:1} : {txt:fin?"No anotaron los dos":falta, ok:fin?-1:0};
-    return hs>0&&as>0 ? {txt:"Ya anotaron los dos", ok:-1} : {txt:fin?"¡Ganaste!":"Va bien · "+(hs===0&&as===0?"nadie ha anotado":"solo anotó "+(hs>0?ev.h.n:ev.a.n)), ok:fin?1:0, listo:fin?1:0};
+    if(!no) return hs>0&&as>0 ? {txt:"¡Ganaste! · anotaron los dos", ok:1, listo:1} : {txt:fin?"Perdiste · no anotaron los dos":falta, ok:fin?-1:0};
+    return hs>0&&as>0 ? {txt:"Perdiste · anotaron los dos", ok:-1} : {txt:fin?"¡Ganaste! · no anotaron los dos":"Va bien · "+(hs===0&&as===0?"nadie ha anotado":"solo ha anotado "+(hs>0?ev.h.n:ev.a.n)), ok:fin?1:0, listo:fin?1:0};
   }
   // Estadísticas de equipo: remates / tiros a puerta, córners, tarjetas
   const stK = /(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/.test(t) ? ["shotsOnTarget","remates a puerta"]
@@ -556,8 +559,8 @@ const pistaPick = (a,ev,v,sinTramo) => {
     if(H&&!A) val=vh; else if(A&&!H) val=va; else if(!H&&!A){ let pre=t.slice(0,t.indexOf(lin[0])); ["total","partido","juego","del","el","vs","entre","ambos","equipos","mas de","menos de"].forEach(x=>{ pre=pre.split(x).join(" "); }); if(pre.replace(/[^a-z]/g,"").length>3) return null; val=vh+va; } else return null;
     if(isNaN(val)) return null;
     const under = /under|menos de|baja/.test(lin[1]||""), L = lin[2]!==undefined ? Number(lin[2]) : Number(lin[1])-0.5;
-    if(!under){ const nec=Math.floor(L)+1; return val>=nec ? {txt:"¡Ganaste! · "+val+" "+stK[1], ok:1, listo:1, prog:[val,nec], stats:1} : {txt:val+" de "+nec+" "+stK[1], ok:fin?-1:0, prog:[val,nec], stats:1}; }
-    const mx=Math.floor(L); return val>mx ? {txt:"Se pasó · "+val+" "+stK[1], ok:-1, stats:1} : {txt:val+" "+stK[1]+" · máximo "+mx, ok:fin?1:0, stats:1};
+    if(!under){ const nec=Math.floor(L)+1; return val>=nec ? {txt:"¡Ganaste! · "+cu(val,stK[1]), ok:1, listo:1, prog:[val,nec], stats:1} : {txt:fin?"Perdiste · quedó en "+cu(val,stK[1]):val+" de "+cu(nec,stK[1]), ok:fin?-1:0, prog:[val,nec], stats:1}; }
+    const mx=Math.floor(L); return val>mx ? {txt:"Perdiste · van "+cu(val,stK[1]), ok:-1, stats:1} : {txt:fin?"¡Ganaste! · quedó en "+cu(val,stK[1]):"Van "+cu(val,stK[1])+" · máximo "+mx, ok:fin?1:0, listo:fin?1:0, stats:1};
   }
   if(/tiempo|mitad|cuarto|entrada|inning|periodo|\s(1h|2h|1q|2q|3q|4q|half)\s|corner|tarjeta|remate|tiro|asistencia|rebote|yarda|ponche|hit|anota primero|primer/.test(t)) return null;
   const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt);
@@ -568,17 +571,17 @@ const pistaPick = (a,ev,v,sinTramo) => {
     if(pre.replace(/[^a-z0-9]/g,"")!=="" || (pos && !/^(goles?|puntos?|pts|carreras?|runs?|totales?|en total)(\s|$)/.test(pos))) return null; }
   if(ou && !uno){ const L=Number(ou[2]), tot=hs+as;
     if(/over|mas de|alta/.test(ou[1])){ const nec=Math.floor(L)+1;
-      return tot>=nec ? {txt:"¡Ganaste! · "+tot+" "+un, ok:1, listo:1, prog:[tot,nec]} : {txt:tot+" de "+nec+" "+un, ok:fin?-1:0, prog:[tot,nec]}; }
-    const mx=Math.floor(L); return tot>mx ? {txt:"Se pasó · "+tot+" "+un, ok:-1} : {txt:(fin?"Quedó en ":"Van ")+tot+" · máximo "+mx, ok:fin?1:0}; }
+      return tot>=nec ? {txt:"¡Ganaste! · "+cu(tot,un), ok:1, listo:1, prog:[tot,nec]} : {txt:fin?"Perdiste · quedó en "+cu(tot,un):tot+" de "+cu(nec,un), ok:fin?-1:0, prog:[tot,nec]}; }
+    const mx=Math.floor(L); return tot>mx ? {txt:"Perdiste · van "+cu(tot,un), ok:-1} : {txt:fin?"¡Ganaste! · quedó en "+cu(tot,un):"Van "+cu(tot,un)+" · máximo "+mx, ok:fin?1:0, listo:fin?1:0}; }
   if(!uno||ou) return null;
   const mio=H?hs:as, otro=H?as:hs;
   const sp=t.match(/\s([+-]\d+(?:\.\d+)?)\s/);
-  if(sp){ const m=mio-otro+Number(sp[1]); return {txt:m>0?(fin?"Cubrió":"Va cubriendo"):m<0?(fin?"No cubrió":"No cubre todavía"):"Justo en la línea", ok:m>0?1:m<0?(fin?-1:0):0}; }
+  if(sp){ const m=mio-otro+Number(sp[1]); return {txt:fin?(m>0?"¡Ganaste! · cubrió ("+sc+")":m<0?"Perdiste · no cubrió ("+sc+")":"Quedó justo en la línea ("+sc+")"):(m>0?"Va cubriendo":m<0?"No está cubriendo":"Justo en la línea"), ok:m>0?1:m<0?(fin?-1:0):0, listo:fin&&m>0?1:0}; }
   if(/\d/.test(t.replace(/\s(ml|moneyline)\s/g," "))) return null;
-  if(/empate|draw|doble/.test(t)) return mio>=otro ? {txt:fin?"Pegó":"Va bien", ok:1} : {txt:fin?"No pegó":"Va abajo", ok:fin?-1:0};
-  if(mio>otro) return {txt:fin?"Ganó":"Va arriba", ok:1};
-  if(mio<otro) return {txt:fin?"Perdió":"Va abajo", ok:fin?-1:0};
-  return {txt:fin?"Empate":"Va empatado", ok:fin&&esFut(ev.k)?-1:0};
+  if(/empate|draw|doble/.test(t)) return mio>=otro ? {txt:fin?"¡Ganaste! · "+sc:"Va bien", ok:1, listo:fin?1:0} : {txt:fin?"Perdiste · "+sc:"Va perdiendo", ok:fin?-1:0};
+  if(mio>otro) return {txt:fin?"¡Ganaste! · "+sc:"Va ganando", ok:1, listo:fin?1:0};
+  if(mio<otro) return {txt:fin?"Perdiste · "+sc:"Va perdiendo", ok:fin?-1:0};
+  return {txt:fin?(esFut(ev.k)?"Perdiste · empate "+sc:"Empate · "+sc):"Van empatados", ok:fin&&esFut(ev.k)?-1:0};
 };
 // Calificación automática: decide el resultado de un pick cuando su partido terminó, SOLO si la app lo entiende con seguridad.
 // No califica picks basados en estadísticas (remates, córners, tarjetas): ESPN puede contar distinto que la casa de apuestas.
@@ -684,11 +687,11 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
           <b style=${{whiteSpace:"nowrap",fontSize:13,color:"var(--mu2)",flexShrink:0}}>${fmtMomio(a.cuota)}</b>
         </div>
         ${enVivo && html`<${MarcadorVivo} ev=${ev} v=${vivo}/>`}
-        ${enVivo && pista && html`<div style=${{fontSize:pista.listo?13:12,fontWeight:pista.listo?800:400,color:pista.listo?"#2fe0a0":"var(--mu)",textAlign:"center",marginTop:7}}>${pista.txt}</div>`}
+        ${enVivo && pista && html`<div style=${{fontSize:pista.listo?13:12,fontWeight:pista.listo||/^Perdiste/.test(pista.txt)?800:400,color:pista.listo?"#2fe0a0":/^Perdiste/.test(pista.txt)?"#ff5d7a":"var(--mu)",textAlign:"center",marginTop:7}}>${pista.txt}</div>`}
         ${enVivo && pista && pista.prog && html`<div style=${{height:5,borderRadius:3,background:"var(--br2)",margin:"6px 18px 2px",overflow:"hidden"}}><div style=${{height:5,borderRadius:3,background:pista.listo?"#2fe0a0":"var(--mu2)",width:Math.min(100,pista.prog[0]/pista.prog[1]*100)+"%",transition:"width .4s, background .4s"}}></div></div>`}
         ${terminado && html`<div style=${{display:"flex",justifyContent:"space-between",gap:8,marginTop:8,paddingTop:8,borderTop:"1px solid var(--br)",fontSize:12,color:"var(--mu)"}}>
           <span style=${{display:"flex",alignItems:"center",gap:6}}><${Escudo} e=${lados(ev,vivo)[0]} s=${16}/><b style=${{color:"#fff"}}>${finTxt.replace("Final ","")}</b><${Escudo} e=${lados(ev,vivo)[1]} s=${16}/> Final</span>
-          <span>${pista?(pista.ok>0?"Parece ganada":pista.ok<0?"Parece perdida":pista.txt):(admin?"":"Esperando resultado")}</span>
+          <span>${pista?pista.txt:(admin?"":"Esperando resultado")}</span>
         </div>`}
         ${legsVivo.length>0 && html`<div style=${{marginTop:8}}>${legsVivo.map(({p,v},i)=>{ const [l,r]=lados(p.evento,v||null); const ps=v&&v.st!=="pre"?pistaPick({descripcion:p.desc},p.evento,v):null;
           const yaRes = p.res==="G"?"✓":p.res==="P"?"✕":"";
@@ -699,7 +702,7 @@ function AR({a,q,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida
                 : html`<span style=${{color:"var(--mu)",flexShrink:0}}>${v?estadoTxt(v):horaLocal(p.evento.t)}</span>`}
             </div>
             <div style=${{fontSize:11,color:"var(--mu)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${nombrePartido(p.evento)}${p.evento.liga?" · "+p.evento.liga:""}</div>
-            ${ps && html`<div style=${{fontSize:11,marginTop:3,color:ps.listo||(v.st==="post"&&ps.ok>0)?"#2fe0a0":v.st==="post"&&ps.ok<0?"#ff5d7a":"var(--mu)",fontWeight:ps.listo?700:400}}>${v.st==="post"&&!ps.listo?(ps.ok>0?"Parece ganada":ps.ok<0?"Parece perdida":ps.txt):ps.txt}</div>`}
+            ${ps && html`<div style=${{fontSize:11,marginTop:3,color:ps.listo?"#2fe0a0":/^Perdiste/.test(ps.txt)?"#ff5d7a":"var(--mu)",fontWeight:ps.listo||/^Perdiste/.test(ps.txt)?700:400}}>${ps.txt}</div>`}
           </div>`; })}</div>`}
         ${comboFin && !admin && html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:6}}>Esperando resultado</div>`}
         ${(terminado||comboFin) && admin && html`<div style=${{display:"flex",gap:8,marginTop:9}}>

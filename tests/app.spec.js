@@ -33,6 +33,10 @@ test.describe('Cuentas', () => {
         btts: p('Ambos equipos marcan: Sí', ev, v(0, 1)),
         remates: p('Tigres Más de 3.5 remates a puerta', ev, v(0, 0, 'in', { eh: { shotsOnTarget: '4' }, ea: {} })),
         jugador: p('Messi Over 0.5 goles', ev, v(1, 0)),
+        mlFin: p('Tigres ML', ev, v(1, 2, 'post')),
+        overFin: p('Over 2.5 goles', ev, v(1, 0, 'post')),
+        underPasa: p('Under 2.5 goles', ev, v(2, 1)),
+        spreadFin: p('Chiefs -3.5', nfl, v(17, 24, 'post')),
         cuartoVa: p('Knicks ganan 1 cuarto', nba, v(9, 12, 'in', { per: 1, det: '8:45 - 1st', hl: [9], al: [12] })),
         cuartoGana: p('Knicks 1er cuarto', nba, v(40, 50, 'in', { per: 2, det: '5:00 - 2nd', hl: [20, 20], al: [28, 22] })),
         cuartoNoEmpieza: p('Knicks 2do cuarto', nba, v(9, 12, 'in', { per: 1, det: '8:45 - 1st', hl: [9], al: [12] })),
@@ -46,16 +50,20 @@ test.describe('Cuentas', () => {
     expect(r.gan).toBe('1.429');
     expect(r.per).toBe(-2);
     expect(r.nula).toBe(0);
-    expect(r.ml).toBe('Va arriba');
+    expect(r.ml).toBe('Va ganando');
     expect(r.over).toBe('2 de 3 goles');
     expect(r.overGanado).toContain('¡Ganaste!');
-    expect(r.spread).toBe('No cubre todavía');
+    expect(r.spread).toBe('No está cubriendo');
     expect(r.btts).toBe('Falta que anote Tigres');
     expect(r.remates).toContain('¡Ganaste!');
     expect(r.jugador).toBeNull();
-    expect(r.cuartoVa).toBe('1er cuarto 12-9 · Va arriba');
+    expect(r.mlFin).toBe('Perdiste · 1-2');
+    expect(r.overFin).toBe('Perdiste · quedó en 1 gol');
+    expect(r.underPasa).toBe('Perdiste · van 3 goles');
+    expect(r.spreadFin).toBe('¡Ganaste! · cubrió (24-17)');
+    expect(r.cuartoVa).toBe('1er cuarto 12-9 · Va ganando');
     expect(r.cuartoGana).toBe('¡Ganaste! · 1er cuarto 28-20');
-    expect(r.cuartoNoEmpieza).toBe('2º cuarto · todavía no empieza');
+    expect(r.cuartoNoEmpieza).toBe('2º cuarto · aún no empieza');
     expect(r.cuartoSinDatos).toBeNull();
     expect(r.mitadOver).toBe('¡Ganaste! · 1ª mitad 45-60');
     expect(r.primerTiempo).toBe('¡Ganaste! · 1er tiempo 1-0');
