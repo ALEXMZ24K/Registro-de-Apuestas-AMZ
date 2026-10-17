@@ -1781,7 +1781,7 @@ function App() {
       const k=grupoDe(a,vista); const x=g.get(k)||{n:k,gan:0,per:0,neto:0,apostado:0,pct:0}; g.set(k,x);
       if(a.resultado==="Ganada") x.gan++; if(a.resultado==="Perdida") x.per++;
       x.neto += gananciaAp(a); x.pct += gPct(a); if(a.resultado!=="Nula") x.apostado += apMonto(a,bankDe); });
-    const arr=[...g.values()].map(x=>({...x, acierto: x.gan+x.per ? Math.round(x.gan/(x.gan+x.per)*100) : 0, roi: x.apostado ? x.neto/x.apostado*100 : 0}));
+    const arr=[...g.values()].filter(x=>x.gan+x.per>0).map(x=>({...x, acierto: x.gan+x.per ? Math.round(x.gan/(x.gan+x.per)*100) : 0, roi: x.apostado ? x.neto/x.apostado*100 : 0}));
     if(vista==="momio") arr.sort((a,b)=>ORDEN_MOMIO.indexOf(a.n)-ORDEN_MOMIO.indexOf(b.n)); else arr.sort((a,b)=>b.neto-a.neto);
     const conPicks = arr.filter(x=>x.gan+x.per>=3);
     const mejor = conPicks.length ? conPicks.reduce((m,x)=>x.neto>m.neto?x:m) : null;
