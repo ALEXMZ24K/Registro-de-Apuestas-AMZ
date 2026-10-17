@@ -1237,6 +1237,8 @@ function App() {
   useEffect(()=>{ aplicarTema(temaKey); },[temaKey]);
   const cuotaAm = v => momioDec ? decToAm(v) : Number(v);
   const [verTodasAno,setVerTodasAno] = useState(false);
+  // "Dónde ganas más" (solo admins): por liga / tipo / momio, del mes o del año
+  const [dgVista,setDgVista] = useState("liga"), [dgRango,setDgRango] = useState("mes");
   const [notisGuia,setNotisGuia] = useState(false);
   const [shareFmt,setShareFmt] = useState("historia");
   const [sharePesos,setSharePesos] = useState(true);
@@ -1346,6 +1348,7 @@ function App() {
   // Lista lista cuando ya llegó el mes de hoy y el que se está viendo
   useEffect(()=>{ if(cargando && meses[keyHoy] && meses[keySel]) setCargando(false); },[meses,keyHoy,keySel]);
   const mesCargando = !meses[keySel];
+  // Para ver "Dónde ganas más" del año completo hacen falta los picks completos (el resumen no trae liga ni tipo)
   const pedirAno = y => { const ks=[...Array(12)].map((_,i)=>claveMes(y,i)); setMesesExtra(prev=>[...new Set([...prev,...ks])]); };
 
   useEffect(()=>{
@@ -1369,6 +1372,7 @@ function App() {
   };
   const setMomioDec = dec => setPref("momio", dec?"decimal":"americano");
   const isAdmin = !!user && ADMIN_EMAILS.includes((user.email||"").toLowerCase());
+  useEffect(()=>{ if(isAdmin && vistaActual==="anual" && dgRango==="ano") pedirAno(anoSeleccionado); },[isAdmin,vistaActual,dgRango,anoSeleccionado]);
   // Admin: mantiene al día el resumen de cada mes que tiene cargado (Anual lo usa en todos los celulares)
   const filaRes = a => [a.id??null, a.fecha||"", a.deporte||"", a.resultado||"", Number(a.monto)||0, Number(a.cuota)||0];
   const firmaRes = l => JSON.stringify((l||[]).map(filaRes).sort((x,y)=>String(x[1]).localeCompare(String(y[1]))||String(x[0]).localeCompare(String(y[0]))));
@@ -1760,6 +1764,30 @@ function App() {
     });
   },[vivo]);
 
+  // Agrupa picks calificados y saca récord, acierto, ganancia y ROI de cada grupo
+  const grupoDe = (a, vista) => {
+    const combo = a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
+    if(vista==="liga") return combo ? (a.tipo==="Freebet"?"Freebets":"Parlays") : (a.evento&&a.evento.liga) || a.deporte || "Otros";
+    if(vista==="tipo"){ if(combo) return a.tipo==="Freebet"?"Freebet":"Parlay";
+      if(a.tipo==="Especial por jugador" || (a.evento && pareceJugador(a.descripcion,a.evento))) return "Jugador";
+      return {"Handicap/Spread":"Hándicap","Over/Under":"Over/Under","Moneyline":"Moneyline","PlayBoost":"PlayBoost"}[a.tipo] || a.tipo || "Otro"; }
+    const c=Number(a.cuota)||0;
+    return c<=-200?"Favorito fuerte · -200 o más":c<=-110?"Favorito · -199 a -110":c<110?"Parejo · -109 a +109":c<200?"Underdog · +110 a +199":"Underdog fuerte · +200 o más";
+  };
+  const ORDEN_MOMIO = ["Favorito fuerte · -200 o más","Favorito · -199 a -110","Parejo · -109 a +109","Underdog · +110 a +199","Underdog fuerte · +200 o más"];
+  const dondeGanas = (lista, vista) => {
+    const g = new Map();
+    lista.filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida"||a.resultado==="Nula").forEach(a=>{
+      const k=grupoDe(a,vista); const x=g.get(k)||{n:k,gan:0,per:0,neto:0,apostado:0,pct:0}; g.set(k,x);
+      if(a.resultado==="Ganada") x.gan++; if(a.resultado==="Perdida") x.per++;
+      x.neto += gananciaAp(a); x.pct += gPct(a); if(a.resultado!=="Nula") x.apostado += apMonto(a,bankDe); });
+    const arr=[...g.values()].filter(x=>x.gan+x.per>0).map(x=>({...x, acierto: x.gan+x.per ? Math.round(x.gan/(x.gan+x.per)*100) : 0, roi: x.apostado ? x.neto/x.apostado*100 : 0}));
+    if(vista==="momio") arr.sort((a,b)=>ORDEN_MOMIO.indexOf(a.n)-ORDEN_MOMIO.indexOf(b.n)); else arr.sort((a,b)=>b.neto-a.neto);
+    const conPicks = arr.filter(x=>x.gan+x.per>=3);
+    const mejor = conPicks.length ? conPicks.reduce((m,x)=>x.neto>m.neto?x:m) : null;
+    const peor = conPicks.length ? conPicks.reduce((m,x)=>x.neto<m.neto?x:m) : null;
+    return {arr, mejor: mejor&&mejor.neto>0?mejor:null, peor: peor&&peor.neto<0?peor:null};
+  };
   const gananciaAp = a => { const m=apMonto(a,bankDe); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
 
   // Las acciones de la tarjeta pasan por esta referencia, así siempre usan los datos más nuevos aunque la tarjeta no se redibuje
@@ -2413,6 +2441,31 @@ function App() {
             <b style=${{fontSize:15,color:(ocultar?d.pct:d.neto)>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${ocultar?fmtPct(d.pct):fmtSigno(d.neto)}</b>
           </div>`)}
         </div>`}
+        ${isAdmin && (()=>{ const lista = dgRango==="mes" ? apuestasMes : apuestas.filter(a=>!a._lite && parseFecha(a.fecha).y===anoSeleccionado).filter(cuentaAnual);
+          const {arr,mejor,peor} = dondeGanas(lista, dgVista), mx = Math.max(1,...arr.map(x=>Math.abs(ocultar?x.pct:x.neto)));
+          const din = x => ocultar ? fmtPct(x.pct) : fmtSigno(x.neto), val = x => ocultar?x.pct:x.neto;
+          const seg = (op,v,set) => html`<div style=${{display:"flex",gap:4,background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:3,marginBottom:10}}>${op.map(([k,t])=>html`<button key=${k} onClick=${()=>set(k)} style=${{flex:1,minHeight:36,borderRadius:9,border:"none",background:v===k?"var(--card)":"transparent",color:v===k?"#fff":"var(--mu)",fontWeight:700,fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>${t}</button>`)}</div>`;
+          const tarjeta = (x,bien) => x && html`<div style=${{display:"flex",gap:12,alignItems:"center",background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:12,marginBottom:8}}>
+            <span style=${{width:30,height:30,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,background:bien?"#2fe0a022":"#ff5d7a22",color:bien?"#2fe0a0":"#ff5d7a"}}>${bien?"▲":"▼"}</span>
+            <div style=${{minWidth:0}}><div style=${{fontSize:11,color:"var(--mu)"}}>${bien?"Lo que mejor te funciona":"Lo que te está costando"}</div>
+              <b style=${{fontSize:14}}>${x.n} · ${din(x)} · ${bien?x.acierto+"% acierto":x.gan+" de "+(x.gan+x.per)}</b></div></div>`;
+          return html`<div style=${S.section}>
+            <h2 style=${S.secTitle}>Dónde ganas más</h2>
+            ${seg([["mes",MESES[mesSeleccionado]],["ano","Todo "+anoSeleccionado]],dgRango,setDgRango)}
+            ${!arr.length ? html`<div style=${{...S.empty,padding:"24px 0"}}>Todavía no hay picks calificados ${dgRango==="mes"?"este mes":"este año"}.</div>` : html`
+              ${tarjeta(mejor,true)}${tarjeta(peor,false)}
+              ${seg([["liga","Liga"],["tipo","Tipo"],["momio","Momio"]],dgVista,setDgVista)}
+              <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,overflow:"hidden"}}>
+                ${arr.map((x,i)=>{ const v=val(x), w=Math.abs(v)/mx*50, col=v>=0?"#2fe0a0":"#ff5d7a";
+                  return html`<div key=${x.n} style=${{padding:"11px 13px",borderTop:i?"1px solid var(--br)":"none"}}>
+                    <div style=${{display:"flex",justifyContent:"space-between",gap:10,fontSize:14}}><b style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${x.n}</b><b style=${{color:col,whiteSpace:"nowrap"}}>${din(x)}</b></div>
+                    <div style=${{position:"relative",height:6,marginTop:7,background:"var(--br)",borderRadius:3}}>
+                      <span style=${{position:"absolute",left:"50%",top:-2,bottom:-2,width:1,background:"var(--br2)"}}></span>
+                      <span style=${{position:"absolute",top:0,height:6,borderRadius:3,background:col,width:w+"%",left:v>=0?"50%":(50-w)+"%"}}></span></div>
+                    <div style=${{display:"flex",justifyContent:"space-between",fontSize:11.5,color:"var(--mu)",marginTop:5}}><span>${x.gan}-${x.per} · ${x.acierto}% acierto</span><span style=${{color:col}}>ROI ${x.roi>=0?"+":""}${x.roi.toFixed(1)}%</span></div>
+                  </div>`; })}
+              </div>`}
+          </div>`; })()}
         ${apuestasAno.length>0 && html`<div style=${S.section}>
           <button ref=${btnAno} onClick=${toggleAno} style=${{...S.row,justifyContent:"space-between"}}>
             <b style=${{fontSize:15}}>Todos los picks de ${anoSeleccionado} (${apuestasAno.length})</b>
