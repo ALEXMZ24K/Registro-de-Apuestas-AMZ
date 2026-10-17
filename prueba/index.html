@@ -230,7 +230,7 @@ async function pushSuscribir(tipos, perfil) {
   }
   const r2 = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos,perfil})});
   if(!r2.ok) throw new Error("SERV");
-  try{ localStorage.setItem("pushPerfil",JSON.stringify(perfil||{})); }catch(e){}
+  try{ localStorage.setItem("pushPerfil2",JSON.stringify(perfil||{})); }catch(e){}
   return true;
 }
 // Actualiza el perfil (bank, inicio, no metidas) de la suscripción existente, sin pedir permisos
@@ -239,7 +239,7 @@ async function pushActualizar(tipos, perfil) {
     if(!pushSoportado() || Notification.permission!=="granted") return;
     const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if(!sub) return;
     const r = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos,perfil})});
-    if(r.ok) localStorage.setItem("pushPerfil",JSON.stringify(perfil||{}));
+    if(r.ok) localStorage.setItem("pushPerfil2",JSON.stringify(perfil||{}));
   }catch(e){}
 }
 async function pushDesuscribir() {
@@ -1501,7 +1501,9 @@ function App() {
   const perfilPushTxt = JSON.stringify(perfilPush);
   useEffect(()=>{
     if(!pushOn) return;
-    let prev = ""; try{ prev = localStorage.getItem("pushPerfil")||""; }catch(e){}
+    // "pushPerfil2": se cambió el nombre para que TODOS los celulares vuelvan a mandar su bank una vez
+    // (algunos se suscribieron antes de que existieran los avisos con pesos y les llegaba el %)
+    let prev = ""; try{ prev = localStorage.getItem("pushPerfil2")||""; }catch(e){}
     if(prev===perfilPushTxt) return;
     const t = setTimeout(()=>pushActualizar(pushTipos, perfilPush), 1500);
     return ()=>clearTimeout(t);
