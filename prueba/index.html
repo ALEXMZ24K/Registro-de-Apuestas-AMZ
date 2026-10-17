@@ -1349,7 +1349,6 @@ function App() {
   useEffect(()=>{ if(cargando && meses[keyHoy] && meses[keySel]) setCargando(false); },[meses,keyHoy,keySel]);
   const mesCargando = !meses[keySel];
   // Para ver "Dónde ganas más" del año completo hacen falta los picks completos (el resumen no trae liga ni tipo)
-  useEffect(()=>{ if(isAdmin && vistaActual==="anual" && dgRango==="ano") pedirAno(anoSeleccionado); },[isAdmin,vistaActual,dgRango,anoSeleccionado]);
   const pedirAno = y => { const ks=[...Array(12)].map((_,i)=>claveMes(y,i)); setMesesExtra(prev=>[...new Set([...prev,...ks])]); };
 
   useEffect(()=>{
@@ -1373,6 +1372,7 @@ function App() {
   };
   const setMomioDec = dec => setPref("momio", dec?"decimal":"americano");
   const isAdmin = !!user && ADMIN_EMAILS.includes((user.email||"").toLowerCase());
+  useEffect(()=>{ if(isAdmin && vistaActual==="anual" && dgRango==="ano") pedirAno(anoSeleccionado); },[isAdmin,vistaActual,dgRango,anoSeleccionado]);
   // Admin: mantiene al día el resumen de cada mes que tiene cargado (Anual lo usa en todos los celulares)
   const filaRes = a => [a.id??null, a.fecha||"", a.deporte||"", a.resultado||"", Number(a.monto)||0, Number(a.cuota)||0];
   const firmaRes = l => JSON.stringify((l||[]).map(filaRes).sort((x,y)=>String(x[1]).localeCompare(String(y[1]))||String(x[0]).localeCompare(String(y[0]))));
