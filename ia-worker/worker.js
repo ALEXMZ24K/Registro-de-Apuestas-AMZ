@@ -241,21 +241,47 @@ async function scoreboard(k, fecha, ttl) {
   const d = await r.json().catch(() => null);
   return ((d && d.events) || []).map(evNorm);
 }
-// Marcador (y estadísticas) de una lista de partidos "liga~AAAAMMDD~id"
+// Estadísticas de cada JUGADOR (para picks de jugador), sacadas del detalle del partido de ESPN.
+// Regresa [{n:"Shohei Ohtani", s:{h:1,hr:0,...}}] con nombres cortos de estadística.
+const MAPA_JUG = {
+  batting: { hits: "h", runs: "r", RBIs: "rbi", homeRuns: "hr", walks: "bb", strikeouts: "so" },
+  pitching: { strikeouts: "k", hits: "ha", earnedRuns: "er" },
+  passing: { passingYards: "pay", passingTouchdowns: "patd", interceptions: "int", "completions/passingAttempts": "cmp" },
+  rushing: { rushingYards: "ruy", rushingTouchdowns: "rutd", rushingAttempts: "rua" },
+  receiving: { receptions: "rec", receivingYards: "rey", receivingTouchdowns: "retd" },
+  nba: { points: "pts", rebounds: "reb", assists: "ast", "threePointFieldGoalsMade-threePointFieldGoalsAttempted": "tres", steals: "stl", blocks: "blk" },
+};
+function jugadoresDe(d) {
+  const out = {};
+  const add = (n, k, v) => { const x = Number(String(v ?? "").split(/[-\/]/)[0]); if (!n || !k || isNaN(x)) return; (out[n] = out[n] || {})[k] = (out[n][k] || 0) + x; };
+  ((d && d.boxscore && d.boxscore.players) || []).forEach(t => (t.statistics || []).forEach(g => {
+    const mapa = MAPA_JUG[g.type] || MAPA_JUG[g.name] || (g.keys && g.keys.includes("points") ? MAPA_JUG.nba : null);
+    if (!mapa) return;
+    (g.athletes || []).forEach(a => { const n = a.athlete && a.athlete.displayName; (g.keys || []).forEach((k, i) => { if (mapa[k]) add(n, mapa[k], (a.stats || [])[i]); }); });
+  }));
+  // Fútbol: vienen en "rosters", con nombre de estadística
+  ((d && d.rosters) || []).forEach(t => (t.roster || []).forEach(p => { const n = p.athlete && p.athlete.displayName;
+    (Array.isArray(p.stats) ? p.stats : []).forEach(x => { const k = { shotsOnTarget: "sot", totalShots: "sh", totalGoals: "g" }[x && x.name]; if (k) add(n, k, x.value ?? x.displayValue); }); }));
+  return Object.keys(out).map(n => ({ n, s: out[n] }));
+}
+
+// Marcador (y estadísticas) de una lista de partidos "liga~AAAAMMDD~id" (con "~j" al final: también las de cada jugador)
 async function marcadores(lista) {
-  const pedidos = lista.map(x => x.split("~")).filter(x => x.length === 3 && LIGAS.some(l => l[0] === x[0])).slice(0, 30);
+  const pedidos = lista.map(x => x.split("~")).filter(x => x.length >= 3 && LIGAS.some(l => l[0] === x[0])).slice(0, 30);
+  const conJug = new Set(pedidos.filter(x => x[3] === "j").map(x => x[2]));
   const grupos = {};
-  pedidos.forEach(([k, f, id]) => { (grupos[k + "~" + f] = grupos[k + "~" + f] || []).push(id); });
+  pedidos.forEach(([k, f, id]) => { const g = k + "~" + f; grupos[g] = grupos[g] || []; if (!grupos[g].includes(id)) grupos[g].push(id); });
   const ev = {}, faltan = [];
   await Promise.all(Object.keys(grupos).map(async g => {
     const [k, f] = g.split("~");
     try { (await scoreboard(k, f.replace(/\D/g, "").slice(0, 8), 25)).forEach(e => { if (grupos[g].includes(e.id)) {
       ev[e.id] = { st: e.st, det: e.det, clk: e.clk, hs: e.h.s, as: e.a.s, t: e.t, eh: e.h.est, ea: e.a.est, per: e.per, hl: e.h.ls, al: e.a.ls };
       // Si el marcador no trae tiros a puerta, se piden al detalle del partido (solo fútbol en juego o terminado)
-      if (k.startsWith("soccer") && e.st !== "pre" && !("shotsOnTarget" in e.h.est)) faltan.push({ k, id: e.id, hid: e.h.id, aid: e.a.id });
+      const jug = conJug.has(e.id) && e.st !== "pre";
+      if (jug || (k.startsWith("soccer") && e.st !== "pre" && !("shotsOnTarget" in e.h.est))) faltan.push({ k, id: e.id, hid: e.h.id, aid: e.a.id, jug });
     } }); } catch {}
   }));
-  await Promise.all(faltan.slice(0, 6).map(async x => {
+  await Promise.all(faltan.slice(0, 10).map(async x => {
     try {
       const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${x.k}/summary?event=${x.id}`, { cf: { cacheTtl: 25, cacheEverything: true } });
       if (!r.ok) return;
@@ -265,6 +291,7 @@ async function marcadores(lista) {
       const h = de(x.hid) || (teams[0] && teams[0].homeAway === "home" ? estMapa(teams[0].statistics) : null);
       const a = de(x.aid) || (teams[1] && teams[1].homeAway === "away" ? estMapa(teams[1].statistics) : null);
       if (h) ev[x.id].eh = h; if (a) ev[x.id].ea = a;
+      if (x.jug) ev[x.id].j = jugadoresDe(d);
     } catch {}
   }));
   return ev;

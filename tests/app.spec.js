@@ -379,3 +379,29 @@ test.describe('Compartir un pick', () => {
     expect(errores.filter(e => !/access control|marcador/.test(e))).toEqual([]);
   });
 });
+
+test.describe('Picks de jugador', () => {
+  test('lee jugador, estadística y línea en los 4 deportes', async ({ page }) => {
+    await abrir(page);
+    const r = await page.evaluate(() => {
+      const v = j => ({ hs: '1', as: '0', st: 'in', j });
+      const P = (d, k, j) => { const x = pistaPick({ descripcion: d }, { k, h: { n: 'Local' }, a: { n: 'Visita' } }, v(j)); return x ? x.txt : null; };
+      return {
+        mlb: P('Shohei Ohtani más de 0.5 hits', 'baseball/mlb', [{ n: 'Shohei Ohtani', s: { h: 1 } }]),
+        so: P('Yamamoto over 6.5 strikeouts', 'baseball/mlb', [{ n: 'Yoshinobu Yamamoto', s: { k: 5 } }]),
+        nba: P('Brunson over 25.5 puntos', 'basketball/nba', [{ n: 'Jalen Brunson', s: { pts: 28 } }]),
+        nfl: P('Walker TD', 'football/nfl', [{ n: 'Kenneth Walker III', s: { rutd: 0 } }]),
+        fut: P('Guillermo Martínez más de 1.5 remates a puerta', 'soccer/mex.1', [{ n: 'Guillermo Martínez', s: { sot: 1 } }]),
+        dudoso: P('Smith más de 0.5 hits', 'baseball/mlb', [{ n: 'Will Smith', s: { h: 1 } }, { n: 'Joey Smith', s: { h: 0 } }]),
+        auto: resultadoAuto({ resultado: 'Pendiente', descripcion: 'Ohtani más de 0.5 hits', evento: { id: 'e', k: 'baseball/mlb', h: { n: 'Local' }, a: { n: 'Visita' } } }, { e: { st: 'post', hs: '1', as: '0', det: 'Final', j: [{ n: 'Shohei Ohtani', s: { h: 2 } }] } }),
+      };
+    });
+    expect(r.mlb).toBe('¡Ganaste! · Ohtani 1 hit');
+    expect(r.so).toBe('Yamamoto · 5 de 7 strikeouts');
+    expect(r.nba).toBe('¡Ganaste! · Brunson 28 puntos');
+    expect(r.nfl).toBe('Walker · 0 de 1 touchdown');
+    expect(r.fut).toBe('Martínez · 1 de 2 remates a puerta');
+    expect(r.dudoso).toBeNull();
+    expect(r.auto).toBeNull(); // los de jugador nunca se califican solos
+  });
+});

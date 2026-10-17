@@ -4,6 +4,81 @@
 const normTxt = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const esFut = k => String(k||"").startsWith("soccer");
 const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
+// ── Picks de JUGADOR (NBA, MLB, NFL y remates a puerta en fútbol) ──
+// v.j = [{n:"Shohei Ohtani", s:{h:1,...}}] lo manda el Worker cuando el partido tiene un pick de jugador.
+// Solo dicen cómo vas: NO se califican solos (ESPN puede contar distinto que la casa de apuestas).
+const sumaJ = (...ks) => s => ks.reduce((t,k)=>t+(Number(s[k])||0),0);
+const STATS_JUG = {
+  basketball: [
+    [/puntos?\s*\+\s*rebotes?\s*\+\s*asist|\spra\s|pts\s*\+\s*reb\s*\+\s*ast/, sumaJ("pts","reb","ast"), "pts+reb+ast"],
+    [/puntos?\s*\+\s*rebotes?|pts\s*\+\s*reb/, sumaJ("pts","reb"), "pts+reb"],
+    [/puntos?\s*\+\s*asist|pts\s*\+\s*ast/, sumaJ("pts","ast"), "pts+ast"],
+    [/rebotes?\s*\+\s*asist|reb\s*\+\s*ast/, sumaJ("reb","ast"), "reb+ast"],
+    [/triples?|tres puntos|\s3\s?pts?\s|three|3pm|\s3s\s/, sumaJ("tres"), "triples"],
+    [/rebotes?|rebounds?|\sreb\s/, sumaJ("reb"), "rebotes"],
+    [/asistencias?|assists?|\sast\s/, sumaJ("ast"), "asistencias"],
+    [/robos?|steals?/, sumaJ("stl"), "robos"],
+    [/tapones?|bloqueos?|blocks?/, sumaJ("blk"), "tapones"],
+    [/puntos?|points?|\spts\s/, sumaJ("pts"), "puntos"],
+  ],
+  baseball: [
+    [/home ?runs?|jonr[oó]n(es)?|jonron(es)?|cuadrangular(es)?|\shr\s/, sumaJ("hr"), "jonrones"],
+    [/impulsad|\srbis?\s|carreras? producidas/, sumaJ("rbi"), "impulsadas"],
+    [/carreras? anotadas?|runs? scored/, sumaJ("r"), "carreras"],
+    [/ponches?|strikeouts?|ponchad|\sks?\s|\sso\s/, s => ("k" in s ? Number(s.k) : Number(s.so)||0), "strikeouts"],
+    [/hits?|imparables?|indiscutibles?/, sumaJ("h"), "hits"],
+    [/bases? por bolas?|walks?/, sumaJ("bb"), "bases por bola"],
+  ],
+  football: [
+    [/yardas? (por|de) pase|yardas? aereas|passing yards|pass yds/, sumaJ("pay"), "yardas por pase"],
+    [/yardas? (por|de) tierra|yardas? terrestres|yardas? por carrera|rushing yards|rush yds/, sumaJ("ruy"), "yardas por tierra"],
+    [/yardas? (por|de) recepcion|receiving yards|rec yds/, sumaJ("rey"), "yardas por recepción"],
+    [/recepciones?|receptions?/, sumaJ("rec"), "recepciones"],
+    [/pases? (de )?(td|touchdown)|passing (td|touchdowns?)|(td|touchdown)s? (pass|de pase)/, sumaJ("patd"), "pases de TD"],
+    [/touchdowns?|\stds?\s|anota|anytime/, sumaJ("rutd","retd"), "touchdowns"],
+    [/yardas?|yards?/, s => Math.max(Number(s.pay)||0, (Number(s.ruy)||0)+(Number(s.rey)||0)), "yardas"],
+  ],
+  soccer: [
+    [/(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/, sumaJ("sot"), "remates a puerta"],
+  ],
+};
+const deporteK = k => String(k||"").split("/")[0];
+// ¿El pick parece de jugador? (para que la app le pida al Worker las estadísticas de jugadores de ese partido)
+const pareceJugador = (desc, ev) => {
+  if(!ev) return false; const lst = STATS_JUG[deporteK(ev.k)]; if(!lst) return false;
+  let t = " "+normTxt(desc||"")+" "; const st = lst.find(([re])=>re.test(t)); if(!st) return false;
+  [ev.h,ev.a].forEach(e=>{ if(e) [e.n,e.full,e.a].filter(x=>x&&x.length>=2).map(normTxt).forEach(n=>{ t=t.split(n).join(" "); }); });
+  lst.forEach(([re])=>{ t=t.replace(new RegExp(re.source,"g")," "); });
+  t = t.replace(/(over|under|mas de|menos de|alta|baja|total(es)?|del|de|el|la|los|en|partido|juego|equipo|vs|anota|conecta|hace|\d+(\.\d+)?\+?|[+\-.()])/g," ");
+  return t.split(/\s+/).some(w=>w.length>=3);
+};
+const pickJugador = (t, ev, v, fin) => {
+  if(!v || !Array.isArray(v.j) || !v.j.length) return null;
+  const lst = STATS_JUG[deporteK(ev.k)]; if(!lst) return null;
+  const st = lst.find(([re])=>re.test(t)); if(!st) return null;
+  // Encontrar al jugador: nombre completo, o apellido si solo hay uno con ese apellido en el partido
+  const limpia = n => normTxt(n).replace(/\s+(jr|sr|ii|iii|iv)\.?$/,"").trim();
+  const con = w => new RegExp("[^a-z0-9]"+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"[^a-z0-9]").test(t);
+  let jug = v.j.find(p=>con(limpia(p.n)));
+  if(!jug){ const ap = p => limpia(p.n).split(" ").pop(); const cand = v.j.filter(p=>ap(p).length>=3 && con(ap(p)));
+    if(cand.length===1) jug=cand[0]; else return null; }
+  // Línea: over/under N, "N+", o "anota"/"conecta un hit" (= más de 0.5)
+  const lin = t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/) || t.match(/\s(\d+)\s*\+/);
+  let under=false, nec, mx;
+  if(lin && lin[2]!==undefined){ under=/under|menos de|baja/.test(lin[1]); const L=Number(lin[2]); nec=Math.floor(L)+1; mx=Math.floor(L); }
+  else if(lin){ nec=Number(lin[1]); }
+  else if(/anota|anytime|conecta|hace un|al menos un/.test(t) || st[2]==="touchdowns") nec=1; // "Walker TD" = anota touchdown
+  else return null;
+  const SING = {hits:"hit",jonrones:"jonrón",impulsadas:"impulsada",carreras:"carrera",strikeouts:"strikeout","bases por bola":"base por bola",puntos:"punto",rebotes:"rebote",
+    asistencias:"asistencia",triples:"triple",robos:"robo",tapones:"tapón",recepciones:"recepción","pases de TD":"pase de TD",touchdowns:"touchdown","remates a puerta":"remate a puerta",
+    "yardas por pase":"yarda por pase","yardas por tierra":"yarda por tierra","yardas por recepción":"yarda por recepción",yardas:"yarda"};
+  const val = st[1](jug.s||{}), nombre = jug.n.split(" ").filter(w=>!/^(jr|sr|ii|iii|iv)\.?$/i.test(w)).slice(-1)[0] || jug.n;
+  const uu = n => n===1 ? (SING[st[2]]||st[2]) : st[2], u = uu(val);
+  if(!under) return val>=nec ? {txt:"¡Ganaste! · "+nombre+" "+val+" "+u, ok:1, listo:1, prog:[val,nec], stats:1, jug:1}
+    : {txt:fin ? "Perdiste · "+nombre+" quedó en "+val+" "+u : nombre+" · "+val+" de "+nec+" "+uu(nec), ok:fin?-1:0, prog:[val,nec], stats:1, jug:1};
+  return val>mx ? {txt:"Perdiste · "+nombre+" lleva "+val+" "+u, ok:-1, stats:1, jug:1}
+    : {txt:fin ? "¡Ganaste! · "+nombre+" quedó en "+val+" "+u : nombre+" · "+val+" "+u+" · máximo "+mx, ok:fin?1:0, listo:fin?1:0, stats:1, jug:1};
+};
 // Detecta picks de un tramo del partido: cuarto, mitad/tiempo, periodo o primeras 5 entradas
 const ORD = {primer:1,primero:1,primera:1,segundo:2,segunda:2,tercer:3,tercero:3,tercera:3,cuarto:4,cuarta:4};
 const tramoPick = (t, ev) => {
@@ -45,6 +120,8 @@ const pistaPick = (a,ev,v,sinTramo) => {
   const un=esFut(ev.k)?"goles":String(ev.k).startsWith("baseball")?"carreras":"puntos";
   const cu=(n,pl)=>n+" "+(n===1?({goles:"gol",carreras:"carrera",puntos:"punto","remates a puerta":"remate a puerta",remates:"remate","córners":"córner",tarjetas:"tarjeta"}[pl]||pl):pl);
   const sc=esFut(ev.k)?hs+"-"+as:as+"-"+hs;
+  // Picks de jugador (si el Worker mandó las estadísticas de jugadores de este partido)
+  const pj = pickJugador(t, ev, v, fin); if(pj) return pj;
   // Ambos equipos anotan (Sí / No)
   if(/ambos\s+(equipos\s+)?(marcan|anotan)|\sbtts\s|both teams to score/.test(t) && !/tiempo|mitad|\s(1h|2h|half)\s/.test(t)){
     const no = /(marcan|anotan|btts|score)\s*:?\s*no(\s|$)/.test(t) || /\sno\s+(marcan|anotan)/.test(t);
@@ -112,4 +189,4 @@ const resultadoAuto = (a, vivoMap) => {
   return cambio ? {patas} : null;
 };
 
-if (typeof globalThis !== "undefined") globalThis.Calif = { normTxt, esFut, esCombo, tramoPick, pistaPick, finalLimpio, resultadoAuto };
+if (typeof globalThis !== "undefined") globalThis.Calif = { normTxt, esFut, esCombo, tramoPick, pistaPick, finalLimpio, resultadoAuto, pareceJugador, pickJugador };
