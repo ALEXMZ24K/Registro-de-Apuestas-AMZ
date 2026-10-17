@@ -405,3 +405,26 @@ test.describe('Picks de jugador', () => {
     expect(r.auto).toBeNull(); // los de jugador nunca se califican solos
   });
 });
+
+test.describe('Dónde ganas más', () => {
+  test('el admin la ve en Anual y cambia entre liga, tipo y momio', async ({ page }, info) => {
+    const errores = await abrir(page);
+    await tab(page, 'Anual').click();
+    await expect(page.getByRole('heading', { name: 'Dónde ganas más' })).toBeVisible();
+    await page.getByRole('button', { name: 'Tipo', exact: true }).click();
+    await expect(page.getByText('Moneyline').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Momio', exact: true }).click();
+    await expect(page.getByText(/Favorito|Parejo|Underdog/).first()).toBeVisible();
+    await page.getByRole('button', { name: /^Todo \d{4}$/ }).click();
+    await page.waitForTimeout(800);
+    const sec = page.getByRole('heading', { name: 'Dónde ganas más' }).locator('xpath=..');
+    await sec.screenshot({ path: `capturas/${info.project.name}-donde.png` });
+    expect(errores).toEqual([]);
+  });
+  test('a un amigo no le sale', async ({ page }) => {
+    await abrir(page, 'amigo');
+    await tab(page, 'Anual').click();
+    await expect(page.getByText(/BALANCE \d{4}/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dónde ganas más' })).toHaveCount(0);
+  });
+});
