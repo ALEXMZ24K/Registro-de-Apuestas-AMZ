@@ -1704,8 +1704,12 @@ function App() {
 
   // Marcador en vivo: cada 30 s mientras la app está abierta, solo de picks pendientes con partido elegido
   const vigilar = useMemo(()=>{ const lim=isoLocal(new Date(Date.now()-3*864e5));
-    return [...new Set(apuestas.filter(a=>a.fecha>=lim).flatMap(a=>[a.evento,...(Array.isArray(a.patas)?a.patas:[]).map(p=>p&&typeof p==="object"?p.evento:null)])
-      .filter(e=>e&&e.id&&!e.fin).map(e=>e.k+"~"+e.f+"~"+e.id))].slice(0,30).join(","); },[apuestas]);
+    // "~j" al final = ese partido tiene un pick de jugador (el Worker manda también las estadísticas de jugadores)
+    const m = new Map();
+    apuestas.filter(a=>a.fecha>=lim).forEach(a=>{
+      [[a.evento,a.descripcion],...(Array.isArray(a.patas)?a.patas:[]).map(p=>p&&typeof p==="object"?[p.evento,p.desc]:[null])].forEach(([e,d])=>{
+        if(!e||!e.id||e.fin) return; const base=e.k+"~"+e.f+"~"+e.id; m.set(base, m.get(base) || pareceJugador(d,e)); }); });
+    return [...m.entries()].map(([b,j])=>j?b+"~j":b).slice(0,30).join(","); },[apuestas]);
   useEffect(()=>{
     if(!vigilar) return;
     let vivoOk=true;
