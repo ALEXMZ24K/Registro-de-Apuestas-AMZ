@@ -25,7 +25,7 @@ const STATS_JUG = {
     [/home ?runs?|jonr[oó]n(es)?|jonron(es)?|cuadrangular(es)?|\shr\s/, sumaJ("hr"), "jonrones"],
     [/impulsad|\srbis?\s|carreras? producidas/, sumaJ("rbi"), "impulsadas"],
     [/carreras? anotadas?|runs? scored/, sumaJ("r"), "carreras"],
-    [/ponches?|strikeouts?|ponchad|\sks?\s|\sso\s/, s => ("k" in s ? Number(s.k) : Number(s.so)||0), "ponches"],
+    [/ponches?|strikeouts?|ponchad|\sks?\s|\sso\s/, s => ("k" in s ? Number(s.k) : Number(s.so)||0), "strikeouts"],
     [/hits?|imparables?|indiscutibles?/, sumaJ("h"), "hits"],
     [/bases? por bolas?|walks?/, sumaJ("bb"), "bases por bola"],
   ],
@@ -34,7 +34,7 @@ const STATS_JUG = {
     [/yardas? (por|de) tierra|yardas? terrestres|yardas? por carrera|rushing yards|rush yds/, sumaJ("ruy"), "yardas por tierra"],
     [/yardas? (por|de) recepcion|receiving yards|rec yds/, sumaJ("rey"), "yardas por recepción"],
     [/recepciones?|receptions?/, sumaJ("rec"), "recepciones"],
-    [/pases? (de )?(td|touchdown)|passing (td|touchdowns?)/, sumaJ("patd"), "pases de TD"],
+    [/pases? (de )?(td|touchdown)|passing (td|touchdowns?)|(td|touchdown)s? (pass|de pase)/, sumaJ("patd"), "pases de TD"],
     [/touchdowns?|\stds?\s|anota|anytime/, sumaJ("rutd","retd"), "touchdowns"],
     [/yardas?|yards?/, s => Math.max(Number(s.pay)||0, (Number(s.ruy)||0)+(Number(s.rey)||0)), "yardas"],
   ],
@@ -67,9 +67,9 @@ const pickJugador = (t, ev, v, fin) => {
   let under=false, nec, mx;
   if(lin && lin[2]!==undefined){ under=/under|menos de|baja/.test(lin[1]); const L=Number(lin[2]); nec=Math.floor(L)+1; mx=Math.floor(L); }
   else if(lin){ nec=Number(lin[1]); }
-  else if(/anota|anytime|conecta|hace un|al menos un/.test(t)) nec=1;
+  else if(/anota|anytime|conecta|hace un|al menos un/.test(t) || st[2]==="touchdowns") nec=1; // "Walker TD" = anota touchdown
   else return null;
-  const SING = {hits:"hit",jonrones:"jonrón",impulsadas:"impulsada",carreras:"carrera",ponches:"ponche","bases por bola":"base por bola",puntos:"punto",rebotes:"rebote",
+  const SING = {hits:"hit",jonrones:"jonrón",impulsadas:"impulsada",carreras:"carrera",strikeouts:"strikeout","bases por bola":"base por bola",puntos:"punto",rebotes:"rebote",
     asistencias:"asistencia",triples:"triple",robos:"robo",tapones:"tapón",recepciones:"recepción","pases de TD":"pase de TD",touchdowns:"touchdown","remates a puerta":"remate a puerta",
     "yardas por pase":"yarda por pase","yardas por tierra":"yarda por tierra","yardas por recepción":"yarda por recepción",yardas:"yarda"};
   const val = st[1](jug.s||{}), nombre = jug.n.split(" ").filter(w=>!/^(jr|sr|ii|iii|iv)\.?$/i.test(w)).slice(-1)[0] || jug.n;
