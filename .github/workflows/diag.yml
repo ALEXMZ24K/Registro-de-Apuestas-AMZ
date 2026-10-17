@@ -1,0 +1,11 @@
+name: Muestra ESPN
+on: { push: { branches: [diag] } }
+permissions: { contents: write }
+jobs:
+  m:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 muestra.py
+          mkdir out && cp muestra.json out/ && cd out && git init -q && git checkout -q -b diag-resultados && git -c user.name=r -c user.email=r@x add -A && git -c user.name=r -c user.email=r@x commit -qm m && git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" diag-resultados
