@@ -42,11 +42,18 @@ const STATS_JUG = {
     [/(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/, sumaJ("sot"), "remates a puerta"],
   ],
 };
+// Apodos comunes -> nombre como lo trae ESPN (para reconocer "Chivas ML", "Rayados over 1.5", etc.)
+const APODOS = [["chivas","guadalajara"],["rebano","guadalajara"],["rayados","monterrey"],["la maquina","cruz azul"],["aguilas","america"],
+  ["tuzos","pachuca"],["diablos rojos","toluca"],["xolos","tijuana"],["zorros","atlas"],["gallos blancos","queretaro"],["gallos","queretaro"],
+  ["la fiera","leon"],["esmeraldas","leon"],["camoteros","puebla"],["franja","puebla"],["rayos","necaxa"],["bravos","juarez"],["guerreros","santos"],
+  ["felinos","tigres"],["auriazules","pumas"],["merengues","real madrid"],["blaugrana","barcelona"],["culers","barcelona"],
+  ["red devils","manchester united"],["citizens","manchester city"],["gunners","arsenal"]];
+const conApodos = (t, ev) => !ev || !esFut(ev.k) ? t : APODOS.reduce((x,[a,b])=>x.split(" "+a+" ").join(" "+b+" "), t);
 const deporteK = k => String(k||"").split("/")[0];
 // ¿El pick parece de jugador? (para que la app le pida al Worker las estadísticas de jugadores de ese partido)
 const pareceJugador = (desc, ev) => {
   if(!ev) return false; const lst = STATS_JUG[deporteK(ev.k)]; if(!lst) return false;
-  let t = " "+normTxt(desc||"")+" "; const st = lst.find(([re])=>re.test(t)); if(!st) return false;
+  let t = conApodos(" "+normTxt(desc||"")+" ", ev); const st = lst.find(([re])=>re.test(t)); if(!st) return false;
   [ev.h,ev.a].forEach(e=>{ if(e) [e.n,e.full,e.a].filter(x=>x&&x.length>=2).map(normTxt).forEach(n=>{ t=t.split(n).join(" "); }); });
   lst.forEach(([re])=>{ t=t.replace(new RegExp(re.source,"g")," "); });
   t = t.replace(/(over|under|mas de|menos de|alta|baja|total(es)?|del|de|el|la|los|en|partido|juego|equipo|vs|anota|conecta|hace|\d+(\.\d+)?\+?|[+\-.()])/g," ");
@@ -97,7 +104,7 @@ const tramoPick = (t, ev) => {
 };
 const pistaPick = (a,ev,v,sinTramo) => {
   if(!v||!ev) return null; const hs=Number(v.hs), as=Number(v.as); if(v.hs===""||v.as===""||isNaN(hs)||isNaN(as)) return null;
-  const t=" "+normTxt(a.descripcion||"")+" ", fin=v.st==="post";
+  const t=conApodos(" "+normTxt(a.descripcion||"")+" ", ev), fin=v.st==="post";
   // Picks de un cuarto / mitad / 5 entradas: se califican con el marcador de ese tramo
   const tr = !sinTramo && tramoPick(t, ev);
   if(tr){
