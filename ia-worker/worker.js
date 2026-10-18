@@ -330,6 +330,15 @@ export default {
     const ruta = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
     if (ruta === "/partidos" || ruta === "/marcador") return rutasMarcador(request, origin, ruta);
     if (ruta === "/auto-estado") return json({ ok: true, ...(await estadoAuto(env)) }, 200, origin);
+    // Diagnóstico de solo lectura: qué perfil tiene guardado cada celular suscrito (sin datos personales ni direcciones)
+    if (ruta === "/push-diag" && env.PUSH) {
+      let cursor, claves = [];
+      do { const l = await env.PUSH.list({ prefix: "s:", cursor }); claves.push(...l.keys.map(k => k.name)); cursor = l.list_complete ? null : l.cursor; } while (cursor);
+      const subs = await Promise.all(claves.map(async k => { const r = await env.PUSH.get(k, "json") || {}; const pf = r.perfil || {};
+        let host = ""; try { host = new URL(r.sub.endpoint).hostname; } catch { }
+        return { id: k.slice(2, 8), host, admin: !!pf.admin, meses: Object.keys(pf.bancos || {}).filter(m => Number(pf.bancos[m]) > 0), resultados: r.tipos?.resultados !== false, hace_h: r.t ? Math.round((Date.now() - r.t) / 36e5) : null }; }));
+      return json({ ok: true, total: subs.length, subs }, 200, origin);
+    }
     if (ruta !== "/") return rutasPush(request, env, origin, ruta);
     if (request.method !== "POST") return json({ error: "Usa POST" }, 405, origin);
     if (!env.ANTHROPIC_API_KEY) return json({ error: "Falta el secreto ANTHROPIC_API_KEY en Cloudflare" }, 500, origin);
