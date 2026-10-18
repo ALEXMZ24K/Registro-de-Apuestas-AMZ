@@ -123,11 +123,16 @@ const pistaPick = (a,ev,v,sinTramo) => {
   // Picks de un cuarto / mitad / 5 entradas: se califican con el marcador de ese tramo
   const tr = !sinTramo && tramoPick(t, ev);
   if(tr){
-    if(!Array.isArray(v.hl)||!Array.isArray(v.al)) return null;
+    const sinLS = !Array.isArray(v.hl)||!Array.isArray(v.al);
     const per=Number(v.per)||0, cierre=/^(end|halftime|ht)\b|end of|final/i.test(String(v.det||""));
     const empezo = fin || per>=tr.per[0], listoT = fin || per>tr.hasta || (per===tr.hasta && cierre);
     if(!empezo) return {txt:tr.label+" · aún no empieza", ok:0};
-    const suma = arr => tr.per.reduce((s,p)=>s+(Number(arr[p-1])||0),0), ph=suma(v.hl), pa=suma(v.al);
+    const suma = arr => tr.per.reduce((s,p)=>s+(Number(arr[p-1])||0),0);
+    // Si el tramo empieza desde el inicio y todavía se está jugando, su marcador ES el marcador del partido
+    // (ESPN a veces no actualiza el marcador por tiempo/cuarto mientras está en vivo)
+    const enCurso = !fin && tr.per[0]===1 && per>=1 && per<=tr.hasta;
+    if(!enCurso && sinLS) return null;
+    const ph = enCurso ? hs : suma(v.hl), pa = enCurso ? as : suma(v.al);
     const p = pistaPick({descripcion:t.replace(tr.quita," ")}, ev, {st:listoT?"post":"in", hs:ph, as:pa}, true);
     if(!p||p.stats) return null;
     const marc = tr.label+" "+(esFut(ev.k)?ph+"-"+pa:pa+"-"+ph);
