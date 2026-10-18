@@ -230,16 +230,19 @@ async function pushSuscribir(tipos, perfil) {
   }
   const r2 = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos,perfil})});
   if(!r2.ok) throw new Error("SERV");
-  try{ localStorage.setItem("pushPerfil2",JSON.stringify(perfil||{})); }catch(e){}
+  try{ localStorage.setItem("pushPerfil3",JSON.stringify(perfil||{})); }catch(e){}
   return true;
 }
 // Actualiza el perfil (bank, inicio, no metidas) de la suscripción existente, sin pedir permisos
-async function pushActualizar(tipos, perfil) {
+// Los envíos van en fila: si salen dos seguidos, el último siempre es el que se queda guardado
+let filaPerfil = Promise.resolve();
+function pushActualizar(tipos, perfil) { filaPerfil = filaPerfil.then(()=>pushActualizarYa(tipos, perfil)); return filaPerfil; }
+async function pushActualizarYa(tipos, perfil) {
   try{
     if(!pushSoportado() || Notification.permission!=="granted") return;
     const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if(!sub) return;
     const r = await fetch(IA_URL+"/suscribir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({subscription:sub.toJSON(),tipos,perfil})});
-    if(r.ok) localStorage.setItem("pushPerfil2",JSON.stringify(perfil||{}));
+    if(r.ok) localStorage.setItem("pushPerfil3",JSON.stringify(perfil||{}));
   }catch(e){}
 }
 async function pushDesuscribir() {
@@ -1287,6 +1290,8 @@ function App() {
   const togglePicks = () => setPicksOcultos(v=>{ const n=!v; try{ localStorage.setItem("picksOcultos",n?"1":"0"); }catch(e){} return n; });
   const [deporteFiltro,setDeporteFiltro] = useState(null);
   const [user,setUser] = useState(null);
+  const [authListo,setAuthListo] = useState(false);   // ya se sabe si hay sesión o no
+  const [docUserListo,setDocUserListo] = useState(false); // ya llegó el bank del usuario
   const [bankrolls,setBankrolls] = useState({});
   const [bankrollsUser,setBankrollsUser] = useState({});
   const [iniciosUser,setIniciosUser] = useState({});
@@ -1352,7 +1357,7 @@ function App() {
   const pedirAno = y => { const ks=[...Array(12)].map((_,i)=>claveMes(y,i)); setMesesExtra(prev=>[...new Set([...prev,...ks])]); };
 
   useEffect(()=>{
-    return auth.onAuthStateChanged(u=>setUser(u));
+    return auth.onAuthStateChanged(u=>{ setUser(u); setAuthListo(true); });
   },[]);
 
   // Preferencias guardadas en la cuenta (se conservan al cambiar de teléfono) y en este dispositivo
@@ -1398,8 +1403,10 @@ function App() {
 
   // Bank personal de cada usuario
   useEffect(()=>{
+    setDocUserListo(false);
     if(!usaBankPropio){ setBankrollsUser({}); setIniciosUser({}); setNoMetidas({}); return; }
     const unsub = db.collection("usuarios").doc(user.uid).onSnapshot(snap=>{
+      setDocUserListo(true);
       setBankrollsUser(snap.exists?(snap.data().bankrolls||{}):{});
       setIniciosUser(snap.exists?(snap.data().inicios||{}):{});
       setNoMetidas(conPendientes(snap.exists?(snap.data().noMetidas||{}):{}));
@@ -1505,13 +1512,14 @@ function App() {
   const perfilPushTxt = JSON.stringify(perfilPush);
   useEffect(()=>{
     if(!pushOn) return;
-    // "pushPerfil2": se cambió el nombre para que TODOS los celulares vuelvan a mandar su bank una vez
-    // (algunos se suscribieron antes de que existieran los avisos con pesos y les llegaba el %)
-    let prev = ""; try{ prev = localStorage.getItem("pushPerfil2")||""; }catch(e){}
+    // No mandar nada hasta saber quién es (si no, al abrir la app se mandaba un perfil vacío y el aviso llegaba en %)
+    if(!authListo || (usaBankPropio && !docUserListo)) return;
+    // "pushPerfil3": nombre nuevo para que TODOS los celulares vuelvan a mandar su perfil correcto una vez
+    let prev = ""; try{ prev = localStorage.getItem("pushPerfil3")||""; }catch(e){}
     if(prev===perfilPushTxt) return;
     const t = setTimeout(()=>pushActualizar(pushTipos, perfilPush), 1500);
     return ()=>clearTimeout(t);
-  },[pushOn, perfilPushTxt]);
+  },[pushOn, perfilPushTxt, authListo, docUserListo]);
   const apuestasMesLista = useMemo(()=>apuestasMesTodas.filter(cuentaAp),[apuestasMesTodas,...dep,noMetidas]);
   const apuestasMes = useMemo(()=>apuestasMesLista.filter(a=>!noMet(a)),[apuestasMesLista,noMetidas]);
   const noMetidasMes = apuestasMesLista.length - apuestasMes.length;
