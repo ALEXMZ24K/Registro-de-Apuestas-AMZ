@@ -287,7 +287,7 @@ const loginGoogle = async () => {
 
 // ── Constants ──
 const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Americano Colegial","Basquetbol Colegial","Combinación"];
-const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Especial por jugador","PlayBoost","Freebet"];
+const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Crear apuesta","Especial por jugador","PlayBoost","Freebet"];
 const RESULTADOS = ["Ganada","Perdida","Pendiente","Nula"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -555,6 +555,28 @@ function MarcadorVivo({ev,v}) {
 }
 
 // Patas de un parlay/freebet como lista limpia {deporte,desc,res}
+// Nombre del combo: Freebet, Crear apuesta (varias selecciones del MISMO partido) o Parlay
+const nombreCombo = a => a.tipo==="Freebet"?"Freebet":a.tipo==="Crear apuesta"?"Crear apuesta":"Parlay";
+const esCrear = a => a && a.tipo==="Crear apuesta";
+// Resumen de cómo va un combo en vivo: cuántas llevas y qué falta
+const SING_U = {goles:"gol",carreras:"carrera",puntos:"punto","remates a puerta":"remate a puerta",remates:"remate","córners":"córner",tarjetas:"tarjeta",hits:"hit",strikeouts:"strikeout",rebotes:"rebote",asistencias:"asistencia"};
+const resumenCombo = items => {
+  const n = items.length; if(!n) return null;
+  const cayo = items.find(x=>x.res==="P" || (x.ps && x.ps.ok===-1 && /^Perdiste/.test(x.ps.txt)));
+  if(cayo) return {txt:"Se cayó: "+cayo.desc, mal:1};
+  const hechas = items.filter(x=>x.res==="G" || (x.ps && x.ps.listo));
+  if(hechas.length===n) return {txt:"¡Ganaste! · salieron "+(n===2?"las dos":"las "+n), ok:1};
+  const bien = items.filter(x=>!hechas.includes(x) && x.ps && x.ps.ok===1);
+  const faltan = items.filter(x=>!hechas.includes(x) && !bien.includes(x));
+  const det = x => { const p=x.ps; if(!p) return x.desc;
+    if(p.prog){ const f=Math.max(1,p.prog[1]-p.prog[0]), m=String(p.txt).match(/\d+ de \d+ ([^·]+)$/), u=m?m[1].trim():"";
+      return x.desc+" ("+(f===1?"falta 1":"faltan "+f)+(u?" "+(f===1?(SING_U[u]||u):u):"")+")"; }
+    const t=String(p.txt).replace(/^.*·\s*/,""); return x.desc+(t?" ("+t.charAt(0).toLowerCase()+t.slice(1)+")":""); };
+  let txt = "Llevas "+hechas.length+" de "+n;
+  if(bien.length) txt += " · "+(bien.length===1?"1 va bien":bien.length+" van bien");
+  if(faltan.length) txt += " · Falta: "+faltan.map(det).join(" · ");
+  return {txt};
+};
 const patasDe = a => (a.patas||[]).map(p=>typeof p==="object"?p:{deporte:"",desc:p}).filter(p=>p.desc&&String(p.desc).trim());
 
 // Despliega/oculta su contenido animando el alto (para el detalle de cada pick)
@@ -594,9 +616,11 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
   const patas = esCombo(a) ? patasDe(a) : [];
   const combo = patas.length>0;
   const sp = combo ? null : separarPick(a);
-  const titulo = combo ? (a.tipo==="Freebet"?"Freebet":"Parlay")+" · "+patas.length+(patas.length===1?" pick":" picks") : sp.pick;
+  const crear = esCrear(a);
+  const titulo = combo ? nombreCombo(a)+" · "+patas.length+(crear?(patas.length===1?" selección":" selecciones"):(patas.length===1?" pick":" picks")) : sp.pick;
   const tituloIco = combo ? (a.tipo==="Freebet"?"gift":"parlay") : icoDep(a.deporte);
-  const subtitulo = combo ? patas.map(p=>p.desc).join(" · ") : sp.partido;
+  const evCrear = crear ? ((a.evento&&a.evento.id)?a.evento:(patas.find(p=>p.evento&&p.evento.id)||{}).evento) : null;
+  const subtitulo = combo ? (evCrear?nombrePartido(evCrear)+" · ":"")+patas.map(p=>p.desc).join(" · ") : sp.partido;
   const pend = a.resultado==="Pendiente";
   const dec = momioToDec(a.cuota)||1;
   const ganaria = (monto||0)*(dec-1);
@@ -631,7 +655,20 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
           <span style=${{display:"flex",alignItems:"center",gap:6}}><${Escudo} e=${lados(ev,vivo)[0]} s=${16}/><b style=${{color:"#fff"}}>${finTxt.replace("Final ","")}</b><${Escudo} e=${lados(ev,vivo)[1]} s=${16}/> Final</span>
           <span>${pista?pista.txt+(admin&&(pista.stats||pista.ok===0)?" · califícalo tú":""):(admin?"Este lo calificas tú":"Esperando resultado")}</span>
         </div>`}
-        ${legsVivo.length>0 && html`<div style=${{marginTop:8}}>${legsVivo.map(({p,v},i)=>{ const [l,r]=lados(p.evento,v||null); const ps=v&&v.st!=="pre"?pistaPick({descripcion:p.desc},p.evento,v):null;
+        ${legsVivo.length>0 && (()=>{ const items = legsVivo.map(({p,v})=>({desc:p.desc, res:p.res, ps:v&&v.st!=="pre"?pistaPick({descripcion:p.desc},p.evento,v):null}));
+          const rs = resumenCombo(items), v0 = legsVivo[0].v;
+          const resumen = rs && html`<div style=${{fontSize:12,fontWeight:rs.ok||rs.mal?800:600,color:rs.ok?"#2fe0a0":rs.mal?"#ff5d7a":"#e8ecff",marginTop:8,lineHeight:"17px"}}>${rs.txt}</div>`;
+          if(crear) return html`<div>
+            ${v0 && v0.st!=="pre" ? html`<${MarcadorVivo} ev=${legsVivo[0].p.evento} v=${v0}/>` : html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:8}}>${nombrePartido(legsVivo[0].p.evento)} · ${v0?estadoTxt(v0):horaLocal(legsVivo[0].p.evento.t)}</div>`}
+            ${resumen}
+            <div style=${{marginTop:6}}>${items.map((x,i)=>{ const ok=x.res==="G"||(x.ps&&x.ps.listo), mal=x.res==="P"||(x.ps&&/^Perdiste/.test(x.ps.txt));
+              return html`<div key=${i} style=${{display:"flex",gap:8,alignItems:"baseline",borderTop:"1px solid var(--br)",padding:"6px 0",fontSize:12}}>
+                <b style=${{width:14,flexShrink:0,color:ok?"#2fe0a0":mal?"#ff5d7a":"var(--mu3)"}}>${ok?"✓":mal?"✕":"•"}</b>
+                <span style=${{flex:1,minWidth:0,color:"#e8ecff",fontWeight:600}}>${x.desc}</span>
+                ${x.ps && html`<span style=${{flexShrink:0,maxWidth:"55%",textAlign:"right",color:ok?"#2fe0a0":mal?"#ff5d7a":"var(--mu)",fontWeight:ok||mal?700:400}}>${x.ps.txt}</span>`}
+              </div>`; })}</div>
+          </div>`;
+          return html`<div>${resumen}<div style=${{marginTop:8}}>${legsVivo.map(({p,v},i)=>{ const [l,r]=lados(p.evento,v||null); const ps=items[i].ps;
           const yaRes = p.res==="G"?"✓":p.res==="P"?"✕":"";
           return html`<div key=${i} style=${{borderTop:"1px solid var(--br)",padding:"7px 0"}}>
             <div style=${{display:"flex",alignItems:"center",gap:8,fontSize:12}}>
@@ -641,7 +678,7 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
             </div>
             <div style=${{fontSize:11,color:"var(--mu)",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${nombrePartido(p.evento)}${p.evento.liga?" · "+p.evento.liga:""}</div>
             ${ps && html`<div style=${{fontSize:11,marginTop:3,color:ps.listo?"#2fe0a0":/^Perdiste/.test(ps.txt)?"#ff5d7a":"var(--mu)",fontWeight:ps.listo||/^Perdiste/.test(ps.txt)?700:400}}>${ps.txt}</div>`}
-          </div>`; })}</div>`}
+          </div>`; })}</div></div>`; })()}
         ${comboFin && !admin && html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:6}}>Esperando resultado</div>`}
         ${(terminado||comboFin) && admin && html`<div style=${{display:"flex",gap:8,marginTop:9}}>
           ${[["Ganada","✓ Ganada"],["Perdida","✕ Perdida"]].map(([r,t])=>html`<button key=${r} onClick=${e=>{e.stopPropagation();onToggle&&onToggle(r);}} style=${{flex:1,minHeight:40,borderRadius:10,border:"1px solid "+(pista&&((pista.ok>0&&r==="Ganada")||(pista.ok<0&&r==="Perdida"))?"color-mix(in srgb,var(--ac) 60%,transparent)":"var(--br)"),background:"transparent",color:"#dfe5ff",fontWeight:700,fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>${t}</button>`)}
@@ -669,7 +706,7 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
       ${combo && html`
         <div style=${{marginBottom:14}}>
           <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-            <span style=${{fontSize:11,color:"var(--mu2)",textTransform:"uppercase",letterSpacing:0.8}}>${a.tipo==="Freebet"?"Picks de la freebet":"Picks del parlay"}</span>
+            <span style=${{fontSize:11,color:"var(--mu2)",textTransform:"uppercase",letterSpacing:0.8}}>${a.tipo==="Freebet"?"Picks de la freebet":crear?"Selecciones":"Picks del parlay"}</span>
             ${editable && html`<span style=${{fontSize:11,color:"var(--mu3)"}}>Toca ✓/✕ para marcar cada pick</span>`}
           </div>
           <div style=${{display:"flex",flexDirection:"column",gap:6}}>
@@ -679,7 +716,7 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
                   background:p.res?rc:"transparent",color:p.res?"#06101f":"var(--mu3)",border:p.res?"none":"1.5px dashed var(--mu3)"}}>${p.res==="G"?"✓":p.res==="P"?"✕":""}</span>`;
               return html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"center",background:"color-mix(in srgb,var(--bg) 55%,transparent)",borderRadius:10,padding:"9px 10px"}}>
                 <${Ico} k=${icoDep(p.deporte)} c="var(--mu2)" s=${16} w=${1.6}/>
-                <span style=${{fontSize:14,color:"#e8ecff",flex:1,minWidth:0,wordBreak:"break-word"}}>${p.desc}${p.evento&&p.evento.id&&html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:2}}>${nombrePartido(p.evento)}${p.evento.fin?" · Final "+lados(p.evento,null).map(x=>x.s).join("-"):""}</div>`}</span>
+                <span style=${{fontSize:14,color:"#e8ecff",flex:1,minWidth:0,wordBreak:"break-word"}}>${p.desc}${p.evento&&p.evento.id&&!crear&&html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:2}}>${nombrePartido(p.evento)}${p.evento.fin?" · Final "+lados(p.evento,null).map(x=>x.s).join("-"):""}</div>`}</span>
                 ${editable
                   ? html`<button onClick=${e=>{e.stopPropagation();onPata&&onPata(i);}} style=${{background:"none",border:"none",padding:4,cursor:"pointer"}} aria-label="Marcar pick">${marca}</button>`
                   : (p.res && marca)}
@@ -978,9 +1015,9 @@ function CompartirPick({a, onClose}) {
       : [["Momio",fmtMomio(a.cuota)],[res==="Ganada"?"Ganancia":res==="Perdida"?"Resultado":"Resultado", res==="Ganada"?"+"+(pct*(dec-1)).toFixed(1)+"%":res==="Perdida"?"-"+pct+"%":"0%", res==="Ganada"?"#2fe0a0":res==="Perdida"?"#ff5d7a":"#f5c842"]];
     const o = { formato, fechaTxt, hoy: f.y===hoy.getFullYear()&&f.m===hoy.getMonth()&&f.d===hoy.getDate(),
       ico: combo?(a.tipo==="Freebet"?"gift":"parlay"):icoDep(a.deporte),
-      liga: combo ? (a.tipo==="Freebet"?"Freebet":"Parlay")+" · "+patas.length+" picks" : ((ev&&ev.liga)?ev.liga+" · ":"")+(a.deporte||""),
+      liga: combo ? nombreCombo(a)+" · "+patas.length+(esCrear(a)?" selecciones":" picks")+(esCrear(a)&&(a.evento||{}).liga?" · "+a.evento.liga:"") : ((ev&&ev.liga)?ev.liga+" · ":"")+(a.deporte||""),
       eq: ev ? lados(ev,null) : null, sep: ev ? (esFut(ev.k)?"vs":"@") : "", partido: !ev && sp ? sp.partido : "",
-      pick: combo ? (a.tipo==="Freebet"?"Freebet":"Parlay")+" "+fmtMomio(a.cuota) : sp.pick, legs: combo ? patas : null,
+      pick: combo ? (esCrear(a)&&a.evento&&a.evento.id?nombrePartido(a.evento):nombreCombo(a))+" "+fmtMomio(a.cuota) : sp.pick, legs: combo ? patas : null,
       res, final: fin, datos };
     // Picks de cuarto / mitad / tiempo / 5 entradas: se muestra el marcador de ESE tramo (se pide a ESPN por el Worker)
     const tr = res && ev && sp ? tramoPick(" "+normTxt(a.descripcion||sp.pick)+" ", ev) : null;
@@ -1774,9 +1811,9 @@ function App() {
 
   // Agrupa picks calificados y saca récord, acierto, ganancia y ROI de cada grupo
   const grupoDe = (a, vista) => {
-    const combo = a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
-    if(vista==="liga") return combo ? (a.tipo==="Freebet"?"Freebets":"Parlays") : (a.evento&&a.evento.liga) || a.deporte || "Otros";
-    if(vista==="tipo"){ if(combo) return a.tipo==="Freebet"?"Freebet":"Parlay";
+    const combo = esCombo(a);
+    if(vista==="liga") return esCrear(a) ? ((a.evento&&a.evento.liga) || "Crear apuesta") : combo ? (a.tipo==="Freebet"?"Freebets":"Parlays") : (a.evento&&a.evento.liga) || a.deporte || "Otros";
+    if(vista==="tipo"){ if(combo) return nombreCombo(a);
       if(a.tipo==="Especial por jugador" || (a.evento && pareceJugador(a.descripcion,a.evento))) return "Jugador";
       return {"Handicap/Spread":"Hándicap","Over/Under":"Over/Under","Moneyline":"Moneyline","PlayBoost":"PlayBoost"}[a.tipo] || a.tipo || "Otro"; }
     const c=Number(a.cuota)||0;
@@ -1854,7 +1891,7 @@ function App() {
       const d = await r.json().catch(()=>({}));
       if(!r.ok || !d.apuesta) throw new Error((d.error||"No se pudo leer el boleto")+(d.detalle?" — "+d.detalle:"")+" ("+r.status+")");
       const b = d.apuesta;
-      const esCombo = b.tipo==="Parlay/Combinada"||b.tipo==="Freebet";
+      const esCombo = b.tipo==="Parlay/Combinada"||b.tipo==="Freebet"||b.tipo==="Crear apuesta", crearB = b.tipo==="Crear apuesta";
       const patas = esCombo && b.patas && b.patas.length ? b.patas.map(p=>({deporte:DEPORTES.includes(p.deporte)?p.deporte:"",desc:p.desc||""})) : [{deporte:"",desc:""},{deporte:"",desc:""}];
       const am = Number(b.momio)||0;
       const pct = bankrollMes>0 && b.apuesta>0 ? Math.round(b.apuesta/bankrollMes*1000)/10 : "";
@@ -1862,7 +1899,7 @@ function App() {
         tipo: TIPOS.includes(b.tipo)?b.tipo:f.tipo,
         deporte: esCombo?"":(DEPORTES.includes(b.deporte)?b.deporte:f.deporte),
         descripcion: esCombo?"":(b.descripcion||""),
-        partido: esCombo?"":(b.partido||""),
+        partido: esCombo&&!crearB?"":(b.partido||""), evento: null,
         patas,
         cuota: am ? (momioDec ? momioToDec(am).toFixed(2) : (am>0?"+"+am:String(am))) : f.cuota,
         monto: pct!==""?String(pct):f.monto,
@@ -1874,7 +1911,13 @@ function App() {
       if(b.notas) partes.push("Ojo: "+b.notas);
       timers.forEach(clearTimeout);
       setIa({estado:"listo",msg:partes.join(" · ")});
-      if(esCombo && Array.isArray(b.patas)) b.patas.forEach((pt,i)=>{ if(!pt) return;
+      // Crear apuesta: todas las selecciones son del mismo partido → se busca una sola vez
+      const partidoCrear = crearB ? (b.partido || ((b.patas||[]).find(pt=>pt&&pt.partido)||{}).partido) : null;
+      if(partidoCrear) buscarPartidoAuto(partidoCrear, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{ if(!h) return;
+          elegirPartido(h.lg,h.e,h.clave);
+          setIa(x=>({...x,msg:(x.msg?x.msg+" · ":"")+"Partido encontrado: "+nombrePartido({k:h.lg.k,h:h.e.h,a:h.e.a})+" (marcador en vivo activado)"}));
+        }).catch(()=>{});
+      if(esCombo && !crearB && Array.isArray(b.patas)) b.patas.forEach((pt,i)=>{ if(!pt) return;
         // El partido puede venir aparte o pegado a la selección: "AS Roma vs Real Madrid: Ambos equipos marcan"
         const m = String(pt.desc||"").match(/^(.+?\s(?:vs\.?|@|v)\s.+?)\s*[:\-–—]\s+(.+)$/i);
         const partido = pt.partido || (m && m[1]); if(!partido) return;
@@ -1898,7 +1941,8 @@ function App() {
   const guardar = () => {
     const esParlay = form.tipo==="Parlay/Combinada";
     const esFreebet = form.tipo==="Freebet";
-    const usaPatas = esParlay||esFreebet;
+    const esCrearF = form.tipo==="Crear apuesta";
+    const usaPatas = esParlay||esFreebet||esCrearF;
     const deporteOpcional = usaPatas||form.tipo==="Especial por jugador"||form.tipo==="PlayBoost";
     const desc = usaPatas
       ? form.patas.filter(p=>p.desc && p.desc.trim()).map(p=>(p.deporte?`[${p.deporte}] `:"")+p.desc).join(" | ")
@@ -1916,7 +1960,10 @@ function App() {
     if(!form.fecha) { setFormError("Selecciona la fecha"); return; }
     setFormError("");
     const deporte = !form.deporte ? (usaPatas?"Combinación":form.tipo) : form.deporte;
-    const nueva = {deporte,descripcion:desc,partido:usaPatas?"":String(form.partido||"").trim(),monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:form.patas||[],evento:(!usaPatas&&form.evento)?form.evento:null};
+    const evC = esCrearF && form.evento && form.evento.id ? form.evento : null;
+    // Crear apuesta: cada selección lleva el partido para que se siga en vivo y se califique sola
+    const patasG = esCrearF ? (form.patas||[]).map(p=>({...p, deporte:form.deporte||p.deporte||"", evento:evC})) : (form.patas||[]);
+    const nueva = {deporte:esCrearF&&form.deporte?form.deporte:deporte,descripcion:desc,partido:esCrearF?(evC?nombrePartido(evC):String(form.partido||"").trim()):usaPatas?"":String(form.partido||"").trim(),monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:patasG,evento:esCrearF?evC:(!usaPatas&&form.evento)?form.evento:null};
     if(editId){
       const docId=apuestas.find(a=>a.id===editId)?._docId;
       if(docId) db.collection("apuestas").doc(docId).set({...nueva,id:editId});
@@ -1925,11 +1972,11 @@ function App() {
       db.collection("apuestas").add({...nueva,id:Date.now()});
       // Notificar a todos
       const momioStr = Number(nueva.cuota)>0?"+"+nueva.cuota:String(nueva.cuota);
-      const esC = nueva.tipo==="Parlay/Combinada"||nueva.tipo==="Freebet";
+      const esC = esCombo(nueva);
       const nP = (nueva.patas||[]).filter(p=>p.desc&&p.desc.trim()).length;
       pushNotificar("picks",
-        esC ? (nueva.tipo==="Freebet"?"Nueva freebet":"Nuevo parlay") : "Nuevo pick"+(nueva.deporte?" · "+nueva.deporte:""),
-        (esC?(nueva.tipo==="Freebet"?"Freebet":"Parlay")+" de "+nP+" picks: "+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):nueva.descripcion+(nueva.partido?" ("+nueva.partido+")":""))+" · Momio "+momioStr+" · "+nueva.monto+"% del bank",
+        esCrearF ? "Nuevo pick · Crear apuesta" : esC ? (nueva.tipo==="Freebet"?"Nueva freebet":"Nuevo parlay") : "Nuevo pick"+(nueva.deporte?" · "+nueva.deporte:""),
+        (esCrearF?(nueva.partido?nueva.partido+": ":"")+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):esC?nombreCombo(nueva)+" de "+nP+" picks: "+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):nueva.descripcion+(nueva.partido?" ("+nueva.partido+")":""))+" · Momio "+momioStr+" · "+nueva.monto+"% del bank",
         "pick-"+Date.now());
     }
     setModal(false);
@@ -1977,7 +2024,7 @@ function App() {
     const finPata = p => { const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; const v=o.evento&&vivo[o.evento.id]; if(v&&v.st==="post"&&v.hs!=="") o.evento={...o.evento,fin:{hs:v.hs,as:v.as}}; return o; };
     if(Array.isArray(ap.patas) && ap.patas.some(p=>p&&p.evento)) cambios.patas = (cambios.patas||ap.patas).map(finPata);
     // Parlay ganado → todas sus patas ganaron: las que estén vacías se marcan ✓
-    if(resultado==="Ganada" && (ap.tipo==="Parlay/Combinada"||ap.tipo==="Freebet") && Array.isArray(ap.patas) && ap.patas.length){
+    if(resultado==="Ganada" && esCombo(ap) && Array.isArray(ap.patas) && ap.patas.length){
       cambios.patas = (cambios.patas||ap.patas).map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; if(o.desc&&String(o.desc).trim()&&!o.res) o.res="G"; return o; });
     }
     db.collection("apuestas").doc(ap._docId).update(cambios);
@@ -2723,7 +2770,7 @@ function App() {
           <div style=${{fontSize:11,color:"var(--mu)",fontWeight:800,letterSpacing:.8,margin:"20px 2px 8px"}}>REPETIR UNO RECIENTE</div>
           ${recientes.map(a=>{ const sp=esCombo(a)?null:separarPick(a), f=parseFecha(a.fecha);
             return html`<button key=${a.id} onClick=${()=>{setMenuNueva(false);duplicar(a);}} style=${{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 12px",background:"var(--card)",border:"1px solid var(--br)",borderRadius:12,marginBottom:7,color:"#fff",textAlign:"left",fontFamily:"inherit",cursor:"pointer"}}>
-              <span style=${{flex:1,minWidth:0}}><b style=${{fontSize:14,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${sp?sp.pick:(a.tipo==="Freebet"?"Freebet":"Parlay")+" · "+patasDe(a).length+" picks"}</b>
+              <span style=${{flex:1,minWidth:0}}><b style=${{fontSize:14,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${sp?sp.pick:nombreCombo(a)+" · "+patasDe(a).length+(esCrear(a)?" selecciones":" picks")}</b>
                 <span style=${{fontSize:12,color:"var(--mu)"}}>${f.d} ${MESES_CORTO[f.m]} · ${fmtMomio(a.cuota)} · ${a.monto}%</span></span>
               <${Ico} k="copy" c="var(--mu2)" s=${18}/></button>`; })}
           <div style=${{fontSize:11,color:"var(--mu3)",textAlign:"center",marginTop:2}}>Se copia con fecha de hoy y sin resultado</div>
@@ -2766,7 +2813,7 @@ function App() {
           ${!ia.estado && html`<div style=${{marginTop:6,fontSize:12,color:"var(--mu)",textAlign:"center"}}>Sube la captura de tu boleto y se llena solo</div>`}
         </div>`}
         <div style=${S.formGrid}>
-          ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet") && html`<div style=${S.fg}>
+          ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet"&&form.tipo!=="Crear apuesta") && html`<div style=${S.fg}>
             <label style=${S.label}>Deporte</label>
             <select style=${S.select} value=${form.deporte} onChange=${e=>setForm(f=>({...f,deporte:e.target.value}))}>
               <option value="">Seleccionar...</option>
@@ -2780,7 +2827,7 @@ function App() {
               ${TIPOS.map(t=>html`<option key=${t} value=${t}>${t}</option>`)}
             </select>
           </div>
-          ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet")
+          ${(form.tipo!=="Parlay/Combinada"&&form.tipo!=="Freebet"&&form.tipo!=="Crear apuesta")
             ? html`<div style=${{...S.fg,gridColumn:"1/-1"}}>
                 <label style=${S.label}>Pick</label>
                 <input style=${S.input} value=${form.descripcion} onInput=${e=>setForm(f=>({...f,descripcion:e.target.value}))} placeholder=${form.tipo==="Especial por jugador"?"Ej: LeBron James +25.5 puntos":form.tipo==="PlayBoost"?"Ej: Boost Chiefs gana +180":"Ej: Real Madrid vs Barcelona"}/>
@@ -2790,24 +2837,29 @@ function App() {
                     <input style=${{...S.input,marginTop:8}} value=${form.partido||""} onInput=${e=>setForm(f=>({...f,partido:e.target.value}))} placeholder="o escríbelo a mano: Galatasaray vs Barcelona"/>`}
               </div>`
             : html`<div style=${{gridColumn:"1/-1"}}>
+                ${form.tipo==="Crear apuesta" && html`<div style=${{marginBottom:12}}>
+                  <label style=${S.label}>Partido</label>
+                  ${campoPartido(form.evento, ()=>setElegir({dia:0,dep:"",q:""}), ()=>setForm(f=>({...f,evento:null,partido:""})))}
+                  ${!(form.evento&&form.evento.id) && html`<input style=${{...S.input,marginTop:8}} value=${form.partido||""} onInput=${e=>setForm(f=>({...f,partido:e.target.value}))} placeholder="o escríbelo a mano: Cruz Azul vs Juárez"/>`}
+                </div>`}
                 <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <label style=${S.label}>${form.tipo==="Freebet"?"Legs de la Freebet":"Legs del Parlay"} (${form.patas.length})</label>
+                  <label style=${S.label}>${form.tipo==="Freebet"?"Legs de la Freebet":form.tipo==="Crear apuesta"?"Selecciones":"Legs del Parlay"} (${form.patas.length})</label>
                   <button onClick=${()=>setForm(f=>({...f,patas:[...f.patas,{deporte:"",desc:""}]}))} style=${S.addPataBtn}>+ Agregar</button>
                 </div>
                 <div style=${{display:"flex",flexDirection:"column",gap:10}}>
                   ${form.patas.map((p,i)=>html`
                     <div key=${i} style=${{background:"var(--bg)",border:"1px solid var(--br)",borderRadius:10,padding:"10px 12px"}}>
                       <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                        <span style=${{fontSize:12,color:"#2fe0a0",fontWeight:700}}>Leg ${i+1}</span>
+                        <span style=${{fontSize:12,color:"#2fe0a0",fontWeight:700}}>${form.tipo==="Crear apuesta"?"Selección":"Leg"} ${i+1}</span>
                         <button onClick=${()=>setForm(f=>({...f,patas:f.patas.filter((_,j)=>j!==i)}))} style=${S.removePataBtn}>✕ Eliminar</button>
                       </div>
                       <div style=${{display:"flex",gap:8,flexDirection:"column"}}>
-                        <select style=${S.select} value=${p.deporte} onChange=${e=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],deporte:e.target.value};return{...f,patas:np};})}>
+                        ${form.tipo!=="Crear apuesta" && html`<select style=${S.select} value=${p.deporte} onChange=${e=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],deporte:e.target.value};return{...f,patas:np};})}>
                           <option value="">Deporte (opcional)</option>
                           ${DEPORTES.map(d=>html`<option key=${d} value=${d}>${d}</option>`)}
-                        </select>
-                        <input style=${S.input} value=${p.desc} onInput=${e=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],desc:e.target.value};return{...f,patas:np};})} placeholder=${"Descripción: Ej: Lakers -5.5"}/>
-                        ${campoPartido(p.evento, ()=>setElegir({dia:0,dep:"",q:"",pata:i}), ()=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],evento:null};return{...f,patas:np};}), true)}
+                        </select>`}
+                        <input style=${S.input} value=${p.desc} onInput=${e=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],desc:e.target.value};return{...f,patas:np};})} placeholder=${form.tipo==="Crear apuesta"?"Ej: Más de 1.5 goles":"Descripción: Ej: Lakers -5.5"}/>
+                        ${form.tipo!=="Crear apuesta" && campoPartido(p.evento, ()=>setElegir({dia:0,dep:"",q:"",pata:i}), ()=>setForm(f=>{const np=[...f.patas];np[i]={...np[i],evento:null};return{...f,patas:np};}), true)}
                       </div>
                     </div>
                   `)}

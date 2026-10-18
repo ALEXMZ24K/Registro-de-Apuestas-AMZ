@@ -3,7 +3,7 @@
 // Script clásico: en la app deja las funciones como globales; en el Worker se leen de globalThis.Calif.
 const normTxt = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const esFut = k => String(k||"").startsWith("soccer");
-const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
+const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet"||a.tipo==="Crear apuesta";
 // ── Picks de JUGADOR (NBA, MLB, NFL y remates a puerta en fútbol) ──
 // v.j = [{n:"Shohei Ohtani", s:{h:1,...}}] lo manda el Worker cuando el partido tiene un pick de jugador.
 // Solo dicen cómo vas: NO se califican solos (ESPN puede contar distinto que la casa de apuestas).
@@ -107,7 +107,7 @@ const tramoPick = (t, ev) => {
   const fut=esFut(ev.k), beis=String(ev.k).startsWith("baseball");
   let m, n, tipo, txt;
   if((m=t.match(/\s(f5|(?:(?:las\s+)?primeras?\s+)?5\s+entradas|primeras?\s+cinco\s+entradas)\s/)) && beis){ return {quita:m[1], per:[1,2,3,4,5], hasta:5, label:"5 entradas"}; }
-  if((m=t.match(/\s(?:(\d)\s*(?:er|era|ra|ro|do|da|to|ta|o|a|º|°)?|(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]))\s+(cuarto|mitad|tiempo|periodo|half|quarter|qtr)\s/))){ n=m[1]?Number(m[1]):ORD[m[2]]; tipo=m[3]; txt=m[0]; }
+  if((m=t.match(/\s(?:(\d)\s*(?:er|era|ra|ro|do|da|to|ta|o|a|º|°|ª)?|(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]))\s+(cuarto|mitad|tiempo|periodo|half|quarter|qtr)\s/))){ n=m[1]?Number(m[1]):ORD[m[2]]; tipo=m[3]; txt=m[0]; }
   else if((m=t.match(/\s(?:([1-4])\s*(q|h)|(q|h)\s*([1-4]))\s/))){ n=Number(m[1]||m[4]); tipo=(m[2]||m[3])==="q"?"cuarto":"mitad"; txt=m[0]; }
   else return null;
   if(!n||n<1||n>4) return null;
