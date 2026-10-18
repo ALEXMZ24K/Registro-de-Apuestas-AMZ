@@ -19,7 +19,7 @@ const FIREBASE_API_KEY = "AIzaSyC50jJFVDbRCjxGQsm-ioTt-xlDQU1-YUo"; // clave pú
 const MODELO = "claude-sonnet-5-5";
 
 const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Americano Colegial","Basquetbol Colegial","Combinación"];
-const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Especial por jugador","PlayBoost","Freebet"];
+const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Crear apuesta","Especial por jugador","PlayBoost","Freebet"];
 
 const cors = origin => ({
   "Access-Control-Allow-Origin": ORIGENES.includes(origin) ? origin : ORIGENES[0],
@@ -35,11 +35,11 @@ const HERRAMIENTA = {
   input_schema: {
     type: "object",
     properties: {
-      tipo: { type: "string", enum: TIPOS, description: "Tipo de apuesta. Un parlay o Same Game Parlay (SGP) es 'Parlay/Combinada'." },
-      deporte: { type: "string", enum: [...DEPORTES, ""], description: "Deporte de la apuesta sencilla. Vacío si es parlay de varios deportes." },
+      tipo: { type: "string", enum: TIPOS, description: "Tipo de apuesta. Si TODAS las selecciones son del MISMO partido (Crear Apuesta, SGP, Same Game Parlay) es 'Crear apuesta'. Si son de partidos distintos es 'Parlay/Combinada'." },
+      deporte: { type: "string", enum: [...DEPORTES, ""], description: "Deporte de la apuesta sencilla. Vacío si es parlay de varios deportes. En Crear apuesta, el deporte del partido." },
       descripcion: { type: "string", description: "Para apuesta sencilla: SOLO el pick, corto y claro, sin el partido. Ej. 'Steelers ML', 'Over 2.5 goles', 'Lakers -5.5', 'Ambos equipos marcan: Sí'. Vacío si es parlay." },
-      partido: { type: "string", description: "Para apuesta sencilla: el partido, ej. 'Tigres vs Toluca', 'Bills @ Rams'. Vacío si es parlay o no aparece." },
-      patas: { type: "array", description: "Solo para parlay/SGP: cada selección.", items: { type: "object", properties: {
+      partido: { type: "string", description: "Para apuesta sencilla o Crear apuesta: el partido, ej. 'Tigres vs Toluca', 'Bills @ Rams'. Vacío si es parlay de varios partidos o no aparece." },
+      patas: { type: "array", description: "Solo para parlay, Crear apuesta o freebet combinada: cada selección.", items: { type: "object", properties: {
         deporte: { type: "string", enum: [...DEPORTES, ""] },
         desc: { type: "string", description: "Selección corta, ej. 'Steelers ML', 'Over 45.5 puntos'." },
         partido: { type: "string", description: "Partido de esta selección si aparece, ej. 'Bills @ Rams'. Vacío si no aparece." } }, required: ["deporte","desc"] } },
@@ -367,7 +367,8 @@ export default {
 `Es una captura de un boleto de apuestas deportivas de México (por ejemplo Playdoit). Hoy es ${hoy}.
 Extrae los datos y SIEMPRE responde llamando a la herramienta registrar_apuesta. Reglas:
 - "Ganancia Total" o "Pago" es lo que se cobra en total (incluye lo apostado); va en pago_total.
-- Un SGP / Same Game Parlay / combinada cuenta como "Parlay/Combinada" y cada selección es una pata.
+- Si todas las selecciones son del MISMO partido (Crear Apuesta, SGP, Same Game Parlay) el tipo es "Crear apuesta": pon el partido en "partido" y cada selección es una pata. Escribe cada selección clara y completa, ej. "Cruz Azul ML", "Más de 1.5 goles", "1er tiempo más de 0.5 goles".
+- Un parlay con selecciones de partidos DISTINTOS es "Parlay/Combinada".
 - NFL/fútbol americano → "Americano"; NCAA football → "Americano Colegial"; NBA → "Basquetbol"; NCAA basketball → "Basquetbol Colegial"; MLB → "Béisbol"; soccer/Liga MX → "Fútbol".
 - Escribe los picks cortos y en español cuando aplique (ML = Moneyline). Usa nombres de equipo reconocibles.
 - No inventes datos: si algo no se lee, ponlo en notas.` },
