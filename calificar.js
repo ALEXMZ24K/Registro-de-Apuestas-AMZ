@@ -42,13 +42,28 @@ const STATS_JUG = {
     [/(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/, sumaJ("sot"), "remates a puerta"],
   ],
 };
-// Apodos comunes -> nombre como lo trae ESPN (para reconocer "Chivas ML", "Rayados over 1.5", etc.)
+// Apodos y nombres cortos -> nombre como lo trae ESPN ("Chivas ML", "Barca over 2.5", "City -1.5"...).
+// Solo se cambia si ese equipo juega en el partido y el texto no trae ya otro nombre con esa palabra ("Newcastle United").
 const APODOS = [["chivas","guadalajara"],["rebano","guadalajara"],["rayados","monterrey"],["la maquina","cruz azul"],["aguilas","america"],
   ["tuzos","pachuca"],["diablos rojos","toluca"],["xolos","tijuana"],["zorros","atlas"],["gallos blancos","queretaro"],["gallos","queretaro"],
   ["la fiera","leon"],["esmeraldas","leon"],["camoteros","puebla"],["franja","puebla"],["rayos","necaxa"],["bravos","juarez"],["guerreros","santos"],
-  ["felinos","tigres"],["auriazules","pumas"],["merengues","real madrid"],["blaugrana","barcelona"],["culers","barcelona"],
-  ["red devils","manchester united"],["citizens","manchester city"],["gunners","arsenal"]];
-const conApodos = (t, ev) => !ev || !esFut(ev.k) ? t : APODOS.reduce((x,[a,b])=>x.split(" "+a+" ").join(" "+b+" "), t);
+  ["felinos","tigres"],["auriazules","pumas"],["pumas","pumas unam"],["tigres","tigres uanl"],["santos","santos laguna"],["san luis","atletico de san luis"],
+  ["barca","barcelona"],["blaugrana","barcelona"],["culers","barcelona"],["merengues","real madrid"],["atleti","atletico madrid"],["colchoneros","atletico madrid"],
+  ["man utd","manchester united"],["man united","manchester united"],["utd","manchester united"],["united","manchester united"],["red devils","manchester united"],
+  ["man city","manchester city"],["city","manchester city"],["citizens","manchester city"],["gunners","arsenal"],["reds","liverpool"],["blues","chelsea"],
+  ["spurs","tottenham"],["toffees","everton"],["hammers","west ham"],["magpies","newcastle"],["wolves","wolverhampton"],["forest","nottingham forest"],
+  ["palace","crystal palace"],["villa","aston villa"],["juve","juventus"],["inter milan","internazionale"],["inter","internazionale"],["milan","ac milan"],
+  ["bayern","bayern munich"],["bvb","borussia dortmund"],["dortmund","borussia dortmund"],["leverkusen","bayer leverkusen"],["psg","paris saint-germain"],["paris","paris saint-germain"]];
+const conApodos = (t, ev) => {
+  if(!ev || !esFut(ev.k)) return t;
+  const noms = [ev.h,ev.a].filter(Boolean).flatMap(e=>[e.n,e.full].filter(Boolean).map(x=>normTxt(x).trim()));
+  return APODOS.reduce((x,[a,b])=>{
+    if(!x.includes(" "+a+" ")) return x;
+    if(!noms.some(n=>n.includes(b))) return x;                                   // ese equipo no juega aquí
+    if(noms.some(n=>n!==b && (" "+n+" ").includes(" "+a+" ") && x.includes(" "+n+" "))) return x; // ya trae el nombre completo
+    return x.split(" "+a+" ").join(" "+b+" ");
+  }, t);
+};
 const deporteK = k => String(k||"").split("/")[0];
 // ¿El pick parece de jugador? (para que la app le pida al Worker las estadísticas de jugadores de ese partido)
 const pareceJugador = (desc, ev) => {
