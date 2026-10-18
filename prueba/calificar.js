@@ -125,6 +125,7 @@ const pistaPick = (a,ev,v,sinTramo) => {
   if(tr){
     const sinLS = !Array.isArray(v.hl)||!Array.isArray(v.al);
     const per=Number(v.per)||0, cierre=/^(end|halftime|ht)\b|end of|final/i.test(String(v.det||""));
+    if(sinLS && !per) return null; // sin datos del periodo no se sabe en qué tramo va
     const empezo = fin || per>=tr.per[0], listoT = fin || per>tr.hasta || (per===tr.hasta && cierre);
     if(!empezo) return {txt:tr.label+" · aún no empieza", ok:0};
     const suma = arr => tr.per.reduce((s,p)=>s+(Number(arr[p-1])||0),0);
