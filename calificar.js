@@ -3,7 +3,7 @@
 // Script clásico: en la app deja las funciones como globales; en el Worker se leen de globalThis.Calif.
 const normTxt = t => String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const esFut = k => String(k||"").startsWith("soccer");
-const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet";
+const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet"||a.tipo==="Crear apuesta";
 // ── Picks de JUGADOR (NBA, MLB, NFL y remates a puerta en fútbol) ──
 // v.j = [{n:"Shohei Ohtani", s:{h:1,...}}] lo manda el Worker cuando el partido tiene un pick de jugador.
 // Solo dicen cómo vas: NO se califican solos (ESPN puede contar distinto que la casa de apuestas).
@@ -107,7 +107,7 @@ const tramoPick = (t, ev) => {
   const fut=esFut(ev.k), beis=String(ev.k).startsWith("baseball");
   let m, n, tipo, txt;
   if((m=t.match(/\s(f5|(?:(?:las\s+)?primeras?\s+)?5\s+entradas|primeras?\s+cinco\s+entradas)\s/)) && beis){ return {quita:m[1], per:[1,2,3,4,5], hasta:5, label:"5 entradas"}; }
-  if((m=t.match(/\s(?:(\d)\s*(?:er|era|ra|ro|do|da|to|ta|o|a|º|°)?|(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]))\s+(cuarto|mitad|tiempo|periodo|half|quarter|qtr)\s/))){ n=m[1]?Number(m[1]):ORD[m[2]]; tipo=m[3]; txt=m[0]; }
+  if((m=t.match(/\s(?:(\d)\s*(?:er|era|ra|ro|do|da|to|ta|o|a|º|°|ª)?|(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]))\s+(cuarto|mitad|tiempo|periodo|half|quarter|qtr)\s/))){ n=m[1]?Number(m[1]):ORD[m[2]]; tipo=m[3]; txt=m[0]; }
   else if((m=t.match(/\s(?:([1-4])\s*(q|h)|(q|h)\s*([1-4]))\s/))){ n=Number(m[1]||m[4]); tipo=(m[2]||m[3])==="q"?"cuarto":"mitad"; txt=m[0]; }
   else return null;
   if(!n||n<1||n>4) return null;
@@ -123,11 +123,17 @@ const pistaPick = (a,ev,v,sinTramo) => {
   // Picks de un cuarto / mitad / 5 entradas: se califican con el marcador de ese tramo
   const tr = !sinTramo && tramoPick(t, ev);
   if(tr){
-    if(!Array.isArray(v.hl)||!Array.isArray(v.al)) return null;
+    const sinLS = !Array.isArray(v.hl)||!Array.isArray(v.al);
     const per=Number(v.per)||0, cierre=/^(end|halftime|ht)\b|end of|final/i.test(String(v.det||""));
+    if(sinLS && !per) return null; // sin datos del periodo no se sabe en qué tramo va
     const empezo = fin || per>=tr.per[0], listoT = fin || per>tr.hasta || (per===tr.hasta && cierre);
     if(!empezo) return {txt:tr.label+" · aún no empieza", ok:0};
-    const suma = arr => tr.per.reduce((s,p)=>s+(Number(arr[p-1])||0),0), ph=suma(v.hl), pa=suma(v.al);
+    const suma = arr => tr.per.reduce((s,p)=>s+(Number(arr[p-1])||0),0);
+    // Si el tramo empieza desde el inicio y todavía se está jugando, su marcador ES el marcador del partido
+    // (ESPN a veces no actualiza el marcador por tiempo/cuarto mientras está en vivo)
+    const enCurso = !fin && tr.per[0]===1 && per>=1 && per<=tr.hasta;
+    if(!enCurso && sinLS) return null;
+    const ph = enCurso ? hs : suma(v.hl), pa = enCurso ? as : suma(v.al);
     const p = pistaPick({descripcion:t.replace(tr.quita," ")}, ev, {st:listoT?"post":"in", hs:ph, as:pa}, true);
     if(!p||p.stats) return null;
     const marc = tr.label+" "+(esFut(ev.k)?ph+"-"+pa:pa+"-"+ph);
