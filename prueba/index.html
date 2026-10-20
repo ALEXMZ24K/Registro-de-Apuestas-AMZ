@@ -1986,7 +1986,9 @@ function App() {
       pushNotificar("picks",
         esCrearF ? "Nuevo pick · Crear apuesta" : esC ? (nueva.tipo==="Freebet"?"Nueva freebet":"Nuevo parlay") : "Nuevo pick"+(nueva.deporte?" · "+nueva.deporte:""),
         (esCrearF?(nueva.partido?nueva.partido+": ":"")+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):esC?nombreCombo(nueva)+" de "+nP+" picks: "+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):nueva.descripcion+(nueva.partido?" ("+nueva.partido+")":""))+" · Momio "+momioStr+" · "+nueva.monto+"% del bank",
-        "pick-"+Date.now());
+        "pick-"+Date.now(),
+        // Para que el Worker ponga a cada quien cuánto apostar en PESOS con su bank (en lugar del %)
+        {apuesta:{monto:nueva.monto, cuota:nueva.cuota, fecha:nueva.fecha}, bankAdmin:bankrolls});
     }
     setModal(false);
   };
