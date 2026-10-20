@@ -1009,16 +1009,14 @@ async function dibujarSticker(o){
   const W=1080, M=46, CW=W-2*M, F=(w,s)=>`${w} ${s}px 'DM Sans','Helvetica Neue',Arial,sans-serif`;
   const G="#2fe0a0", R="#ff5d7a";
   const col = o.res==="Ganada"?G:o.res==="Perdida"?R:o.res==="Nula"?"#f5c842":"#ffffff";
-  const fondo = o.res==="Ganada"?["#11583f","#06231a","#010806"]:o.res==="Perdida"?["#4a1420","#1d070c","#060203"]:["#1d2230","#0b0d12","#030304"];
-  const caja = o.res==="Ganada"?["#082e21","#1b6b4c","#9fe9cc"]:o.res==="Perdida"?["#2a0c12","#6b1b2c","#f0a9b6"]:["#15171c","#2a2d35","#9aa0ab"];
+  const caja = ["#151517","#232326","#8e8e93"]; // tarjeta negra; el color solo va en la franja, el marcador y la ganancia
   const [lh, la] = await Promise.all([o.eq?cargarImg(o.eq[0].l,true):null, o.eq?cargarImg(o.eq[1].l,true):null]);
   const c=document.createElement("canvas"); c.width=W; c.height=2600; const x=c.getContext("2d"); x.textBaseline="alphabetic";
   const lineas=(t,f,max)=>{ x.font=f; const ps=String(t).split(" "), out=[]; let l=""; ps.forEach(p=>{ const n=l?l+" "+p:p; if(x.measureText(n).width>max&&l){ out.push(l); l=p; } else l=n; }); if(l) out.push(l); return out; };
   const corta=(t,max)=>{ let s=String(t); if(x.measureText(s).width<=max) return s; while(s.length>4&&x.measureText(s+"…").width>max) s=s.slice(0,-1); return s.trim()+"…"; };
   const pasos=[]; let y=M+56;
   // Etiqueta
-  { const yy=y; pasos.push(()=>{ const y=yy; const t=o.res==="Ganada"?"✓ GANADO":o.res==="Perdida"?"✕ PERDIDO":o.res==="Nula"?"NULO":"PICK"; x.font=F(900,40); const w=x.measureText(t).width+90;
-    x.fillStyle=col; rr(x,(W-w)/2,y,w,80,40); x.fill(); x.fillStyle="#000"; x.textAlign="center"; x.fillText(t,W/2,y+55); }); } y+=80+46;
+  y+=24; // sin etiqueta: la franja de color de arriba ya dice cómo quedó
   // Liga y fecha
   { const yy=y; pasos.push(()=>{ x.font=F(500,36); x.fillStyle=caja[2]; x.textAlign="center"; x.fillText(o.sub,W/2,yy+30); }); y+=56; }
   // Escudos
@@ -1043,14 +1041,16 @@ async function dibujarSticker(o){
   if(o.final){ const yy=y; pasos.push(()=>{ x.textAlign="center"; x.font=F(500,32); x.fillStyle=caja[2]; x.fillText(o.finalLbl||"Final",W/2,yy+32); x.font=F(900,74); x.fillStyle=o.res==="Ganada"?G:"#fff"; x.fillText(o.final,W/2,yy+108); }); y+=130; }
   // Momio / apuesta / ganancia
   { const yy=y+10, cs=o.datos, gap=20, bw=(CW-90-gap*(cs.length-1))/cs.length;
-    pasos.push(()=>{ cs.forEach(([l,v,cc],i)=>{ const X=M+45+i*(bw+gap); x.fillStyle=caja[0]; rr(x,X,yy,bw,140,28); x.fill(); x.lineWidth=2; x.strokeStyle=caja[1]; x.stroke();
-      x.textAlign="center"; x.fillStyle=caja[2]; x.font=F(500,30); x.fillText(l,X+bw/2,yy+48); x.fillStyle=cc||"#fff"; let sz=50; x.font=F(800,sz); while(x.measureText(v).width>bw-20&&sz>26){ x.font=F(800,sz-=3); } x.fillText(v,X+bw/2,yy+108); }); });
+    pasos.push(()=>{ cs.forEach(([l,v,cc],i)=>{ const X=M+45+i*(bw+gap); const res3 = i===cs.length-1 && o.res && o.res!=="Nula", fc = o.res==="Ganada"?["#08251b","#1b6b4c","#9fe9cc"]:["#2a0c12","#6b1b2c","#f0a9b6"];
+      x.fillStyle=res3?fc[0]:caja[0]; rr(x,X,yy,bw,140,28); x.fill(); x.lineWidth=2; x.strokeStyle=res3?fc[1]:caja[1]; x.stroke();
+      x.textAlign="center"; x.fillStyle=res3?fc[2]:caja[2]; x.font=F(500,30); x.fillText(l,X+bw/2,yy+48); x.fillStyle=cc||"#fff"; let sz=50; x.font=F(800,sz); while(x.measureText(v).width>bw-20&&sz>26){ x.font=F(800,sz-=3); } x.fillText(v,X+bw/2,yy+108); }); });
     y=yy+140+44; }
   const H=y+M;
   // Tarjeta: degradado del color del resultado y marco brillante; afuera queda transparente
-  const g=x.createRadialGradient(W/2,M,0,W/2,M,H); g.addColorStop(0,fondo[0]); g.addColorStop(.55,fondo[1]); g.addColorStop(1,fondo[2]);
-  x.save(); x.shadowColor=col; x.shadowBlur=o.res?36:0; x.fillStyle=g; rr(x,M,M,CW,H-2*M,64); x.fill(); x.restore();
-  x.lineWidth=7; x.strokeStyle=o.res?col:"rgba(255,255,255,.25)"; rr(x,M,M,CW,H-2*M,64); x.stroke();
+  // Tarjeta negra con una franja del color del resultado arriba (verde ganado, rojo perdido); afuera queda transparente
+  x.save(); x.shadowColor="rgba(0,0,0,.6)"; x.shadowBlur=30; x.fillStyle="#0a0a0b"; rr(x,M,M,CW,H-2*M,64); x.fill(); x.restore();
+  x.save(); rr(x,M,M,CW,H-2*M,64); x.clip(); x.fillStyle=o.res?col:"#3a3a3d"; x.fillRect(M,M,CW,22); x.restore();
+  x.lineWidth=4; x.strokeStyle="#2a2a2d"; rr(x,M,M,CW,H-2*M,64); x.stroke();
   pasos.forEach(f=>f());
   const out=document.createElement("canvas"); out.width=W; out.height=H; out.getContext("2d").drawImage(c,0,0); return out;
 }
