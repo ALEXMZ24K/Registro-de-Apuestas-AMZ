@@ -1881,6 +1881,7 @@ function App() {
 
   const leerBoleto = async file => {
     if(!file) return;
+    if(window.ES_PRUEBA){ setIa({estado:"error",msg:"En la app de prueba no se leen boletos con IA. Pruébalo en la app real, o llena el pick a mano aquí."}); return; }
     let prev=""; try{ prev=URL.createObjectURL(file); }catch(e){}
     setIa({estado:"leyendo",msg:"",paso:0,prev});
     const timers=[setTimeout(()=>setIa(x=>x.estado==="leyendo"?{...x,paso:Math.max(x.paso,2)}:x),2600),setTimeout(()=>setIa(x=>x.estado==="leyendo"?{...x,paso:Math.max(x.paso,3)}:x),6500)];
@@ -1979,6 +1980,8 @@ function App() {
       else db.collection("apuestas").add({...nueva,id:editId});
     } else {
       db.collection("apuestas").add({...nueva,id:Date.now()});
+      // Picks de días pasados (registrar meses anteriores) NO avisan a nadie
+      if(nueva.fecha < isoLocal(new Date())) { setModal(false); return; }
       // Notificar a todos
       const momioStr = Number(nueva.cuota)>0?"+"+nueva.cuota:String(nueva.cuota);
       const esC = esCombo(nueva);
@@ -2039,7 +2042,9 @@ function App() {
       cambios.patas = (cambios.patas||ap.patas).map(p=>{ const o=typeof p==="object"?{...p}:{deporte:"",desc:p}; if(o.desc&&String(o.desc).trim()&&!o.res) o.res="G"; return o; });
     }
     db.collection("apuestas").doc(ap._docId).update(cambios);
-    if(resultado==="Ganada"||resultado==="Perdida"||resultado==="Nula") {
+    // Calificar picks viejos (más de 3 días) tampoco avisa: es registro de meses pasados, no un resultado de hoy
+    const pickViejo = String(ap.fecha||"") < isoLocal(new Date(Date.now()-3*864e5));
+    if(!pickViejo && (resultado==="Ganada"||resultado==="Perdida"||resultado==="Nula")) {
       const m = apMonto(ap,bankrollMes);
       const ganancia = resultado==="Ganada"
         ? Math.round(m*momioToDec(ap.cuota)-m)
