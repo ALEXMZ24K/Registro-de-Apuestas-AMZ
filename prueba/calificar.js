@@ -173,7 +173,7 @@ const pistaPick = (a,ev,v,sinTramo) => {
     const leer = e => { if(!e) return NaN; if(stK[0]==="tarjetas") return e.yellowCards===undefined?NaN:Number(e.yellowCards)+Number(e.redCards||0); return e[stK[0]]===undefined?NaN:Number(e[stK[0]]); };
     const vh=leer(v.eh), va=leer(v.ea);
     let val;
-    if(H&&!A) val=vh; else if(A&&!H) val=va; else if(!H&&!A){ let pre=t.slice(0,t.indexOf(lin[0])); ["total","partido","juego","del","el","vs","entre","ambos","equipos","mas de","menos de"].forEach(x=>{ pre=pre.split(x).join(" "); }); if(pre.replace(/[^a-z]/g,"").length>3) return null; val=vh+va; } else return null;
+    if(H&&!A) val=vh; else if(A&&!H) val=va; else if(!H&&!A){ let pre=t.slice(0,t.indexOf(lin[0])); ["total","partido","juego","del","el","vs","entre","ambos","equipos","mas de","menos de"," fc "," cf "," afc "," club "].forEach(x=>{ pre=pre.split(x).join(" "); }); if(pre.replace(/[^a-z]/g,"").length>3) return null; val=vh+va; } else return null;
     if(isNaN(val)) return null;
     const under = /under|menos de|baja/.test(lin[1]||""), L = lin[2]!==undefined ? Number(lin[2]) : Number(lin[1])-0.5;
     if(!under){ const nec=Math.floor(L)+1; return val>=nec ? {txt:"¡Ganaste! · "+cu(val,stK[1]), ok:1, listo:1, prog:[val,nec], stats:1} : {txt:fin?"Perdiste · quedó en "+cu(val,stK[1]):val+" de "+cu(nec,stK[1]), ok:fin?-1:0, prog:[val,nec], stats:1}; }
@@ -183,7 +183,7 @@ const pistaPick = (a,ev,v,sinTramo) => {
   const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt);
   const ou=t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/);
   if(ou){ // totales del partido o de UN equipo: antes del over no puede ir un jugador, después solo goles/puntos/carreras
-    const conect = s => s.replace(/(^|\s)(vs|total|totales|partido|juego|del|de|el|la|los|para|equipo|anota|anotan|marca|marcan|mete|meten|hace|hacen|en)(?=\s|$)/g," ");
+    const conect = s => s.replace(/(^|\s)(vs|total|totales|partido|juego|del|de|el|la|los|para|equipo|anota|anotan|marca|marcan|mete|meten|hace|hacen|en|fc|cf|afc|sc|ac|cd|club)(?=\s|$)/g," ");
     let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pre=pre.split(x).join(" "); }); pre=conect(pre);
     let pos=" "+t.slice(ou.index+ou[0].length)+" "; [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pos=pos.split(x).join(" "); }); pos=conect(pos).trim();
     if(pre.replace(/[^a-z0-9]/g,"")!=="" || (pos && !/^(goles?|puntos?|pts|carreras?|runs?)$/.test(pos))) return null; }
