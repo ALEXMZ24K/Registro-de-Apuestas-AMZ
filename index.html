@@ -1913,6 +1913,11 @@ function App() {
       const partes = [];
       if(b.apuesta) partes.push("Apostaste "+fmtReal(b.apuesta)+(pct!==""?" = "+pct+"% de tu bank":" (pon tu bank del mes para calcular el %)"));
       if(b.notas) partes.push("Ojo: "+b.notas);
+      // La captura traía más apuestas: se avisa cuáles para subirlas aparte
+      const otras = Array.isArray(b.otras) ? b.otras.filter(o=>o&&o.partido) : [];
+      if(otras.length) partes.push((otras.length===1?"En la captura hay otra apuesta: ":"En la captura hay otras "+otras.length+" apuestas: ")+
+        otras.map(o=>o.partido+(o.seleccion?" ("+o.seleccion+")":"")+(o.apuesta?" · "+fmtReal(o.apuesta):"")).join(" · ")+
+        ". Súbela"+(otras.length===1?"":"s")+" aparte"+(otras.some(o=>!o.seleccion)?", abierta"+(otras.length===1?"":"s")+" para que se vea la selección":"")+".");
       timers.forEach(clearTimeout);
       setIa({estado:"listo",msg:partes.join(" · ")});
       // Crear apuesta: todas las selecciones son del mismo partido → se busca una sola vez

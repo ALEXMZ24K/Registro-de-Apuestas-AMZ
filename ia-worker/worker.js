@@ -49,6 +49,11 @@ const HERRAMIENTA = {
       fecha: { type: "string", description: "Fecha del partido en formato YYYY-MM-DD. Los boletos usan dd/mm. Si no trae año, usa el año de 'hoy' (o el anterior si quedaría en el futuro lejano)." },
       resultado: { type: "string", enum: ["Ganada","Perdida","Pendiente","Nula"], description: "GANADO/Ganada → Ganada, PERDIDO → Perdida, ABIERTA/en juego → Pendiente, ANULADA/reembolso → Nula." },
       notas: { type: "string", description: "Dudas o datos que no se pudieron leer bien. Vacío si todo está claro." },
+      otras: { type: "array", description: "Si en la captura hay MÁS apuestas ya hechas además de la que registraste, una entrada por cada una (aunque no se vea su selección). Vacío si solo hay una.",
+        items: { type: "object", properties: {
+          partido: { type: "string", description: "El partido como aparece, ej. 'WAS Commanders @ SF 49ers'." },
+          momio: { type: "integer" }, apuesta: { type: "number" },
+          seleccion: { type: "string", description: "La selección si se ve; vacío si la apuesta está cerrada/colapsada y no se ve." } }, required: ["partido"] } },
     },
     required: ["tipo","deporte","descripcion","partido","patas","momio","apuesta","pago_total","fecha","resultado","notas"],
   },
@@ -366,6 +371,8 @@ export default {
           { type: "text", text:
 `Es una captura de un boleto de apuestas deportivas de México (por ejemplo Playdoit). Hoy es ${hoy}.
 Extrae los datos y SIEMPRE responde llamando a la herramienta registrar_apuesta. Reglas:
+- La captura puede ser la pantalla COMPLETA de la casa de apuestas. Lee SOLO las apuestas ya hechas: las que tienen "Apuesta total", "Ganancia Total", un ID o estado (ABIERTO, GANADO, PERDIDO), normalmente en "Historial" o "Mis apuestas". IGNORA la lista de partidos y momios de arriba (Hándicap, Totales, Ganador, botones con momios), los banners y los menús: eso NO es una apuesta.
+- Si hay varias apuestas hechas, registra la que se ve COMPLETA (abierta, con su selección visible); si hay varias completas, la primera. Las demás van en "otras".
 - "Ganancia Total" o "Pago" es lo que se cobra en total (incluye lo apostado); va en pago_total.
 - Si todas las selecciones son del MISMO partido (Crear Apuesta, SGP, Same Game Parlay) el tipo es "Crear apuesta": pon el partido en "partido" y cada selección es una pata. Escribe cada selección clara y completa, ej. "Cruz Azul ML", "Más de 1.5 goles", "1er tiempo más de 0.5 goles".
 - Un parlay con selecciones de partidos DISTINTOS es "Parlay/Combinada".
