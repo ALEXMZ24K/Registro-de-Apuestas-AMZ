@@ -119,7 +119,11 @@ const tramoPick = (t, ev) => {
 };
 const pistaPick = (a,ev,v,sinTramo) => {
   if(!v||!ev) return null; const hs=Number(v.hs), as=Number(v.as); if(v.hs===""||v.as===""||isNaN(hs)||isNaN(as)) return null;
-  const t=conApodos(" "+normTxt(a.descripcion||"")+" ", ev), fin=v.st==="post";
+  // "(incl. prórroga)" / "(tiempo regular)" no cambian cómo se lee el pick: se quitan para que no estorben
+  const t=conApodos(" "+normTxt(a.descripcion||"")+" ", ev)
+    .replace(/\(?\s*(incl\.?|incluye|incluyendo|con)\s+(la\s+)?(prorroga|tiempo extra|tiempos extras?|overtime|ot)\s*\)?/g," ")
+    .replace(/\(\s*tiempo regular\s*\)/g," ")
+    .replace(/\s(tt|team total)\s/g," total equipo "), fin=v.st==="post";
   // Picks de un cuarto / mitad / 5 entradas: se califican con el marcador de ese tramo
   const tr = !sinTramo && tramoPick(t, ev);
   if(tr){
