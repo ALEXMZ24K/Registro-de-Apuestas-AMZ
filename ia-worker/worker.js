@@ -137,11 +137,11 @@ async function avisarTodos(env, body, desde = "", max = TANDA) {
     const pf = reg.perfil || {};
     const [yy, mm] = String(apuesta.fecha || "").split("-").map(Number);
     const clave = yy + "-" + (mm - 1);
-    // Pick nuevo: "· 3% del bank" → "· Apuesta $1,500" con el bank de cada quien (si no tiene bank, se queda el %)
+    // Pick nuevo: "· 3% del bank" → "· Apuesta $1,500 (3%)" con el bank de cada quien (si no tiene bank, se queda el %)
     if (tipo === "picks") {
       const bankP = Number((pf.admin ? (bankAdmin || {}) : (pf.bancos || {}))[clave]) || 0;
       if (!(bankP > 0) || !/% del bank\s*$/.test(texto)) return texto;
-      return texto.replace(/[\d.]+% del bank\s*$/, "Apuesta " + pesos(bankP * (Number(apuesta.monto) || 0) / 100));
+      return texto.replace(/([\d.]+)% del bank\s*$/, (_, pc) => "Apuesta " + pesos(bankP * (Number(apuesta.monto) || 0) / 100) + " (" + pc + "%)");
     }
     const desc = apuesta.descripcion || "";
     if (pf.noMet && pf.noMet.includes(String(apuesta.id))) return desc + " · (no la metiste)";
