@@ -1004,8 +1004,58 @@ async function dibujarPick(o){
   const sx=(W-w1-w2)/2; x.textAlign="left"; x.font=F(500,34); x.fillStyle=gano?"#7fcfae":"#6e727c"; x.fillText(f1,sx,H-P); x.font=F(800,34); x.fillStyle="#fff"; x.fillText(f2,sx+w1,H-P);
   return c;
 }
+// Sticker: tarjeta chica con fondo transparente para pegar encima de una foto (historias). Sin marca, en pesos.
+async function dibujarSticker(o){
+  const W=1080, M=46, CW=W-2*M, F=(w,s)=>`${w} ${s}px 'DM Sans','Helvetica Neue',Arial,sans-serif`;
+  const G="#2fe0a0", R="#ff5d7a";
+  const col = o.res==="Ganada"?G:o.res==="Perdida"?R:o.res==="Nula"?"#f5c842":"#ffffff";
+  const fondo = o.res==="Ganada"?["#11583f","#06231a","#010806"]:o.res==="Perdida"?["#4a1420","#1d070c","#060203"]:["#1d2230","#0b0d12","#030304"];
+  const caja = o.res==="Ganada"?["#082e21","#1b6b4c","#9fe9cc"]:o.res==="Perdida"?["#2a0c12","#6b1b2c","#f0a9b6"]:["#15171c","#2a2d35","#9aa0ab"];
+  const [lh, la] = await Promise.all([o.eq?cargarImg(o.eq[0].l,true):null, o.eq?cargarImg(o.eq[1].l,true):null]);
+  const c=document.createElement("canvas"); c.width=W; c.height=2600; const x=c.getContext("2d"); x.textBaseline="alphabetic";
+  const lineas=(t,f,max)=>{ x.font=f; const ps=String(t).split(" "), out=[]; let l=""; ps.forEach(p=>{ const n=l?l+" "+p:p; if(x.measureText(n).width>max&&l){ out.push(l); l=p; } else l=n; }); if(l) out.push(l); return out; };
+  const corta=(t,max)=>{ let s=String(t); if(x.measureText(s).width<=max) return s; while(s.length>4&&x.measureText(s+"…").width>max) s=s.slice(0,-1); return s.trim()+"…"; };
+  const pasos=[]; let y=M+56;
+  // Etiqueta
+  { const yy=y; pasos.push(()=>{ const y=yy; const t=o.res==="Ganada"?"✓ GANADO":o.res==="Perdida"?"✕ PERDIDO":o.res==="Nula"?"NULO":"PICK"; x.font=F(900,40); const w=x.measureText(t).width+90;
+    x.fillStyle=col; rr(x,(W-w)/2,y,w,80,40); x.fill(); x.fillStyle="#000"; x.textAlign="center"; x.fillText(t,W/2,y+55); }); } y+=80+46;
+  // Liga y fecha
+  { const yy=y; pasos.push(()=>{ x.font=F(500,36); x.fillStyle=caja[2]; x.textAlign="center"; x.fillText(o.sub,W/2,yy+30); }); y+=56; }
+  // Escudos
+  if(o.eq){ const yy=y, rad=78; pasos.push(()=>{ const cx=[W/2-200,W/2+200];
+      o.eq.forEach((e,i)=>{ const img=i?la:lh, X=cx[i], Y=yy+rad;
+        x.beginPath(); x.arc(X,Y,rad,0,Math.PI*2); x.fillStyle=img?"rgba(255,255,255,.07)":(e.c||"#2a2c31"); x.fill(); x.lineWidth=4; x.strokeStyle="rgba(255,255,255,.16)"; x.stroke();
+        if(img){ const s=rad*1.35; x.drawImage(img,X-s/2,Y-s/2,s,s); } else { x.fillStyle="#fff"; x.font=F(900,46); x.textAlign="center"; x.fillText(String(e.a||e.n||"?").slice(0,3).toUpperCase(),X,Y+16); }
+        x.fillStyle="#d5d8de"; x.font=F(500,36); x.textAlign="center"; x.fillText(corta(e.n||"",300),X,Y+rad+52); });
+      x.fillStyle="rgba(255,255,255,.35)"; x.font=F(700,52); x.textAlign="center"; x.fillText(o.sep,W/2,yy+rad+18); }); y+=rad*2+80; }
+  // Pick en grande (sencillo) o lista de selecciones (combo)
+  if(!o.legs){
+    let tam=84, ls; do { ls=lineas(o.pick,F(900,tam),CW-90); if(ls.length<=2) break; tam-=6; } while(tam>50); ls=ls.slice(0,3);
+    const yy=y; pasos.push(()=>{ x.fillStyle="#fff"; x.font=F(900,tam); x.textAlign="center"; ls.forEach((l,i)=>x.fillText(l,W/2,yy+tam*(i+0.85)*1.06)); }); y+=ls.length*tam*1.06+16;
+    if(!o.eq && o.partido){ const yy2=y; pasos.push(()=>{ x.font=F(500,36); x.fillStyle=caja[2]; x.textAlign="center"; x.fillText(corta(o.partido,CW-90),W/2,yy2+34); }); y+=56; }
+  } else {
+    const lg=o.legs.slice(0,8).map(p=>{ const ls=lineas(p.desc,F(600,40),CW-200).slice(0,2); return {p,ls,h:30+ls.length*48}; });
+    let yy=y; lg.forEach(L=>{ const Y=yy; pasos.push(()=>{ const p=L.p; x.fillStyle=caja[1]; x.fillRect(M+50,Y,CW-100,2);
+      const ok=p.res==="G"||o.res==="Ganada", mal=p.res==="P"; x.font=F(900,42); x.textAlign="left"; x.fillStyle=ok?G:mal?R:"#8b8f99"; x.fillText(ok?"✓":mal?"✕":"•",M+64,Y+58);
+      x.font=F(600,40); x.fillStyle="#fff"; L.ls.forEach((l,k)=>x.fillText(k===1&&lineas(p.desc,F(600,40),CW-200).length>2?corta(l+" …",CW-200):l,M+124,Y+58+k*48)); }); yy+=L.h; }); y=yy+14;
+  }
+  // Marcador final
+  if(o.final){ const yy=y; pasos.push(()=>{ x.textAlign="center"; x.font=F(500,32); x.fillStyle=caja[2]; x.fillText(o.finalLbl||"Final",W/2,yy+32); x.font=F(900,74); x.fillStyle=o.res==="Ganada"?G:"#fff"; x.fillText(o.final,W/2,yy+108); }); y+=130; }
+  // Momio / apuesta / ganancia
+  { const yy=y+10, cs=o.datos, gap=20, bw=(CW-90-gap*(cs.length-1))/cs.length;
+    pasos.push(()=>{ cs.forEach(([l,v,cc],i)=>{ const X=M+45+i*(bw+gap); x.fillStyle=caja[0]; rr(x,X,yy,bw,140,28); x.fill(); x.lineWidth=2; x.strokeStyle=caja[1]; x.stroke();
+      x.textAlign="center"; x.fillStyle=caja[2]; x.font=F(500,30); x.fillText(l,X+bw/2,yy+48); x.fillStyle=cc||"#fff"; let sz=50; x.font=F(800,sz); while(x.measureText(v).width>bw-20&&sz>26){ x.font=F(800,sz-=3); } x.fillText(v,X+bw/2,yy+108); }); });
+    y=yy+140+44; }
+  const H=y+M;
+  // Tarjeta: degradado del color del resultado y marco brillante; afuera queda transparente
+  const g=x.createRadialGradient(W/2,M,0,W/2,M,H); g.addColorStop(0,fondo[0]); g.addColorStop(.55,fondo[1]); g.addColorStop(1,fondo[2]);
+  x.save(); x.shadowColor=col; x.shadowBlur=o.res?36:0; x.fillStyle=g; rr(x,M,M,CW,H-2*M,64); x.fill(); x.restore();
+  x.lineWidth=7; x.strokeStyle=o.res?col:"rgba(255,255,255,.25)"; rr(x,M,M,CW,H-2*M,64); x.stroke();
+  pasos.forEach(f=>f());
+  const out=document.createElement("canvas"); out.width=W; out.height=H; out.getContext("2d").drawImage(c,0,0); return out;
+}
 // Hoja para compartir un pick: vista previa, formato y botón para mandarla
-function CompartirPick({a, onClose}) {
+function CompartirPick({a, onClose, monto}) {
   const [formato,setFormato] = useState(()=>{ try{ return localStorage.getItem("fmtPick")||"historia"; }catch(e){ return "historia"; } });
   const [img,setImg] = useState(null), [listo,setListo] = useState(false); const archivo = useRef(null);
   useEffect(()=>{ let vivo=true; setImg(null); setListo(false); archivo.current=null; // el archivo del formato anterior ya no sirve
@@ -1032,7 +1082,21 @@ function CompartirPick({a, onClose}) {
         o.final = esFut(ev.k) ? ph+" – "+pa : pa+" – "+ph; o.finalLbl = tr.label.charAt(0).toUpperCase()+tr.label.slice(1); }).catch(()=>{}),
       new Promise(ok=>setTimeout(ok,3500)) ]);
     o.finalLbl = finalLbl;
-    tramo.then(()=>dibujarPick(o)).then(cv=>{ if(!vivo) return; setImg(cv.toDataURL("image/png"));
+    if(formato==="sticker"){
+      // En pesos (con el bank del mes); si no hay bank, en %
+      const m = Number(monto)||0, pesosTxt = n => (n<0?"-":"")+fmtReal(Math.abs(n)).replace("-","");
+      const gan = res==="Ganada" ? m*(dec-1) : res==="Perdida" ? -m : res==="Nula" ? 0 : m*(dec-1);
+      const ganCol = res==="Perdida"?"#ff5d7a":res==="Nula"?"#f5c842":"#2fe0a0";
+      o.datos = m>0 ? [["Momio",fmtMomio(a.cuota)],["Apuesta",pesosTxt(m)],[res?"Ganancia":"Gana",(gan>0?"+":"")+pesosTxt(gan),ganCol]]
+        : [["Momio",fmtMomio(a.cuota)],[res?"Ganancia":"Gana",res==="Perdida"?"-"+pct+"%":"+"+(pct*(dec-1)).toFixed(1)+"%",ganCol]];
+      const evS = ev || (esCrear(a) && a.evento && a.evento.id ? a.evento : null);
+      o.eq = evS ? lados(evS,null) : null; o.sep = evS ? (esFut(evS.k)?"vs":"@") : "";
+      o.sub = [combo?nombreCombo(a):"", (evS&&evS.liga)||a.deporte||"", f.d+" "+MESES_CORTO[f.m]].filter(Boolean).join(" · ");
+      o.pick = combo ? "" : sp.pick;
+      if(!fin && evS && evS.fin && evS.fin.hs!==""){ const [l,r]=lados(evS,null); o.final=l.s+" – "+r.s; }
+      else if(fin) o.final=fin;
+    }
+    tramo.then(()=>formato==="sticker"?dibujarSticker(o):dibujarPick(o)).then(cv=>{ if(!vivo) return; setImg(cv.toDataURL("image/png"));
       cv.toBlob(b=>{ if(b&&vivo){ archivo.current=new File([b],"alexpicks-pick-"+formato+".png",{type:"image/png"}); setListo(true); } },"image/png"); });
     return ()=>{ vivo=false; };
   },[a,formato]);
@@ -1043,9 +1107,10 @@ function CompartirPick({a, onClose}) {
   const seg = (v,t) => html`<button key=${v} onClick=${()=>cambiar(v)} style=${{flex:1,minHeight:40,borderRadius:10,border:"none",background:formato===v?"var(--card)":"transparent",color:formato===v?"#fff":"var(--mu)",fontWeight:700,fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>${t}</button>`;
   return html`<${Hoja} onClose=${onClose} maxW=${480}>
     <b style=${{fontSize:19,color:"#fff",display:"block",marginBottom:12}}>Compartir pick</b>
-    <div style=${{display:"flex",gap:4,background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:4,marginBottom:12}}>${seg("historia","Historia")}${seg("cuadrada","Cuadrada")}</div>
+    <div style=${{display:"flex",gap:4,background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:4,marginBottom:12}}>${seg("historia","Historia")}${seg("cuadrada","Cuadrada")}${seg("sticker","Sticker")}</div>
+    ${formato==="sticker" && html`<div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginTop:-4,marginBottom:10}}>Fondo transparente: pégalo encima de tu foto en la historia</div>`}
     <div style=${{display:"flex",justifyContent:"center",alignItems:"center",minHeight:240,marginBottom:12}}>
-      ${img ? html`<img src=${img} alt="Vista previa" style=${{maxWidth:"100%",maxHeight:"52vh",borderRadius:14,border:"1px solid var(--br)"}}/>` : html`<span className="sk" style=${{width:formato==="historia"?180:240,height:formato==="historia"?320:300,borderRadius:14}}></span>`}
+      ${img ? html`<img src=${img} alt="Vista previa" style=${{maxWidth:formato==="sticker"?"78%":"100%",maxHeight:"52vh",borderRadius:formato==="sticker"?0:14,border:formato==="sticker"?"none":"1px solid var(--br)"}}/>` : html`<span className="sk" style=${{width:formato==="historia"?180:formato==="sticker"?220:240,height:formato==="historia"?320:formato==="sticker"?220:300,borderRadius:14}}></span>`}
     </div>
     <button onClick=${mandar} disabled=${!listo} style=${{...S.btnPrimary,width:"100%",minHeight:52,fontSize:16,borderRadius:14,opacity:listo?1:.5}}><${IcoT} k="share" s=${18}/>${listo?"Compartir":"Preparando…"}</button>
   </${Hoja}>`;
@@ -2942,7 +3007,7 @@ function App() {
     </${Hoja}>`}
 
     <!-- Modal eliminar -->
-    ${pickCompartir && html`<${CompartirPick} a=${pickCompartir} onClose=${()=>setPickCompartir(null)}/>`}
+    ${pickCompartir && html`<${CompartirPick} a=${pickCompartir} monto=${apMonto(pickCompartir,bankDe)} onClose=${()=>setPickCompartir(null)}/>`}
     ${deleteConfirm && html`<${Hoja} onClose=${()=>setDeleteConfirm(null)} maxW=${480}>
         <div style=${S.modalHeader}>
           <h2 style=${{...S.modalTitle,color:"#ff5d7a"}}>Eliminar apuesta</h2>
