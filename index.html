@@ -949,12 +949,11 @@ async function dibujarPick(o){
   const G="#2fe0a0", R="#ff5d7a", MU="#8b8f99";
   const [logo, ico, lh, la] = await Promise.all([cargarImg("icon2-512.png"), icoImg(o.ico,MU), o.eq?cargarImg(o.eq[0].l,true):null, o.eq?cargarImg(o.eq[1].l,true):null]);
   // Fondo
-  const gano = o.res==="Ganada";
-  const g=x.createRadialGradient(W/2,0,0,W/2,0,H*0.9);
-  if(gano){ g.addColorStop(0,"#11583f"); g.addColorStop(.5,"#06231a"); g.addColorStop(1,"#010806"); }   // ganado: todo en verde
-  else { g.addColorStop(0,"#171b24"); g.addColorStop(.55,"#050506"); g.addColorStop(1,"#000"); }
+  // Mismo estilo que el sticker: fondo negro y una franja del color del resultado arriba
+  const gano = o.res==="Ganada", perdio = o.res==="Perdida";
+  const g=x.createRadialGradient(W/2,0,0,W/2,0,H*0.9); g.addColorStop(0,"#16171a"); g.addColorStop(.55,"#050506"); g.addColorStop(1,"#000");
   x.fillStyle=g; x.fillRect(0,0,W,H); x.textBaseline="alphabetic";
-  if(gano){ x.save(); x.shadowColor=G; x.shadowBlur=40; x.lineWidth=8; x.strokeStyle=G; rr(x,26,26,W-52,H-52,56); x.stroke(); x.restore(); }
+  if(o.res){ x.fillStyle=gano?G:perdio?R:"#f5c842"; x.fillRect(0,0,W,26); }
   // Encabezado: logo, marca y fecha
   if(logo){ x.save(); rr(x,P,P,130,130,32); x.clip(); x.drawImage(logo,P,P,130,130); x.restore(); }
   x.textAlign="left"; x.fillStyle="#fff"; x.font=F(900,56); x.fillText("ALEXPICKS",P+160,P+70);
@@ -988,10 +987,11 @@ async function dibujarPick(o){
       x.font=F(800,40); x.fillStyle=p.res==="G"?G:p.res==="P"?R:MU; x.fillText(m,P+20,Y);
       x.font=F(500,40); x.fillStyle="#dfe2e8"; let t=p.desc; while(x.measureText(t).width>W-2*P-90&&t.length>4) t=t.slice(0,-2); if(t!==p.desc) t=t.trim()+"…"; x.fillText(t,P+80,Y); }); }]);
   }
-  if(o.final) bloques.push([130,y=>{ x.textAlign="center"; x.fillStyle=gano?"#9fe9cc":MU; x.font=F(500,34); x.fillText(o.finalLbl||"Final",W/2,y+36); x.fillStyle=gano?G:"#fff"; x.font=F(900,76); x.fillText(o.final,W/2,y+116); }]);
+  if(o.final) bloques.push([130,y=>{ x.textAlign="center"; x.fillStyle=MU; x.font=F(500,34); x.fillText(o.finalLbl||"Final",W/2,y+36); x.fillStyle=gano?G:"#fff"; x.font=F(900,76); x.fillText(o.final,W/2,y+116); }]);
   bloques.push([170,y=>{ const cs=o.datos, gap=22, bw=(W-2*P-gap*(cs.length-1))/cs.length;
-    cs.forEach(([l,v,col],i)=>{ const X=P+i*(bw+gap); x.fillStyle=gano?"#082e21":"#141518"; rr(x,X,y,bw,150,30); x.fill(); x.lineWidth=2; x.strokeStyle=gano?"#1b6b4c":"#232529"; x.stroke();
-      x.textAlign="center"; x.fillStyle=gano?"#9fe9cc":MU; x.font=F(500,32); x.fillText(l,X+bw/2,y+52);
+    cs.forEach(([l,v,col],i)=>{ const ult = i===cs.length-1 && (gano||perdio), fc = gano?["#08251b","#1b6b4c","#9fe9cc"]:["#2a0c12","#6b1b2c","#f0a9b6"];
+      const X=P+i*(bw+gap); x.fillStyle=ult?fc[0]:"#141518"; rr(x,X,y,bw,150,30); x.fill(); x.lineWidth=2; x.strokeStyle=ult?fc[1]:"#232529"; x.stroke();
+      x.textAlign="center"; x.fillStyle=ult?fc[2]:MU; x.font=F(500,32); x.fillText(l,X+bw/2,y+52);
       x.fillStyle=col||"#fff"; let s=50; x.font=F(800,s); while(x.measureText(v).width>bw-24&&s>28){ x.font=F(800,s-=4); } x.fillText(v,X+bw/2,y+116); }); }]);
   const gapB = hist?44:30, alto=bloques.reduce((t,b)=>t+b[0],0)+gapB*(bloques.length-1);
   // Si no cabe (p. ej. cuadrada con marcador final y nombre largo), todo el contenido se achica parejo
@@ -1001,7 +1001,7 @@ async function dibujarPick(o){
   x.restore();
   // Firma
   x.textAlign="center"; x.font=F(500,34); const f1="Sigue mis picks · ", f2="AlexPicks"; const w1=x.measureText(f1).width; x.font=F(800,34); const w2=x.measureText(f2).width;
-  const sx=(W-w1-w2)/2; x.textAlign="left"; x.font=F(500,34); x.fillStyle=gano?"#7fcfae":"#6e727c"; x.fillText(f1,sx,H-P); x.font=F(800,34); x.fillStyle="#fff"; x.fillText(f2,sx+w1,H-P);
+  const sx=(W-w1-w2)/2; x.textAlign="left"; x.font=F(500,34); x.fillStyle="#6e727c"; x.fillText(f1,sx,H-P); x.font=F(800,34); x.fillStyle="#fff"; x.fillText(f2,sx+w1,H-P);
   return c;
 }
 // Sticker: tarjeta chica con fondo transparente para pegar encima de una foto (historias). Sin marca, en pesos.

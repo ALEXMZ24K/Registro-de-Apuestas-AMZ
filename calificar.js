@@ -40,6 +40,7 @@ const STATS_JUG = {
   ],
   soccer: [
     [/(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/, sumaJ("sot"), "remates a puerta"],
+    [/paradas?|atajadas?|salvadas?|saves?/, sumaJ("sv"), "atajadas"],
   ],
 };
 // Apodos y nombres cortos -> nombre como lo trae ESPN ("Chivas ML", "Barca over 2.5", "City -1.5"...).
@@ -92,7 +93,7 @@ const pickJugador = (t, ev, v, fin) => {
   else if(/anota|anytime|conecta|hace un|al menos un/.test(t) || st[2]==="touchdowns") nec=1; // "Walker TD" = anota touchdown
   else return null;
   const SING = {hits:"hit",jonrones:"jonrón",impulsadas:"impulsada",carreras:"carrera",strikeouts:"strikeout","bases por bola":"base por bola",puntos:"punto",rebotes:"rebote",
-    asistencias:"asistencia",triples:"triple",robos:"robo",tapones:"tapón",recepciones:"recepción","pases de TD":"pase de TD",touchdowns:"touchdown","remates a puerta":"remate a puerta",
+    asistencias:"asistencia",triples:"triple",robos:"robo",tapones:"tapón",recepciones:"recepción","pases de TD":"pase de TD",touchdowns:"touchdown","remates a puerta":"remate a puerta",atajadas:"atajada",
     "yardas por pase":"yarda por pase","yardas por tierra":"yarda por tierra","yardas por recepción":"yarda por recepción",yardas:"yarda"};
   const val = st[1](jug.s||{}), nombre = jug.n.split(" ").filter(w=>!/^(jr|sr|ii|iii|iv)\.?$/i.test(w)).slice(-1)[0] || jug.n;
   const uu = n => n===1 ? (SING[st[2]]||st[2]) : st[2], u = uu(val);
@@ -122,7 +123,8 @@ const pistaPick = (a,ev,v,sinTramo) => {
   // "(incl. prórroga)" / "(tiempo regular)" no cambian cómo se lee el pick: se quitan para que no estorben
   const t=conApodos(" "+normTxt(a.descripcion||"")+" ", ev)
     .replace(/\(?\s*(incl\.?|incluye|incluyendo|con)\s+(la\s+)?(prorroga|tiempo extra|tiempos extras?|overtime|ot)\s*\)?/g," ")
-    .replace(/\(\s*tiempo regular\s*\)/g," ")
+    .replace(/\(?\s*resultado final\s*[,\-]?\s*(tiempo regular|90 minutos)?\s*\)?/g," ")
+    .replace(/\(?\s*(tiempo regular|90 minutos)\s*\)?/g," ")
     .replace(/\s(tt|team total)\s/g," total equipo "), fin=v.st==="post";
   // Picks de un cuarto / mitad / 5 entradas: se califican con el marcador de ese tramo
   const tr = !sinTramo && tramoPick(t, ev);
