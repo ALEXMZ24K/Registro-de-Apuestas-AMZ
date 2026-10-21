@@ -42,9 +42,9 @@
     body{background:var(--bg);color:#e8e8f0;font-family:'DM Sans',sans-serif}
     input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{opacity:1}
     select option{background:var(--card2);color:#e8e8f0}
-    ::-webkit-scrollbar{width:6px}
-    ::-webkit-scrollbar-track{background:var(--bg)}
-    ::-webkit-scrollbar-thumb{background:var(--br2);border-radius:3px}
+    /* Sin barra de desplazamiento visible (se desliza igual) */
+    html,body{scrollbar-width:none;-ms-overflow-style:none}
+    ::-webkit-scrollbar{width:0;height:0;display:none;background:transparent}
     input,select,button{font-family:'DM Sans',sans-serif}
     /* Safe area for iPhone notch/home bar */
     body { padding-top: env(safe-area-inset-top); }
