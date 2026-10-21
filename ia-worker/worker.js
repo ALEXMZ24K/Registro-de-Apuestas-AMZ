@@ -272,7 +272,7 @@ function jugadoresDe(d) {
   }));
   // Fútbol: vienen en "rosters", con nombre de estadística
   ((d && d.rosters) || []).forEach(t => (t.roster || []).forEach(p => { const n = p.athlete && p.athlete.displayName;
-    (Array.isArray(p.stats) ? p.stats : []).forEach(x => { const k = { shotsOnTarget: "sot", totalShots: "sh", totalGoals: "g" }[x && x.name]; if (k) add(n, k, x.value ?? x.displayValue); }); }));
+    (Array.isArray(p.stats) ? p.stats : []).forEach(x => { const k = { shotsOnTarget: "sot", totalShots: "sh", totalGoals: "g", saves: "sv" }[x && x.name]; if (k) add(n, k, x.value ?? x.displayValue); }); }));
   return Object.keys(out).map(n => ({ n, s: out[n] }));
 }
 
