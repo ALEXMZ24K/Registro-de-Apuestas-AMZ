@@ -8,12 +8,14 @@ const esCombo = a => a.tipo==="Parlay/Combinada"||a.tipo==="Freebet"||a.tipo==="
 // v.j = [{n:"Shohei Ohtani", s:{h:1,...}}] lo manda el Worker cuando el partido tiene un pick de jugador.
 // Solo dicen cómo vas: NO se califican solos (ESPN puede contar distinto que la casa de apuestas).
 const sumaJ = (...ks) => s => ks.reduce((t,k)=>t+(Number(s[k])||0),0);
+const P_="(?:puntos?|pts?)", R_="(?:rebotes?|reb|rebs)", A_="(?:asistencias?|asist|ast|asis)", S_="\\.?\\s*(?:\\+|-|/|&|,|\\sy\\s)\\s*";
 const STATS_JUG = {
   basketball: [
-    [/puntos?\s*\+\s*rebotes?\s*\+\s*asist|\spra\s|pts\s*\+\s*reb\s*\+\s*ast/, sumaJ("pts","reb","ast"), "pts+reb+ast"],
-    [/puntos?\s*\+\s*rebotes?|pts\s*\+\s*reb/, sumaJ("pts","reb"), "pts+reb"],
-    [/puntos?\s*\+\s*asist|pts\s*\+\s*ast/, sumaJ("pts","ast"), "pts+ast"],
-    [/rebotes?\s*\+\s*asist|reb\s*\+\s*ast/, sumaJ("reb","ast"), "reb+ast"],
+    // Combinadas: "Pts+Reb+Ast", "Pts-Reb-Asist.", "puntos, rebotes y asistencias", "PRA"
+    [new RegExp(P_+S_+R_+S_+A_+"|\\spra\\s"), sumaJ("pts","reb","ast"), "pts+reb+ast"],
+    [new RegExp(P_+S_+R_+"|\\spr\\s"), sumaJ("pts","reb"), "pts+reb"],
+    [new RegExp(P_+S_+A_+"|\\spa\\s"), sumaJ("pts","ast"), "pts+ast"],
+    [new RegExp(R_+S_+A_+"|\\sra\\s"), sumaJ("reb","ast"), "reb+ast"],
     [/triples?|tres puntos|\s3\s?pts?\s|three|3pm|\s3s\s/, sumaJ("tres"), "triples"],
     [/rebotes?|rebounds?|\sreb\s/, sumaJ("reb"), "rebotes"],
     [/asistencias?|assists?|\sast\s/, sumaJ("ast"), "asistencias"],
@@ -84,7 +86,11 @@ const pickJugador = (t, ev, v, fin) => {
   const con = w => new RegExp("[^a-z0-9]"+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"[^a-z0-9]").test(t);
   let jug = v.j.find(p=>con(limpia(p.n)));
   if(!jug){ const ap = p => limpia(p.n).split(" ").pop(); const cand = v.j.filter(p=>ap(p).length>=3 && con(ap(p)));
-    if(cand.length===1) jug=cand[0]; else return null; }
+    if(cand.length===1) jug=cand[0];
+    else if(!cand.length){ // solo el nombre ("Giannis"): vale si nadie más en el partido lo tiene
+      const pn = p => limpia(p.n).split(" ").filter(w=>w.length>=4);
+      const c2 = v.j.filter(p=>pn(p).some(con)); if(c2.length===1) jug=c2[0]; else return null; }
+    else return null; }
   // Línea: over/under N, "N+", o "anota"/"conecta un hit" (= más de 0.5)
   const lin = t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/) || t.match(/\s(\d+)\s*\+/);
   let under=false, nec, mx;
