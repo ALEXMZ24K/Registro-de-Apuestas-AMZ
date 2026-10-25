@@ -204,10 +204,10 @@ const pistaPick = (a,ev,v,sinTramo) => {
     if(/over|mas de|alta/.test(ou[1])){ const nec=Math.floor(L)+1;
       const pushO = Number.isInteger(L) && tot===L, faltaO = nec-tot;
       return tot>=nec ? {txt:"¡Ganaste! · "+cu(tot,un), ok:1, listo:1, prog:[tot,nec]}
-        : {txt:fin?(pushO?"Push · quedó en "+cu(tot,un):"Perdiste · quedó en "+cu(tot,un)):tot+" de "+cu(nec,un)+" · "+(faltaO===1?"falta 1":"faltan "+faltaO)+(Number.isInteger(L)?" (push con "+L+")":""), ok:fin&&!pushO?-1:0, prog:[tot,nec]}; }
+        : {txt:fin?(pushO?"Push · quedó en "+cu(tot,un):"Perdiste · quedó en "+cu(tot,un)):tot+" de "+cu(nec,un)+(nec>=10?" · "+(faltaO===1?"falta 1":"faltan "+faltaO):"")+(Number.isInteger(L)?" · push con "+L:""), ok:fin&&!pushO?-1:0, prog:[tot,nec]}; }
     const mx=Math.floor(L), pushU=Number.isInteger(L); const mxU = pushU ? L-1 : mx;
     if(fin && pushU && tot===L) return {txt:"Push · quedó en "+cu(tot,un), ok:0};
-    return tot>mx ? {txt:"Perdiste · van "+cu(tot,un), ok:-1} : {txt:fin?"¡Ganaste! · quedó en "+cu(tot,un):"Van "+cu(tot,un)+" · máximo "+mxU+(pushU?" (push con "+L+")":""), ok:fin?1:0, listo:fin?1:0}; }
+    return tot>mx ? {txt:"Perdiste · van "+cu(tot,un), ok:-1} : {txt:fin?"¡Ganaste! · quedó en "+cu(tot,un):"Van "+cu(tot,un)+" · máximo "+mxU+(pushU?" · push con "+L:""), ok:fin?1:0, listo:fin?1:0}; }
   if(!uno||ou) return null;
   const mio=H?hs:as, otro=H?as:hs;
   const sp=t.match(/\s([+-]\d+(?:\.\d+)?)\s/);
