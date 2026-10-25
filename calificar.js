@@ -113,7 +113,7 @@ const ORD = {primer:1,primero:1,primera:1,segundo:2,segunda:2,tercer:3,tercero:3
 const tramoPick = (t, ev) => {
   const fut=esFut(ev.k), beis=String(ev.k).startsWith("baseball");
   let m, n, tipo, txt;
-  if((m=t.match(/\s(f5|(?:(?:las\s+)?primeras?\s+)?5\s+entradas|primeras?\s+cinco\s+entradas)\s/)) && beis){ return {quita:m[1], per:[1,2,3,4,5], hasta:5, label:"5 entradas"}; }
+  if((m=t.match(/\s(f5|1st 5|first 5 innings|(?:(?:las\s+)?primer[oa]s?\s+)?(?:5|cinco)\s+(?:entradas|innings?)|\(?\s*(?:innings?|entradas)\s+1\s*(?:a|al|-)\s*5\s*\)?|\(?\s*1\s*(?:a|-)\s*5\s+(?:innings?|entradas)\s*\)?)\s/)) && beis){ return {quita:m[1], per:[1,2,3,4,5], hasta:5, label:"5 entradas"}; }
   if((m=t.match(/\s(?:(\d)\s*(?:er|era|ra|ro|do|da|to|ta|o|a|º|°|ª)?|(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]))\s+(cuarto|mitad|tiempo|periodo|half|quarter|qtr)\s/))){ n=m[1]?Number(m[1]):ORD[m[2]]; tipo=m[3]; txt=m[0]; }
   else if((m=t.match(/\s(?:([1-4])\s*(q|h)|(q|h)\s*([1-4]))\s/))){ n=Number(m[1]||m[4]); tipo=(m[2]||m[3])==="q"?"cuarto":"mitad"; txt=m[0]; }
   else return null;
@@ -152,7 +152,9 @@ const pistaPick = (a,ev,v,sinTramo) => {
     if((listoT||p.listo) && p.ok===1) return {...p, txt:"¡Ganaste! · "+marc, listo:1};
     if(p.ok===-1 && (listoT||/^Perdiste/.test(p.txt))) return {...p, txt:"Perdiste · "+marc};
     if(listoT) return {...p, txt:"Empate · "+marc};
-    return {...p, txt:marc+" · "+p.txt};
+    // Béisbol F5: cuántas entradas faltan del tramo
+    const quedan = String(ev.k).startsWith("baseball") && tr.hasta<99 && per>=1 ? tr.hasta-per+(cierre?0:1) : 0;
+    return {...p, txt:marc+" · "+p.txt+(quedan>0?" · "+(quedan===1?"última entrada":"faltan "+quedan+" entradas"):"")};
   }
   const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
   const hit=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t));
@@ -180,6 +182,9 @@ const pistaPick = (a,ev,v,sinTramo) => {
     if(!lin) return null;
     const leer = e => { if(!e) return NaN; if(stK[0]==="tarjetas") return e.yellowCards===undefined?NaN:Number(e.yellowCards)+Number(e.redCards||0); return e[stK[0]]===undefined?NaN:Number(e[stK[0]]); };
     const vh=leer(v.eh), va=leer(v.ea);
+    // ESPN a veces no manda estadísticas en vivo de un partido (todo en 0, hasta la posesión): mejor decirlo que marcar 0
+    const sinDatos = e => !e || (Number(e.possessionPct||0)===0 && Number(e.totalShots||0)===0 && Number(e.shotsOnTarget||0)===0 && Number(e.wonCorners||0)===0);
+    if(!fin && v.st==="in" && sinDatos(v.eh) && sinDatos(v.ea) && (hs+as>0 || /\d/.test(String(v.det||"")))) return {txt:"ESPN todavía no manda las estadísticas de este partido", ok:0, stats:1};
     let val;
     if(H&&!A) val=vh; else if(A&&!H) val=va; else if(!H&&!A){ let pre=t.slice(0,t.indexOf(lin[0])); ["total","partido","juego","del","el","vs","entre","ambos","equipos","mas de","menos de"," fc "," cf "," afc "," club "].forEach(x=>{ pre=pre.split(x).join(" "); }); if(pre.replace(/[^a-z]/g,"").length>3) return null; val=vh+va; } else return null;
     if(isNaN(val)) return null;
@@ -192,13 +197,17 @@ const pistaPick = (a,ev,v,sinTramo) => {
   const ou=t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/);
   if(ou){ // totales del partido o de UN equipo: antes del over no puede ir un jugador, después solo goles/puntos/carreras
     const conect = s => s.replace(/(^|\s)(vs|total|totales|partido|juego|del|de|el|la|los|para|equipo|anota|anotan|marca|marcan|mete|meten|hace|hacen|en|fc|cf|afc|sc|ac|cd|club|goles?|puntos?|carreras?|-)(?=\s|$)/g," ");
-    let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pre=pre.split(x).join(" "); }); pre=conect(pre);
-    let pos=" "+t.slice(ou.index+ou[0].length)+" "; [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pos=pos.split(x).join(" "); }); pos=conect(pos).trim();
+    let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pre=pre.split(x).join(" "); }); pre=conect(pre.replace(/[()\[\],:]/g," "));
+    let pos=" "+t.slice(ou.index+ou[0].length)+" "; [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pos=pos.split(x).join(" "); }); pos=conect(pos.replace(/[()\[\],:]/g," ")).trim();
     if(pre.replace(/[^a-z0-9]/g,"")!=="" || (pos && !/^(goles?|puntos?|pts|carreras?|runs?)$/.test(pos))) return null; }
   if(ou){ const L=Number(ou[2]), tot=uno?(H?hs:as):hs+as; // si nombra un solo equipo, cuenta solo lo de ese equipo
     if(/over|mas de|alta/.test(ou[1])){ const nec=Math.floor(L)+1;
-      return tot>=nec ? {txt:"¡Ganaste! · "+cu(tot,un), ok:1, listo:1, prog:[tot,nec]} : {txt:fin?"Perdiste · quedó en "+cu(tot,un):tot+" de "+cu(nec,un), ok:fin?-1:0, prog:[tot,nec]}; }
-    const mx=Math.floor(L); return tot>mx ? {txt:"Perdiste · van "+cu(tot,un), ok:-1} : {txt:fin?"¡Ganaste! · quedó en "+cu(tot,un):"Van "+cu(tot,un)+" · máximo "+mx, ok:fin?1:0, listo:fin?1:0}; }
+      const pushO = Number.isInteger(L) && tot===L, faltaO = nec-tot;
+      return tot>=nec ? {txt:"¡Ganaste! · "+cu(tot,un), ok:1, listo:1, prog:[tot,nec]}
+        : {txt:fin?(pushO?"Push · quedó en "+cu(tot,un):"Perdiste · quedó en "+cu(tot,un)):tot+" de "+cu(nec,un)+(nec>=10?" · "+(faltaO===1?"falta 1":"faltan "+faltaO):"")+(Number.isInteger(L)?" · push con "+L:""), ok:fin&&!pushO?-1:0, prog:[tot,nec]}; }
+    const mx=Math.floor(L), pushU=Number.isInteger(L); const mxU = pushU ? L-1 : mx;
+    if(fin && pushU && tot===L) return {txt:"Push · quedó en "+cu(tot,un), ok:0};
+    return tot>mx ? {txt:"Perdiste · van "+cu(tot,un), ok:-1} : {txt:fin?"¡Ganaste! · quedó en "+cu(tot,un):"Van "+cu(tot,un)+" · máximo "+mxU+(pushU?" · push con "+L:""), ok:fin?1:0, listo:fin?1:0}; }
   if(!uno||ou) return null;
   const mio=H?hs:as, otro=H?as:hs;
   const sp=t.match(/\s([+-]\d+(?:\.\d+)?)\s/);

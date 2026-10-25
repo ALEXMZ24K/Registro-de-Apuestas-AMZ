@@ -569,7 +569,7 @@ const resumenCombo = items => {
   const bien = items.filter(x=>!hechas.includes(x) && x.ps && x.ps.ok===1);
   const faltan = items.filter(x=>!hechas.includes(x) && !bien.includes(x));
   const det = x => { const p=x.ps; if(!p) return x.desc;
-    if(p.prog){ const f=Math.max(1,p.prog[1]-p.prog[0]), m=String(p.txt).match(/\d+ de \d+ ([^·]+)$/), u=m?m[1].trim():"";
+    if(p.prog){ const f=Math.max(1,p.prog[1]-p.prog[0]), m=String(p.txt).match(/\d+ de \d+ ([^·(]+)/), u=m?m[1].trim():"";
       return x.desc+" ("+(f===1?"falta 1":"faltan "+f)+(u?" "+(f===1?(SING_U[u]||u):u):"")+")"; }
     const t=String(p.txt).replace(/^.*·\s*/,""); return x.desc+(t?" ("+t.charAt(0).toLowerCase()+t.slice(1)+")":""); };
   let txt = "Llevas "+hechas.length+" de "+n;

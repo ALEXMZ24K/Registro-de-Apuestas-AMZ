@@ -66,7 +66,7 @@ test.describe('Cuentas', () => {
     expect(r.equipoOver).toBe('1 de 2 goles');
     expect(r.equipoGana).toBe('¡Ganaste! · 2 goles');
     expect(r.equipoUnder).toBe('Perdiste · van 2 goles');
-    expect(r.equipoNba).toBe('95 de 111 puntos');
+    expect(r.equipoNba).toBe('95 de 111 puntos · faltan 16');
     expect(r.jugador2).toBeNull();
     expect(r.overFin).toBe('Perdiste · quedó en 1 gol');
     expect(r.underPasa).toBe('Perdiste · van 3 goles');
