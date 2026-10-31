@@ -1,0 +1,17 @@
+name: diag
+on: push
+permissions: { contents: write }
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          mkdir out && cd out
+          curl -s "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/scoreboard?dates=20261031" > sb.json
+          jq -c '.events[]|select(.name|test("Barcelona"))|{id,st:.status.type.state,det:.status.type.shortDetail,per:.status.period,c:[.competitions[0].competitors[]|{t:.team.displayName,s:.score,ls:.linescores}]}' sb.json > r.txt
+          ID=$(jq -r '.events[]|select(.name|test("Barcelona"))|.id' sb.json|head -1)
+          curl -s "https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/summary?event=$ID" > s.json
+          jq -c '[.header.competitions[0].competitors[]|{t:.team.displayName,ls:.linescores}]' s.json >> r.txt
+          jq -c '[.keyEvents[]?|select(.scoringPlay==true)|{c:.clock.displayValue,p:.period.number,t:.team.displayName}]' s.json >> r.txt
+          git init -q && git checkout -q -b diag-resultados && git add r.txt && git -c user.name=b -c user.email=b@b commit -qm r
+          git push -qf https://x-access-token:${{ github.token }}@github.com/${{ github.repository }} diag-resultados
