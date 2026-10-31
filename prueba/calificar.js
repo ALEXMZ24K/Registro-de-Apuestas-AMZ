@@ -43,6 +43,7 @@ const STATS_JUG = {
   soccer: [
     [/(remates?|tiros?|disparos?)\s+(a|al)\s+(puerta|gol|arco|marco)|shots? on (target|goal)/, sumaJ("sot"), "remates a puerta"],
     [/paradas?|atajadas?|salvadas?|saves?/, sumaJ("sv"), "atajadas"],
+    [/goleador|anotara|anota|marcara|marca gol|mete gol|goles? del jugador|anytime|scorer|cualquier momento/, sumaJ("g"), "goles"],
   ],
 };
 // Apodos y nombres cortos -> nombre como lo trae ESPN ("Chivas ML", "Barca over 2.5", "City -1.5"...).
@@ -99,7 +100,7 @@ const pickJugador = (t, ev, v, fin) => {
   else if(/anota|anytime|conecta|hace un|al menos un/.test(t) || st[2]==="touchdowns") nec=1; // "Walker TD" = anota touchdown
   else return null;
   const SING = {hits:"hit",jonrones:"jonrón",impulsadas:"impulsada",carreras:"carrera",strikeouts:"strikeout","bases por bola":"base por bola",puntos:"punto",rebotes:"rebote",
-    asistencias:"asistencia",triples:"triple",robos:"robo",tapones:"tapón",recepciones:"recepción","pases de TD":"pase de TD",touchdowns:"touchdown","remates a puerta":"remate a puerta",atajadas:"atajada",
+    asistencias:"asistencia",triples:"triple",robos:"robo",tapones:"tapón",recepciones:"recepción","pases de TD":"pase de TD",touchdowns:"touchdown","remates a puerta":"remate a puerta",atajadas:"atajada",goles:"gol",
     "yardas por pase":"yarda por pase","yardas por tierra":"yarda por tierra","yardas por recepción":"yarda por recepción",yardas:"yarda"};
   const val = st[1](jug.s||{}), nombre = jug.n.split(" ").filter(w=>!/^(jr|sr|ii|iii|iv)\.?$/i.test(w)).slice(-1)[0] || jug.n;
   const uu = n => n===1 ? (SING[st[2]]||st[2]) : st[2], u = uu(val);
@@ -157,8 +158,13 @@ const pistaPick = (a,ev,v,sinTramo) => {
     return {...p, txt:marc+" · "+p.txt+(quedan>0?" · "+(quedan===1?"última entrada":"faltan "+quedan+" entradas"):"")};
   }
   const esc=x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-  const hit=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t));
-  const H=hit(ev.h), A=hit(ev.a), uno=H!==A;
+  // Un equipo se reconoce por su nombre completo, corto o abreviatura, o por una palabra propia de su nombre ("Bayern", "Spurs")
+  const GENERICAS = /^(fc|cf|afc|sc|ac|cd|club|real|city|united|athletic|atletico|deportivo|sporting|union|inter|san|los|las|de|del|la|el|saint|st|new|york|la)$/;
+  const pals=e=>[...new Set([e.n,e.full].filter(Boolean).map(normTxt).join(" ").split(/[^a-z0-9]+/).filter(w=>w.length>=4&&!GENERICAS.test(w)))];
+  const ph=pals(ev.h), pa=pals(ev.a), propias=(a,b)=>a.filter(w=>!b.includes(w));
+  const hit=(e,mias)=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).some(n=>new RegExp("[^a-z0-9]"+esc(n)+"[^a-z0-9]").test(t))
+    || mias.some(w=>new RegExp("[^a-z0-9]"+esc(w)+"[^a-z0-9]").test(t));
+  const H=hit(ev.h,propias(ph,pa)), A=hit(ev.a,propias(pa,ph)), uno=H!==A;
   const un=esFut(ev.k)?"goles":String(ev.k).startsWith("baseball")?"carreras":"puntos";
   const cu=(n,pl)=>n+" "+(n===1?({goles:"gol",carreras:"carrera",puntos:"punto","remates a puerta":"remate a puerta",remates:"remate","córners":"córner",tarjetas:"tarjeta"}[pl]||pl):pl);
   const sc=esFut(ev.k)?hs+"-"+as:as+"-"+hs;
@@ -193,12 +199,12 @@ const pistaPick = (a,ev,v,sinTramo) => {
     const mx=Math.floor(L); return val>mx ? {txt:"Perdiste · van "+cu(val,stK[1]), ok:-1, stats:1} : {txt:fin?"¡Ganaste! · quedó en "+cu(val,stK[1]):"Van "+cu(val,stK[1])+" · máximo "+mx, ok:fin?1:0, listo:fin?1:0, stats:1};
   }
   if(/tiempo|mitad|cuarto|entrada|inning|periodo|\s(1h|2h|1q|2q|3q|4q|half)\s|corner|tarjeta|remate|tiro|asistencia|rebote|yarda|ponche|hit|anota primero|primer/.test(t)) return null;
-  const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt);
+  const nm=e=>[e.n,e.full,e.a].filter(x=>x&&x.length>=3).map(normTxt).concat(pals(e)).sort((x,y)=>y.length-x.length);
   const ou=t.match(/(over|under|mas de|menos de|alta|baja)\s*(\d+(?:\.\d+)?)/);
   if(ou){ // totales del partido o de UN equipo: antes del over no puede ir un jugador, después solo goles/puntos/carreras
-    const conect = s => s.replace(/(^|\s)(vs|total|totales|partido|juego|del|de|el|la|los|para|equipo|anota|anotan|marca|marcan|mete|meten|hace|hacen|en|fc|cf|afc|sc|ac|cd|club|goles?|puntos?|carreras?|-)(?=\s|$)/g," ");
-    let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pre=pre.split(x).join(" "); }); pre=conect(pre.replace(/[()\[\],:]/g," "));
-    let pos=" "+t.slice(ou.index+ou[0].length)+" "; [...nm(ev.h),...nm(ev.a)].forEach(x=>{ pos=pos.split(x).join(" "); }); pos=conect(pos.replace(/[()\[\],:]/g," ")).trim();
+    const conect = s => s.replace(/(^|\s)(vs|total|totales|partido|juego|del|de|el|la|los|para|equipo|anota|anotan|marca|marcan|mete|meten|hace|hacen|en|fc|cf|afc|sc|ac|cd|club|san|los|las|new|st|goles?|puntos?|carreras?|-)(?=\s|$)/g," ");
+    let pre=t.slice(0,ou.index); [...nm(ev.h),...nm(ev.a)].sort((x,y)=>y.length-x.length).forEach(x=>{ pre=pre.split(x).join(" "); }); pre=conect(pre.replace(/[()\[\],:]/g," "));
+    let pos=" "+t.slice(ou.index+ou[0].length)+" "; [...nm(ev.h),...nm(ev.a)].sort((x,y)=>y.length-x.length).forEach(x=>{ pos=pos.split(x).join(" "); }); pos=conect(pos.replace(/[()\[\],:]/g," ")).trim();
     if(pre.replace(/[^a-z0-9]/g,"")!=="" || (pos && !/^(goles?|puntos?|pts|carreras?|runs?)$/.test(pos))) return null; }
   if(ou){ const L=Number(ou[2]), tot=uno?(H?hs:as):hs+as; // si nombra un solo equipo, cuenta solo lo de ese equipo
     if(/over|mas de|alta/.test(ou[1])){ const nec=Math.floor(L)+1;
