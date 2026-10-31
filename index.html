@@ -286,13 +286,13 @@ const loginGoogle = async () => {
 };
 
 // ── Constants ──
-const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Americano Colegial","Basquetbol Colegial","Combinación"];
+const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Box","Americano Colegial","Basquetbol Colegial","Combinación"];
 const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Crear apuesta","Especial por jugador","PlayBoost","Freebet"];
 const RESULTADOS = ["Ganada","Perdida","Pendiente","Nula"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 // Ícono de línea de cada deporte (clave de ICONOS)
-const icoDep = d => ({"Fútbol":"soc","Béisbol":"base","Basquetbol":"bas","Basquetbol Colegial":"bas","Americano":"foot","Americano Colegial":"foot","Tenis":"tennis"})[d]||"parlay";
+const icoDep = d => ({"Fútbol":"soc","Béisbol":"base","Basquetbol":"bas","Basquetbol Colegial":"bas","Americano":"foot","Americano Colegial":"foot","Tenis":"tennis","Box":"box"})[d]||"parlay";
 const colorRes = {Ganada:"#2fe0a0",Perdida:"#ff5d7a",Pendiente:"#888",Nula:"#f5c842"};
 const bgRes = {Ganada:"#2fe0a020",Perdida:"#ff5d7a20",Pendiente:"#88888820",Nula:"#f5c84220"};
 
@@ -491,7 +491,8 @@ const estadoTxt = v => { if(!v) return ""; if(v.st==="post") return "Final"; if(
   if(/^(HT|Halftime)$/i.test(d)) return "Medio tiempo";
   return d.replace(/\bTop\b/i,"▲").replace(/\bBot(tom)?\b/i,"▼").replace(/\bMid\b/i,"Mitad").replace(/\bEnd\b/i,"Fin").replace(/\bHalftime\b/i,"Medio tiempo")
     .replace(/(\d)(st|nd|rd|th)\b/g,"$1º").replace(/\bOT\b/,"Tiempo extra").replace(/\bQtr\b/i,"C").trim(); };
-const ICONOS = {cam:'<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.5"/>',
+const ICONOS = {box:'<path d="M7 10a4 4 0 0 1 4-4h3a4 4 0 0 1 4 4v2.5a4 4 0 0 1-2 3.4V19H9v-3.1A4 4 0 0 1 7 12.5z"/><path d="M9 16h7"/><path d="M11.5 9.5h3"/><path d="M7 11.5a1.8 1.8 0 0 1 0-3.5"/>',
+  cam:'<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.5" r="3.5"/>',
   img:'<rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M20 16l-4.5-4.5L7 19"/>',
   pen:'<path d="M4 20l4-1 10.5-10.5a2.1 2.1 0 0 0-3-3L5 16z"/><path d="M14 7l3 3"/>',
   copy:'<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',

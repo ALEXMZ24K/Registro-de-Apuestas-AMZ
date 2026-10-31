@@ -18,7 +18,7 @@ const ADMINS = ["alexitozenil@gmail.com", "prokiller548@gmail.com"];
 const FIREBASE_API_KEY = "AIzaSyC50jJFVDbRCjxGQsm-ioTt-xlDQU1-YUo"; // clave pública de la app (no es secreta)
 const MODELO = "claude-sonnet-5-5";
 
-const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Americano Colegial","Basquetbol Colegial","Combinación"];
+const DEPORTES = ["Fútbol","Béisbol","Basquetbol","Americano","Tenis","Box","Americano Colegial","Basquetbol Colegial","Combinación"];
 const TIPOS = ["Moneyline","Handicap/Spread","Over/Under","Parlay/Combinada","Crear apuesta","Especial por jugador","PlayBoost","Freebet"];
 
 const cors = origin => ({
@@ -389,7 +389,7 @@ Extrae los datos y SIEMPRE responde llamando a la herramienta registrar_apuesta.
 - "Ganancia Total" o "Pago" es lo que se cobra en total (incluye lo apostado); va en pago_total.
 - Si todas las selecciones son del MISMO partido (Crear Apuesta, SGP, Same Game Parlay) el tipo es "Crear apuesta": pon el partido en "partido" y cada selección es una pata. Escribe cada selección clara y completa, ej. "Cruz Azul ML", "Más de 1.5 goles", "1er tiempo más de 0.5 goles".
 - Un parlay con selecciones de partidos DISTINTOS es "Parlay/Combinada".
-- NFL/fútbol americano → "Americano"; NCAA football → "Americano Colegial"; NBA → "Basquetbol"; NCAA basketball → "Basquetbol Colegial"; MLB → "Béisbol"; soccer/Liga MX → "Fútbol".
+- NFL/fútbol americano → "Americano"; NCAA football → "Americano Colegial"; NBA → "Basquetbol"; NCAA basketball → "Basquetbol Colegial"; MLB → "Béisbol"; soccer/Liga MX → "Fútbol"; boxeo/box/UFC-boxing (rounds, KO, decisión) → "Box".
 - Escribe los picks cortos y en español cuando aplique (ML = Moneyline). Usa nombres de equipo reconocibles.
 - No inventes datos: si algo no se lee, ponlo en notas.` },
         ] }],
