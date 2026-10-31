@@ -289,7 +289,9 @@ async function marcadores(lista) {
       ev[e.id] = { st: e.st, det: e.det, clk: e.clk, hs: e.h.s, as: e.a.s, t: e.t, eh: e.h.est, ea: e.a.est, per: e.per, hl: e.h.ls, al: e.a.ls };
       // Si el marcador no trae tiros a puerta, se piden al detalle del partido (solo fútbol en juego o terminado)
       const jug = conJug.has(e.id) && e.st !== "pre";
-      if (jug || (k.startsWith("soccer") && e.st !== "pre" && !("shotsOnTarget" in e.h.est))) faltan.push({ k, id: e.id, hid: e.h.id, aid: e.a.id, jug });
+      // Sin marcador por tiempo/cuarto en el marcador general (pasa en algunos partidos de fútbol): también se pide al detalle
+      const sinLs = e.st !== "pre" && (!e.h.ls || !e.h.ls.length);
+      if (jug || sinLs || (k.startsWith("soccer") && e.st !== "pre" && !("shotsOnTarget" in e.h.est))) faltan.push({ k, id: e.id, hid: e.h.id, aid: e.a.id, jug, sinLs });
     } }); } catch {}
   }));
   await Promise.all(faltan.slice(0, 10).map(async x => {
@@ -303,6 +305,11 @@ async function marcadores(lista) {
       const a = de(x.aid) || (teams[1] && teams[1].homeAway === "away" ? estMapa(teams[1].statistics) : null);
       if (h) ev[x.id].eh = h; if (a) ev[x.id].ea = a;
       if (x.jug) ev[x.id].j = jugadoresDe(d);
+      if (x.sinLs) { const cs = (d && d.header && d.header.competitions && d.header.competitions[0] && d.header.competitions[0].competitors) || [];
+        const ls = c => (c && c.linescores || []).map(l => Number(l.value ?? l.displayValue) || 0);
+        const ch = cs.find(c => String(c.id) === String(x.hid) || (c.team && String(c.team.id) === String(x.hid))) || cs.find(c => c.homeAway === "home");
+        const ca = cs.find(c => String(c.id) === String(x.aid) || (c.team && String(c.team.id) === String(x.aid))) || cs.find(c => c.homeAway === "away");
+        if (ls(ch).length && ls(ca).length) { ev[x.id].hl = ls(ch); ev[x.id].al = ls(ca); } }
     } catch {}
   }));
   return ev;
