@@ -1,0 +1,3 @@
+{"id":"401882822","st":"post","det":"FT","per":2,"c":[{"t":"Barcelona","s":"6","ls":null},{"t":"Alavés","s":"1","ls":null}]}
+[{"t":"Barcelona","ls":[{"displayValue":"4"},{"displayValue":"2"}]},{"t":"Alavés","ls":[{"displayValue":"0"},{"displayValue":"1"}]}]
+[{"c":"8'","p":1,"t":"Barcelona"},{"c":"23'","p":1,"t":"Barcelona"},{"c":"41'","p":1,"t":"Barcelona"},{"c":"45'+1'","p":1,"t":"Barcelona"},{"c":"64'","p":2,"t":"Barcelona"},{"c":"81'","p":2,"t":"Barcelona"},{"c":"84'","p":2,"t":"Alavés"}]
