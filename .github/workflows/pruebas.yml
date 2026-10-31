@@ -41,7 +41,7 @@ jobs:
         run: gh workflow run pages.yml --ref main -R ${{ github.repository }}
 
   probar:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # fijo: Playwright 1.48 no instala sus navegadores en versiones nuevas de Ubuntu
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
