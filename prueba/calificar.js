@@ -136,7 +136,8 @@ const pistaPick = (a,ev,v,sinTramo) => {
   // Picks de un cuarto / mitad / 5 entradas: se califican con el marcador de ese tramo
   const tr = !sinTramo && tramoPick(t, ev);
   if(tr){
-    const sinLS = !Array.isArray(v.hl)||!Array.isArray(v.al);
+    // Sin marcador por tramo (o incompleto): no se adivina con ceros
+    const sinLS = !Array.isArray(v.hl)||!Array.isArray(v.al)||v.hl.length<tr.per[0]||v.al.length<tr.per[0];
     const per=Number(v.per)||0, cierre=/^(end|halftime|ht)\b|end of|final/i.test(String(v.det||""));
     if(sinLS && !per) return null; // sin datos del periodo no se sabe en qué tramo va
     const empezo = fin || per>=tr.per[0], listoT = fin || per>tr.hasta || (per===tr.hasta && cierre);
