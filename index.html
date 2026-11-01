@@ -879,31 +879,64 @@ function dibujarResumen(o){
   x.fillStyle="rgba(255,255,255,.14)"; rr(x,W-P-mw,P+8,mw,64,32); x.fill();
   x.fillStyle="#fff"; x.textAlign="center"; x.fillText(o.mes,W-P-mw/2,P+52); x.textAlign="left";
   // Resultado
-  let y = hist?(o.mejor?560:640):300;
+  const cal = o.cal || null;
+  let y = cal ? (hist?250:230) : (hist?(o.mejor?560:640):300);
   x.font=F(600,36); x.fillStyle="rgba(255,255,255,.8)"; x.fillText("RESULTADO DEL MES",P,y);
   const pos = o.neto>=0;
   let grande, chico="";
   if(o.pct!==null){ grande=(o.pct>=0?"+":"-")+Math.abs(o.pct).toFixed(1)+"%"; if(o.pesos) chico=(pos?"+":"-")+fmtReal(Math.abs(o.neto)).replace("-","")+" MXN"; }
   else if(o.pesos){ grande=(pos?"+":"-")+fmtReal(Math.abs(o.neto)).replace("-",""); }
   else { grande=o.record; }
-  const tg = hist?190:160;
+  const tg = cal ? (hist?150:120) : (hist?190:160);
   x.font=F(900,tg);
   while(x.measureText(grande).width>W-2*P && tg>60){ x.font=F(900,tg-=10); }
   y += tg*0.95; x.fillStyle=o.pct===null&&!o.pesos?"#fff":(pos?G:R); x.fillText(grande,P-6,y);
-  if(chico){ y+=78; x.font=F(700,58); x.fillStyle="rgba(255,255,255,.92)"; x.fillText(chico,P,y); }
-  // Tres datos
-  y += hist?80:60;
-  const bh = hist?170:150, gap=24, bw=(W-2*P-2*gap)/3;
-  [[o.record,"Récord"],[o.acierto+"%","Acierto"],[o.racha,o.rachaLbl||"Racha"]].forEach(([v,l],i)=>{
-    const bx=P+i*(bw+gap);
-    x.fillStyle="rgba(255,255,255,.1)"; rr(x,bx,y,bw,bh,34); x.fill();
-    x.textAlign="center"; x.fillStyle="#fff"; x.font=F(800,hist?62:56); x.fillText(v,bx+bw/2,y+bh*0.52);
-    x.font=F(500,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText(l,bx+bw/2,y+bh*0.82); x.textAlign="left";
-  });
-  y += bh;
+  if(chico){ y+=cal?(hist?64:54):78; x.font=F(700,cal?(hist?50:44):58); x.fillStyle="rgba(255,255,255,.92)"; x.fillText(chico,P,y); }
+  // Datos del mes: tres cajas, o una sola línea cuando el cuadrado lleva calendario
+  if(cal && !hist){
+    y += 60;
+    const partes=[o.record+" récord", o.acierto+"% acierto"]; if(o.racha!=="—") partes.push(o.racha+" "+(o.rachaLbl||"racha").toLowerCase());
+    const linea=partes.join("   ·   "); let fs=34; x.font=F(600,fs);
+    while(x.measureText(linea).width>W-2*P && fs>22){ x.font=F(600,fs-=2); }
+    x.fillStyle="rgba(255,255,255,.85)"; x.fillText(linea,P,y);
+  } else {
+    y += cal?60:(hist?80:60);
+    const bh = cal?130:(hist?170:150), gap=24, bw=(W-2*P-2*gap)/3;
+    [[o.record,"Récord"],[o.acierto+"%","Acierto"],[o.racha,o.rachaLbl||"Racha"]].forEach(([v,l],i)=>{
+      const bx=P+i*(bw+gap);
+      x.fillStyle="rgba(255,255,255,.1)"; rr(x,bx,y,bw,bh,34); x.fill();
+      x.textAlign="center"; x.fillStyle="#fff"; x.font=F(800,hist?62:56); x.fillText(v,bx+bw/2,y+bh*0.52);
+      x.font=F(500,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText(l,bx+bw/2,y+bh*0.82); x.textAlign="left";
+    });
+    y += bh;
+  }
+  // Calendario del mes: cada día con lo que ganaste o perdiste
+  if(cal){
+    y += hist?60:40;
+    const cw=(W-2*P)/7, ch=hist?104:68, fil=Math.ceil((cal.offset+cal.diasEnMes)/7);
+    x.textAlign="center"; x.font=F(700,hist?28:24); x.fillStyle="rgba(255,255,255,.6)";
+    ["L","M","M","J","V","S","D"].forEach((l,i)=>x.fillText(l,P+i*cw+cw/2,y+(hist?24:20)));
+    y += hist?44:36;
+    for(let d=1; d<=cal.diasEnMes; d++){
+      const idx=cal.offset+d-1, bx=P+(idx%7)*cw+4, by=y+Math.floor(idx/7)*ch+4, bw2=cw-8, bh2=ch-8;
+      const info=cal.dias[d];
+      x.fillStyle=info?(info.n>0?"rgba(47,224,160,.24)":info.n<0?"rgba(255,93,122,.24)":"rgba(255,255,255,.12)"):"rgba(255,255,255,.05)";
+      rr(x,bx,by,bw2,bh2,hist?20:16); x.fill();
+      x.textAlign="left"; x.font=F(700,hist?24:20); x.fillStyle=info?"rgba(255,255,255,.9)":"rgba(255,255,255,.4)";
+      x.fillText(String(d),bx+12,by+(hist?33:26));
+      if(info){
+        let fs=hist?28:23; x.font=F(800,fs);
+        while(x.measureText(info.txt).width>bw2-10 && fs>14){ x.font=F(800,fs-=1); }
+        x.textAlign="center"; x.fillStyle=info.n>0?G:info.n<0?R:"#fff";
+        x.fillText(info.txt,bx+bw2/2,by+bh2-(hist?16:12));
+      }
+    }
+    x.textAlign="left";
+    y += fil*ch;
+  }
   if(hist){
-    // Últimos picks
-    if(o.forma.length){
+    // Últimos picks (si hay calendario ya no caben)
+    if(o.forma.length && !cal){
       y += 100; x.font=F(600,32); x.fillStyle="rgba(255,255,255,.75)"; x.fillText("ÚLTIMOS PICKS",P,y);
       y += 30; const d=78, sp=(W-2*P-10*d)/9;
       o.forma.forEach((r,i)=>{ const cx=P+i*(d+sp)+d/2, cy=y+d/2;
@@ -911,16 +944,23 @@ function dibujarResumen(o){
         x.fillStyle="#06101f"; x.font=F(900,40); x.textAlign="center"; x.fillText(r==="Ganada"?"✓":"✕",cx,cy+14); x.textAlign="left"; });
       y += d;
     }
-    // Mejor pick
+    // Mejor pick: el texto baja a otra línea para que se lea completo
     if(o.mejor){
-      y += 70; const h=190;
+      y += cal?60:70;
+      const crudo=o.mejor.texto||"", mDep=crudo.match(/^\s*\[([^\]]*)\]/);
+      const txt=crudo.replace(/^\s*\[[^\]]*\]\s*/,"").trim()||crudo;
+      const maxW=W-2*P-80, lineas=[]; let act="";
+      x.font=F(700,44);
+      txt.split(/\s+/).forEach(p=>{ const t=act?act+" "+p:p; if(x.measureText(t).width>maxW && act){ lineas.push(act); act=p; } else act=t; });
+      if(act) lineas.push(act);
+      const MAXL=3;
+      if(lineas.length>MAXL){ lineas.length=MAXL; let u=lineas[MAXL-1]; while(u.length>1&&x.measureText(u+"…").width>maxW) u=u.slice(0,-1); lineas[MAXL-1]=u+"…"; }
+      const h=60+lineas.length*58+50;
       x.fillStyle="rgba(255,255,255,.09)"; rr(x,P,y,W-2*P,h,40); x.fill();
-      x.font=F(600,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText("★ MEJOR PICK",P+40,y+62);
-      x.font=F(800,46); x.fillStyle=G; x.textAlign="right"; x.fillText(o.mejor.valor,W-P-40,y+140);
-      const maxW=W-2*P-80-x.measureText(o.mejor.valor).width-30; x.textAlign="left";
-      x.font=F(700,46); x.fillStyle="#fff"; let t=o.mejor.texto;
-      if(x.measureText(t).width>maxW){ while(t.length>1&&x.measureText(t+"…").width>maxW) t=t.slice(0,-1); t+="…"; }
-      x.fillText(t,P+40,y+140);
+      x.font=F(600,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText("★ MEJOR PICK"+(mDep?" · "+mDep[1].toUpperCase():""),P+40,y+62);
+      x.font=F(800,50); x.fillStyle=G; x.textAlign="right"; x.fillText(o.mejor.valor,W-P-40,y+66); x.textAlign="left";
+      x.font=F(700,44); x.fillStyle="#fff";
+      lineas.forEach((l,i)=>x.fillText(l,P+40,y+60+(i+1)*58));
     }
   }
   // Pie
@@ -1355,6 +1395,7 @@ function App() {
   const [shareFmt,setShareFmt] = useState("historia");
   const [sharePesos,setSharePesos] = useState(true);
   const [shareMejor,setShareMejor] = useState(true);
+  const [shareCal,setShareCal] = useState(true);
   const [shareImg,setShareImg] = useState(null);
   const shareFile = useRef(null);
   const swipe = useRef(null);
@@ -1673,17 +1714,29 @@ function App() {
     const forma = apuestasMes.filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10).map(a=>a.resultado);
     const mp = mejorPickMes;
     const mejor = shareMejor && mp ? {texto:mp.a.descripcion, valor: sharePesos ? "+"+fmtReal(mp.g) : (bankrollMes>0?"+"+(mp.g/bankrollMes*100).toFixed(1)+"%":fmtMomio(mp.a.cuota))} : null;
+    // Calendario: lo que se ganó o perdió cada día del mes (en pesos o en %)
+    let cal = null;
+    if(shareCal){
+      const dias = {};
+      apuestasMes.forEach(a=>{ if(a.resultado==="Pendiente") return; const {y,m,d}=parseFecha(a.fecha); if(y!==anoSeleccionado||m!==mesSeleccionado) return;
+        const mm=apMonto(a,bankDe), gp=a.resultado==="Ganada"?mm*momioToDec(a.cuota)-mm:a.resultado==="Perdida"?-mm:0;
+        const o=dias[d]||(dias[d]={n:0,p:0}); o.n+=gp; o.p+=gPct(a); });
+      Object.keys(dias).forEach(d=>{ const o=dias[d];
+        if(sharePesos){ const abs=Math.round(Math.abs(o.n)), sg=o.n<0?"-":"+"; o.txt=abs>=1000?sg+"$"+(abs/1000).toFixed(abs>=10000?0:1).replace(/\.0$/,"")+"K":sg+"$"+abs; }
+        else { o.n=o.p; o.txt=fmtPct(o.p); } });
+      cal = {dias, offset:(new Date(anoSeleccionado,mesSeleccionado,1).getDay()+6)%7, diasEnMes:new Date(anoSeleccionado,mesSeleccionado+1,0).getDate()};
+    }
     const racha = rachaActual.racha>0 ? String(rachaActual.racha) : "—";
     const rachaLbl = rachaActual.racha>0 && rachaActual.tipo==="Ganada" ? "Ganados seguidos" : rachaActual.racha>0 && rachaActual.tipo==="Perdida" ? "Perdidos seguidos" : "Racha";
     const listo = (document.fonts&&document.fonts.ready) ? document.fonts.ready : Promise.resolve();
     listo.then(()=>{
       if(!vivo) return;
-      const c = dibujarResumen({formato:shareFmt,mes:MESES[mesSeleccionado]+" "+anoSeleccionado,neto:stats.neto,pct,pesos:sharePesos,record:stats.ganadas+"-"+stats.perdidas,acierto:stats.efectividad,racha,rachaLbl,forma,mejor,t:TEMAS[temaKey]});
+      const c = dibujarResumen({formato:shareFmt,mes:MESES[mesSeleccionado]+" "+anoSeleccionado,neto:stats.neto,pct,pesos:sharePesos,record:stats.ganadas+"-"+stats.perdidas,acierto:stats.efectividad,racha,rachaLbl,forma,mejor,cal,t:TEMAS[temaKey]});
       setShareImg(c.toDataURL("image/png"));
       c.toBlob(b=>{ if(b&&vivo) shareFile.current=new File([b],"alexpicks-"+MESES[mesSeleccionado].toLowerCase()+"-"+anoSeleccionado+".png",{type:"image/png"}); },"image/png");
     });
     return ()=>{ vivo=false; };
-  },[vistaActual,temaKey,shareFmt,sharePesos,shareMejor,stats,bankrollMes,mesSeleccionado,anoSeleccionado,mejorPickMes,rachaActual,apuestasMes]);
+  },[vistaActual,temaKey,shareFmt,sharePesos,shareMejor,shareCal,stats,bankrollMes,mesSeleccionado,anoSeleccionado,mejorPickMes,rachaActual,apuestasMes]);
   // Buscador (pestaña Anual): por pick, partido, patas de parlay, deporte o tipo
   const resultadosBusca = useMemo(()=>{
     const q = normTxt(busca.trim());
@@ -2678,7 +2731,7 @@ function App() {
             : html`<div style=${{color:"var(--mu)",padding:40}}>Generando imagen…</div>`}
         </div>
         <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:"4px 14px",marginBottom:14}}>
-          ${[["Mostrar pesos ($)",sharePesos,setSharePesos],...(shareFmt==="historia"?[["Mostrar mejor pick",shareMejor,setShareMejor]]:[])].map(([l,v,set])=>html`
+          ${[["Mostrar pesos ($)",sharePesos,setSharePesos],["Mostrar calendario",shareCal,setShareCal],...(shareFmt==="historia"?[["Mostrar mejor pick",shareMejor,setShareMejor]]:[])].map(([l,v,set])=>html`
             <button key=${l} onClick=${()=>set(!v)} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:"none",border:"none",color:"#fff",fontFamily:"inherit",fontSize:15,padding:"12px 0",cursor:"pointer"}}>
               <span>${l}</span>
               <span style=${{width:46,height:28,borderRadius:14,background:v?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
