@@ -1350,7 +1350,7 @@ function App() {
   const cuotaAm = v => momioDec ? decToAm(v) : Number(v);
   const [verTodasAno,setVerTodasAno] = useState(false);
   // "Dónde ganas más" (solo admins): por liga / tipo / momio, del mes o del año
-  const [dgVista,setDgVista] = useState("liga"), [dgRango,setDgRango] = useState("mes");
+  const [dgVista,setDgVista] = useState("liga"), [dgRango,setDgRango] = useState("mes"), [dgSel,setDgSel] = useState(null);
   const [notisGuia,setNotisGuia] = useState(false);
   const [shareFmt,setShareFmt] = useState("historia");
   const [sharePesos,setSharePesos] = useState(true);
@@ -2584,7 +2584,7 @@ function App() {
           const {arr,mejor,peor} = dondeGanas(lista, dgVista), mx = Math.max(1,...arr.map(x=>Math.abs(ocultar?x.pct:x.neto)));
           const din = x => ocultar ? fmtPct(x.pct) : fmtSigno(x.neto), val = x => ocultar?x.pct:x.neto;
           const seg = (op,v,set) => html`<div style=${{display:"flex",gap:4,background:"var(--bg)",border:"1px solid var(--br)",borderRadius:12,padding:3,marginBottom:10}}>${op.map(([k,t])=>html`<button key=${k} onClick=${()=>set(k)} style=${{flex:1,minHeight:36,borderRadius:9,border:"none",background:v===k?"var(--card)":"transparent",color:v===k?"#fff":"var(--mu)",fontWeight:700,fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>${t}</button>`)}</div>`;
-          const tarjeta = (x,bien) => x && html`<div style=${{display:"flex",gap:12,alignItems:"center",background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:12,marginBottom:8}}>
+          const tarjeta = (x,bien) => x && html`<div className="presionable" onClick=${()=>setDgSel(x.n)} style=${{display:"flex",gap:12,alignItems:"center",background:"var(--card)",border:"1px solid var(--br)",borderRadius:14,padding:12,marginBottom:8,cursor:"pointer"}}>
             <span style=${{width:30,height:30,borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,background:bien?"#2fe0a022":"#ff5d7a22",color:bien?"#2fe0a0":"#ff5d7a"}}>${bien?"▲":"▼"}</span>
             <div style=${{minWidth:0}}><div style=${{fontSize:11,color:"var(--mu)"}}>${bien?"Lo que mejor te funciona":"Lo que te está costando"}</div>
               <b style=${{fontSize:14}}>${x.n} · ${din(x)} · ${bien?x.acierto+"% acierto":x.gan+" de "+(x.gan+x.per)}</b></div></div>`;
@@ -2596,14 +2596,26 @@ function App() {
               ${seg([["liga","Liga"],["tipo","Tipo"],["momio","Momio"]],dgVista,setDgVista)}
               <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,overflow:"hidden"}}>
                 ${arr.map((x,i)=>{ const v=val(x), w=Math.abs(v)/mx*50, col=v>=0?"#2fe0a0":"#ff5d7a";
-                  return html`<div key=${x.n} style=${{padding:"11px 13px",borderTop:i?"1px solid var(--br)":"none"}}>
+                  return html`<div key=${x.n} className="presionable" onClick=${()=>setDgSel(x.n)} style=${{padding:"11px 13px",borderTop:i?"1px solid var(--br)":"none",cursor:"pointer"}}>
                     <div style=${{display:"flex",justifyContent:"space-between",gap:10,fontSize:14}}><b style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${x.n}</b><b style=${{color:col,whiteSpace:"nowrap"}}>${din(x)}</b></div>
                     <div style=${{position:"relative",height:6,marginTop:7,background:"var(--br)",borderRadius:3}}>
                       <span style=${{position:"absolute",left:"50%",top:-2,bottom:-2,width:1,background:"var(--br2)"}}></span>
                       <span style=${{position:"absolute",top:0,height:6,borderRadius:3,background:col,width:w+"%",left:v>=0?"50%":(50-w)+"%"}}></span></div>
                     <div style=${{display:"flex",justifyContent:"space-between",fontSize:11.5,color:"var(--mu)",marginTop:5}}><span>${x.gan}-${x.per} · ${x.acierto}% acierto</span><span style=${{color:col}}>ROI ${x.roi>=0?"+":""}${x.roi.toFixed(1)}%</span></div>
                   </div>`; })}
-              </div>`}
+              </div>
+              <div style=${{fontSize:11.5,color:"var(--mu3)",textAlign:"center",marginTop:8}}>Toca un grupo para ver sus picks</div>`}
+            ${dgSel && (()=>{ const ps = lista.filter(a=>(a.resultado==="Ganada"||a.resultado==="Perdida"||a.resultado==="Nula") && grupoDe(a,dgVista)===dgSel).slice().sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||"")||(b.id||0)-(a.id||0));
+              const x = arr.find(y=>y.n===dgSel);
+              return html`<${Hoja} onClose=${()=>setDgSel(null)}>
+                <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,marginBottom:4}}>
+                  <b style=${{fontSize:18,color:"#fff"}}>${dgSel}</b>
+                  ${x && html`<b style=${{fontSize:16,color:val(x)>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${din(x)}</b>`}
+                </div>
+                ${x && html`<div style=${{fontSize:12,color:"var(--mu)",marginBottom:12}}>${x.gan}-${x.per} · ${x.acierto}% acierto · ROI ${x.roi>=0?"+":""}${x.roi.toFixed(1)}% · ${dgRango==="mes"?MESES[mesSeleccionado]:"Todo "+anoSeleccionado}</div>`}
+                ${ps.map(a=>renderAR(a,false))}
+                <button onClick=${()=>setDgSel(null)} style=${{...S.btnSecondary,width:"100%",marginTop:12,minHeight:46}}>Cerrar</button>
+              </${Hoja}>`; })()}
           </div>`; })()}
         ${apuestasAno.length>0 && html`<div style=${S.section}>
           <button ref=${btnAno} onClick=${toggleAno} style=${{...S.row,justifyContent:"space-between"}}>
