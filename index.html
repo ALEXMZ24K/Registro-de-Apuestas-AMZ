@@ -292,6 +292,8 @@ const RESULTADOS = ["Ganada","Perdida","Pendiente","Nula"];
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MESES_CORTO = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 // Ícono de línea de cada deporte (clave de ICONOS)
+// Picks sin partido ligado: se agrupan con su liga ("Americano" → NFL) para no partir el mismo deporte en dos
+const LIGA_DE_DEPORTE = {"Americano":"NFL","Béisbol":"MLB","Basquetbol":"NBA","Americano Colegial":"NCAA Football","Basquetbol Colegial":"NCAA Basketball","Fútbol":"Fútbol (otras ligas)"};
 const icoDep = d => ({"Fútbol":"soc","Béisbol":"base","Basquetbol":"bas","Basquetbol Colegial":"bas","Americano":"foot","Americano Colegial":"foot","Tenis":"tennis","Box":"box"})[d]||"parlay";
 const colorRes = {Ganada:"#2fe0a0",Perdida:"#ff5d7a",Pendiente:"#888",Nula:"#f5c842"};
 const bgRes = {Ganada:"#2fe0a020",Perdida:"#ff5d7a20",Pendiente:"#88888820",Nula:"#f5c84220"};
@@ -1882,7 +1884,7 @@ function App() {
   // Agrupa picks calificados y saca récord, acierto, ganancia y ROI de cada grupo
   const grupoDe = (a, vista) => {
     const combo = esCombo(a);
-    if(vista==="liga") return esCrear(a) ? ((a.evento&&a.evento.liga) || "Crear apuesta") : combo ? (a.tipo==="Freebet"?"Freebets":"Parlays") : (a.evento&&a.evento.liga) || a.deporte || "Otros";
+    if(vista==="liga") return esCrear(a) ? ((a.evento&&a.evento.liga) || "Crear apuesta") : combo ? (a.tipo==="Freebet"?"Freebets":"Parlays") : (a.evento&&a.evento.liga) || LIGA_DE_DEPORTE[a.deporte] || a.deporte || "Otros";
     if(vista==="tipo"){ if(combo) return nombreCombo(a);
       if(a.tipo==="Especial por jugador" || (a.evento && pareceJugador(a.descripcion,a.evento))) return "Jugador";
       return {"Handicap/Spread":"Hándicap","Over/Under":"Over/Under","Moneyline":"Moneyline","PlayBoost":"PlayBoost"}[a.tipo] || a.tipo || "Otro"; }
