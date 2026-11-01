@@ -944,23 +944,16 @@ function dibujarResumen(o){
         x.fillStyle="#06101f"; x.font=F(900,40); x.textAlign="center"; x.fillText(r==="Ganada"?"✓":"✕",cx,cy+14); x.textAlign="left"; });
       y += d;
     }
-    // Mejor pick: el texto baja a otra línea para que se lea completo
+    // Mejor liga o deporte del mes
     if(o.mejor){
-      y += cal?60:70;
-      const crudo=o.mejor.texto||"", mDep=crudo.match(/^\s*\[([^\]]*)\]/);
-      const txt=crudo.replace(/^\s*\[[^\]]*\]\s*/,"").trim()||crudo;
-      const maxW=W-2*P-80, lineas=[]; let act="";
-      x.font=F(700,44);
-      txt.split(/\s+/).forEach(p=>{ const t=act?act+" "+p:p; if(x.measureText(t).width>maxW && act){ lineas.push(act); act=p; } else act=t; });
-      if(act) lineas.push(act);
-      const MAXL=3;
-      if(lineas.length>MAXL){ lineas.length=MAXL; let u=lineas[MAXL-1]; while(u.length>1&&x.measureText(u+"…").width>maxW) u=u.slice(0,-1); lineas[MAXL-1]=u+"…"; }
-      const h=60+lineas.length*58+50;
+      y += cal?60:70; const h=200;
       x.fillStyle="rgba(255,255,255,.09)"; rr(x,P,y,W-2*P,h,40); x.fill();
-      x.font=F(600,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText("★ MEJOR PICK"+(mDep?" · "+mDep[1].toUpperCase():""),P+40,y+62);
+      x.font=F(600,30); x.fillStyle="rgba(255,255,255,.75)"; x.fillText("★ MEJOR LIGA DEL MES",P+40,y+62);
       x.font=F(800,50); x.fillStyle=G; x.textAlign="right"; x.fillText(o.mejor.valor,W-P-40,y+66); x.textAlign="left";
-      x.font=F(700,44); x.fillStyle="#fff";
-      lineas.forEach((l,i)=>x.fillText(l,P+40,y+60+(i+1)*58));
+      const maxW=W-2*P-80; let fs=60, nom=o.mejor.nombre; x.font=F(800,fs);
+      while(x.measureText(nom).width>maxW && fs>30){ x.font=F(800,fs-=2); }
+      x.fillStyle="#fff"; x.fillText(nom,P+40,y+130);
+      x.font=F(500,32); x.fillStyle="rgba(255,255,255,.75)"; x.fillText(o.mejor.sub,P+40,y+176);
     }
   }
   // Pie
@@ -1394,8 +1387,7 @@ function App() {
   const [notisGuia,setNotisGuia] = useState(false);
   const [shareFmt,setShareFmt] = useState("historia");
   const [sharePesos,setSharePesos] = useState(true);
-  const [shareMejor,setShareMejor] = useState(true);
-  const [shareCal,setShareCal] = useState(true);
+    const [shareCal,setShareCal] = useState(true);
   const [shareImg,setShareImg] = useState(null);
   const shareFile = useRef(null);
   const swipe = useRef(null);
@@ -1702,18 +1694,14 @@ function App() {
   },[apuestasMes]);
   // Últimos picks del mes que se está viendo (se reinicia cada mes, igual que la racha)
   const formaReciente = useMemo(()=>apuestasMes.filter(a=>!noMet(a)).filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10),[apuestasMes,...dep]);
-  const mejorPickMes = useMemo(()=>{
-    let best=null, bg=0;
-    apuestasMes.forEach(a=>{ if(a.resultado!=="Ganada") return; const m=apMonto(a,bankDe); const g=m*momioToDec(a.cuota)-m; if(!best||g>bg){best=a;bg=g;} });
-    return best?{a:best,g:bg}:null;
-  },[apuestasMes,...dep]);
   useEffect(()=>{
     if(vistaActual!=="compartir") return;
     let vivo=true;
     const pct = bankrollMes>0 ? stats.neto/bankrollMes*100 : (stats.total?stats.pct:null);
     const forma = apuestasMes.filter(a=>a.resultado==="Ganada"||a.resultado==="Perdida").slice(-10).map(a=>a.resultado);
-    const mp = mejorPickMes;
-    const mejor = shareMejor && mp ? {texto:mp.a.descripcion, valor: sharePesos ? "+"+fmtReal(mp.g) : (bankrollMes>0?"+"+(mp.g/bankrollMes*100).toFixed(1)+"%":fmtMomio(mp.a.cuota))} : null;
+    // Mejor liga o deporte: el que más dejó en el mes (sin parlays), con al menos 2 picks
+    const mg = dondeGanas(apuestasMes.filter(a=>!esCombo(a)),"liga").arr.filter(x=>x.gan+x.per>=2&&x.neto>0).sort((a,b)=>b.neto-a.neto)[0];
+    const mejor = mg ? {nombre:mg.n, valor: sharePesos ? "+"+fmtReal(mg.neto) : fmtPct(mg.pct), sub: mg.gan+"-"+mg.per+" · "+mg.acierto+"% de acierto"} : null;
     // Calendario: lo que se ganó o perdió cada día del mes (en pesos o en %)
     let cal = null;
     if(shareCal){
@@ -1736,7 +1724,7 @@ function App() {
       c.toBlob(b=>{ if(b&&vivo) shareFile.current=new File([b],"alexpicks-"+MESES[mesSeleccionado].toLowerCase()+"-"+anoSeleccionado+".png",{type:"image/png"}); },"image/png");
     });
     return ()=>{ vivo=false; };
-  },[vistaActual,temaKey,shareFmt,sharePesos,shareMejor,shareCal,stats,bankrollMes,mesSeleccionado,anoSeleccionado,mejorPickMes,rachaActual,apuestasMes]);
+  },[vistaActual,temaKey,shareFmt,sharePesos,shareCal,stats,bankrollMes,mesSeleccionado,anoSeleccionado,rachaActual,apuestasMes]);
   // Buscador (pestaña Anual): por pick, partido, patas de parlay, deporte o tipo
   const resultadosBusca = useMemo(()=>{
     const q = normTxt(busca.trim());
@@ -2731,7 +2719,7 @@ function App() {
             : html`<div style=${{color:"var(--mu)",padding:40}}>Generando imagen…</div>`}
         </div>
         <div style=${{background:"var(--card)",border:"1px solid var(--br)",borderRadius:16,padding:"4px 14px",marginBottom:14}}>
-          ${[["Mostrar pesos ($)",sharePesos,setSharePesos],["Mostrar calendario",shareCal,setShareCal],...(shareFmt==="historia"?[["Mostrar mejor pick",shareMejor,setShareMejor]]:[])].map(([l,v,set])=>html`
+          ${[["Mostrar pesos ($)",sharePesos,setSharePesos],["Mostrar calendario",shareCal,setShareCal]].map(([l,v,set])=>html`
             <button key=${l} onClick=${()=>set(!v)} style=${{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:"none",border:"none",color:"#fff",fontFamily:"inherit",fontSize:15,padding:"12px 0",cursor:"pointer"}}>
               <span>${l}</span>
               <span style=${{width:46,height:28,borderRadius:14,background:v?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}>
