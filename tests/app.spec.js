@@ -457,6 +457,13 @@ test.describe('Al tocar una notificación', () => {
     await expect(page.getByRole('button', { name: 'Ver en la lista' })).toBeVisible();
     expect(errores).toEqual([]);
   });
+  test('app ya abierta: la nota que deja el service worker abre la hoja', async ({ page }) => {
+    await abrir(page);
+    const x = await ids(page);
+    await page.evaluate(async id => { const c = await caches.open('abrir'); await c.put('abrir', new Response(JSON.stringify({ url: location.origin + '/?pick=' + id + '&v=res', t: Date.now() }))); }, x.gan);
+    await expect(page.getByText(/¡Ganaste!/).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Ver en la lista' })).toBeVisible();
+  });
   test('pick de otro mes: se busca y se abre', async ({ page }) => {
     await abrir(page);
     const x = await ids(page);
