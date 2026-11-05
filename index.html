@@ -1463,9 +1463,20 @@ function App() {
     // Se fuerza la búsqueda de un service worker nuevo (en iPhone tarda en llegar) y se revisa la nota cada segundo mientras la app se ve
     const act = () => { try{ navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{}); }catch(_){} };
     act(); const iv = setInterval(()=>{ if(document.visibilityState==="visible") leer(); },1000);
-    const vis = () => { if(document.visibilityState==="visible"){ leer(); act(); } };
-    document.addEventListener("visibilitychange",vis); window.addEventListener("focus",leer); window.addEventListener("pageshow",leer); leer();
-    return ()=>{ clearInterval(iv); navigator.serviceWorker.removeEventListener("message",h); document.removeEventListener("visibilitychange",vis); window.removeEventListener("focus",leer); window.removeEventListener("pageshow",leer); }; },[]);
+    // Respaldo 2: en iPhone, con la app en segundo plano el toque a veces no llega al service worker. Se detecta así: llegó un aviso mientras
+    // la app estaba oculta y, al volver a verla, ese aviso ya no está en la pantalla de notificaciones (lo tocaron) → se abre su pick
+    let oculto = null;
+    const leerPush = async () => { try{
+      if(oculto===null) return; const c=await caches.open("abrir"), r=await c.match("push"); if(!r) return; const d=await r.json();
+      if(!d.url||!d.tag||d.t<oculto||Date.now()-d.t>120000) return;
+      let visto=""; try{ visto=localStorage.getItem("pushVisto")||""; }catch(_){} if(visto===String(d.t)) return;
+      const reg=await navigator.serviceWorker.ready; const ns=await reg.getNotifications({tag:d.tag}); if(ns.length) return;
+      try{ localStorage.setItem("pushVisto",String(d.t)); }catch(_){}
+      const q=new URL(d.url,location.href).searchParams, id=q.get("pick"); if(id){ setDbgNota("Aviso tocado (detectado al volver) "+new Date().toLocaleTimeString("es-MX")+" · pick "+id); setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }
+    }catch(_){} };
+    const vis = () => { if(document.visibilityState==="hidden"){ oculto=Date.now(); } else { leer(); leerPush(); act(); } };
+    document.addEventListener("visibilitychange",vis); const foco=()=>{ leer(); leerPush(); }; window.addEventListener("focus",foco); window.addEventListener("pageshow",foco); leer();
+    return ()=>{ clearInterval(iv); navigator.serviceWorker.removeEventListener("message",h); document.removeEventListener("visibilitychange",vis); window.removeEventListener("focus",foco); window.removeEventListener("pageshow",foco); }; },[]);
   // Lista de "Picks del mes" escondida o visible (se recuerda en este celular)
   const [picksOcultos,setPicksOcultos] = useState(()=>{ try{ return localStorage.getItem("picksOcultos")==="1"; }catch(e){ return false; } });
   const togglePicks = () => setPicksOcultos(v=>{ const n=!v; try{ localStorage.setItem("picksOcultos",n?"1":"0"); }catch(e){} return n; });
