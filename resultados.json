@@ -1,0 +1,2259 @@
+{
+  "config": {
+    "configFile": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/playwright.config.js",
+    "rootDir": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 15000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {},
+        "id": "iPhone",
+        "name": "iPhone",
+        "testDir": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 45000
+      },
+      {
+        "outputDir": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {},
+        "id": "Android",
+        "name": "Android",
+        "testDir": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 45000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "version": "1.48.2",
+    "workers": 2,
+    "webServer": {
+      "command": "python3 -m http.server 4173",
+      "port": 4173,
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "app.spec.js",
+      "file": "app.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Cuentas",
+          "file": "app.spec.js",
+          "line": 14,
+          "column": 6,
+          "specs": [
+            {
+              "title": "momios, ganancias y pistas en vivo",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 2576,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:43:58.564Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Cuentas-momios-ganancias-y-pistas-en-vivo-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-dda295354737647b955a",
+              "file": "app.spec.js",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "momios, ganancias y pistas en vivo",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1641,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:43:58.564Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Cuentas-momios-ganancias-y-pistas-en-vivo-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-efd1646e94b60c8c3e8a",
+              "file": "app.spec.js",
+              "line": 15,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Calificar solo",
+          "file": "app.spec.js",
+          "line": 95,
+          "column": 6,
+          "specs": [
+            {
+              "title": "decide solo cuando está seguro",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1527,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:01.951Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Calificar-solo-decide-solo-cuando-está-seguro-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-a2680ed8f87520189e9e",
+              "file": "app.spec.js",
+              "line": 96,
+              "column": 3
+            },
+            {
+              "title": "decide solo cuando está seguro",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1413,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:00.344Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Calificar-solo-decide-solo-cuando-está-seguro-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-cfd91419174c1fd2ce60",
+              "file": "app.spec.js",
+              "line": 96,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Pantallas (admin)",
+          "file": "app.spec.js",
+          "line": 138,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Inicio carga con picks y sin errores",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1855,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:03.488Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-Inicio-carga-con-picks-y-sin-errores-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-36ce4414c5df4dc6e899",
+              "file": "app.spec.js",
+              "line": 139,
+              "column": 3
+            },
+            {
+              "title": "abrir y cerrar un pick",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 5379,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:05.350Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-abrir-y-cerrar-un-pick-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-4e7a01b722872a68c685",
+              "file": "app.spec.js",
+              "line": 147,
+              "column": 3
+            },
+            {
+              "title": "calificar un pick pendiente",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 2660,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:10.738Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-calificar-un-pick-pendiente-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-3f872d2132cefcc39cd6",
+              "file": "app.spec.js",
+              "line": 155,
+              "column": 3
+            },
+            {
+              "title": "deshacer al calificar y al borrar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 4356,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:13.404Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-deshacer-al-calificar-y-al-borrar-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-7636b22f41a991e41857",
+              "file": "app.spec.js",
+              "line": 164,
+              "column": 3
+            },
+            {
+              "title": "ocultar y mostrar los picks del mes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 2265,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:17.768Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-ocultar-y-mostrar-los-picks-del-mes-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-b36628f5f95f51b4e9a7",
+              "file": "app.spec.js",
+              "line": 180,
+              "column": 3
+            },
+            {
+              "title": "pestañas: Calendario, Anual y Más",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 3703,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:20.039Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-pestañas-Calendario-Anual-y-Más-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-f8759abc80cd7cbe56ce",
+              "file": "app.spec.js",
+              "line": 190,
+              "column": 3
+            },
+            {
+              "title": "Calificar solo: modo prueba y activarlo",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 3013,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:23.748Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-Calificar-solo-modo-prueba-y-activarlo-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-1e34b45062c0c7ff4a91",
+              "file": "app.spec.js",
+              "line": 205,
+              "column": 3
+            },
+            {
+              "title": "crear un pick a mano",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 3115,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:26.776Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-crear-un-pick-a-mano-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-d74d3da5788d9eb13368",
+              "file": "app.spec.js",
+              "line": 217,
+              "column": 3
+            },
+            {
+              "title": "cambiar de tema",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 2587,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:29.897Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-cambiar-de-tema-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-99c6b6b56c018d9ce682",
+              "file": "app.spec.js",
+              "line": 233,
+              "column": 3
+            },
+            {
+              "title": "Inicio carga con picks y sin errores",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1514,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:01.763Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-Inicio-carga-con-picks-y-sin-errores-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-a24b66183cfe56543b41",
+              "file": "app.spec.js",
+              "line": 139,
+              "column": 3
+            },
+            {
+              "title": "abrir y cerrar un pick",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2193,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:03.286Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-abrir-y-cerrar-un-pick-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-f1693d368e1aae5a3ad9",
+              "file": "app.spec.js",
+              "line": 147,
+              "column": 3
+            },
+            {
+              "title": "calificar un pick pendiente",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2159,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:05.491Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-calificar-un-pick-pendiente-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-e0dbe614139ef042a2ae",
+              "file": "app.spec.js",
+              "line": 155,
+              "column": 3
+            },
+            {
+              "title": "deshacer al calificar y al borrar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2897,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:07.655Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-deshacer-al-calificar-y-al-borrar-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-b15e75634bbc76a9c1ce",
+              "file": "app.spec.js",
+              "line": 164,
+              "column": 3
+            },
+            {
+              "title": "ocultar y mostrar los picks del mes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2236,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:10.560Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-ocultar-y-mostrar-los-picks-del-mes-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-62fbc08a5c4c84fbd3aa",
+              "file": "app.spec.js",
+              "line": 180,
+              "column": 3
+            },
+            {
+              "title": "pestañas: Calendario, Anual y Más",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 3588,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:12.804Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-pestañas-Calendario-Anual-y-Más-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-3324102e1dfdd65e8bec",
+              "file": "app.spec.js",
+              "line": 190,
+              "column": 3
+            },
+            {
+              "title": "Calificar solo: modo prueba y activarlo",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2240,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:16.404Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-Calificar-solo-modo-prueba-y-activarlo-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-272119c5b4a20e38bd3b",
+              "file": "app.spec.js",
+              "line": 205,
+              "column": 3
+            },
+            {
+              "title": "crear un pick a mano",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2862,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:18.652Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-crear-un-pick-a-mano-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-dd1a6b032e04977ee24d",
+              "file": "app.spec.js",
+              "line": 217,
+              "column": 3
+            },
+            {
+              "title": "cambiar de tema",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2671,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:21.528Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Pantallas-admin-cambiar-de-tema-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-8d63b2cc967154514c83",
+              "file": "app.spec.js",
+              "line": 233,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Amigo",
+          "file": "app.spec.js",
+          "line": 243,
+          "column": 6,
+          "specs": [
+            {
+              "title": "un amigo no ve el botón ＋ ni la sección Admin",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1772,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:32.491Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Amigo-un-amigo-no-ve-el-botón-＋-ni-la-sección-Admin-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-24f5c910684eef820393",
+              "file": "app.spec.js",
+              "line": 244,
+              "column": 3
+            },
+            {
+              "title": "un amigo no ve el botón ＋ ni la sección Admin",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1905,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:24.206Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Amigo-un-amigo-no-ve-el-botón-＋-ni-la-sección-Admin-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-2e49e88af4d10eb0713a",
+              "file": "app.spec.js",
+              "line": 244,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Capturas",
+          "file": "app.spec.js",
+          "line": 254,
+          "column": 6,
+          "specs": [
+            {
+              "title": "pantallas principales",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 7318,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:34.270Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Capturas-pantallas-principales-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-830d1bfa58657fc2c975",
+              "file": "app.spec.js",
+              "line": 255,
+              "column": 3
+            },
+            {
+              "title": "pantallas principales",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 7948,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:26.117Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Capturas-pantallas-principales-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-01d192c4de2771babc1b",
+              "file": "app.spec.js",
+              "line": 255,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Android: botón atrás",
+          "file": "app.spec.js",
+          "line": 276,
+          "column": 6,
+          "specs": [
+            {
+              "title": "cierra la hoja, luego vuelve a Inicio",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Solo en Android"
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "skipped",
+                      "duration": 414,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:41.594Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Android-botón-atrás-cierra-la-hoja-luego-vuelve-a-Inicio-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-42d2859c62b6ddd130aa",
+              "file": "app.spec.js",
+              "line": 277,
+              "column": 3
+            },
+            {
+              "title": "cierra la hoja, luego vuelve a Inicio",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 3284,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:34.076Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Android-botón-atrás-cierra-la-hoja-luego-vuelve-a-Inicio-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-0ce56d0ea5bf766571d4",
+              "file": "app.spec.js",
+              "line": 277,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Abrir y cerrar picks calificados solos",
+          "file": "app.spec.js",
+          "line": 292,
+          "column": 6,
+          "specs": [
+            {
+              "title": "pick con partido y AUTO se abre y se cierra",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 4768,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:42.014Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Abrir-y-cerrar-picks-c-31b98--y-AUTO-se-abre-y-se-cierra-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-d7900f5e0d6f8ec45c94",
+              "file": "app.spec.js",
+              "line": 293,
+              "column": 3
+            },
+            {
+              "title": "pick con partido y AUTO se abre y se cierra",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 3945,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:37.373Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Abrir-y-cerrar-picks-c-31b98--y-AUTO-se-abre-y-se-cierra-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-6757398644f8c6096db0",
+              "file": "app.spec.js",
+              "line": 293,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Anual con resumen por mes",
+          "file": "app.spec.js",
+          "line": 317,
+          "column": 6,
+          "specs": [
+            {
+              "title": "da el mismo balance leyendo resúmenes que leyendo todos los picks",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 5786,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:46.793Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Anual-con-resumen-por--9962b-que-leyendo-todos-los-picks-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-f1e87d8b37ff998f9bb0",
+              "file": "app.spec.js",
+              "line": 318,
+              "column": 3
+            },
+            {
+              "title": "da el mismo balance leyendo resúmenes que leyendo todos los picks",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 5490,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:41.327Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Anual-con-resumen-por--9962b-que-leyendo-todos-los-picks-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-14751fd482b56f6d7087",
+              "file": "app.spec.js",
+              "line": 318,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "La metí",
+          "file": "app.spec.js",
+          "line": 339,
+          "column": 6,
+          "specs": [
+            {
+              "title": "tocar muchas veces seguidas deja el último estado y se guarda",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 6890,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:52.599Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-La-metí-tocar-muchas-v-cba1c-l-último-estado-y-se-guarda-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-a440cbed66170276bc9e",
+              "file": "app.spec.js",
+              "line": 340,
+              "column": 3
+            },
+            {
+              "title": "tocar muchas veces seguidas deja el último estado y se guarda",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 4599,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:46.822Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-La-metí-tocar-muchas-v-cba1c-l-último-estado-y-se-guarda-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-d860d6d0cd252b89f2a4",
+              "file": "app.spec.js",
+              "line": 340,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Compartir un pick",
+          "file": "app.spec.js",
+          "line": 356,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a un amigo no le sale el botón",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 2237,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:59.494Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Compartir-un-pick-a-un-amigo-no-le-sale-el-botón-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-85c349483bcb55c34815",
+              "file": "app.spec.js",
+              "line": 357,
+              "column": 3
+            },
+            {
+              "title": "arma la imagen en historia y cuadrada",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 7639,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:01.736Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Compartir-un-pick-arma-la-imagen-en-historia-y-cuadrada-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-3cd3b291b50b9d6ad7f3",
+              "file": "app.spec.js",
+              "line": 363,
+              "column": 3
+            },
+            {
+              "title": "a un amigo no le sale el botón",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1756,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:51.434Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Compartir-un-pick-a-un-amigo-no-le-sale-el-botón-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-c6bb98cb37e04255c569",
+              "file": "app.spec.js",
+              "line": 357,
+              "column": 3
+            },
+            {
+              "title": "arma la imagen en historia y cuadrada",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 4320,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:53.201Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Compartir-un-pick-arma-la-imagen-en-historia-y-cuadrada-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-7851d46cb3986f99ad58",
+              "file": "app.spec.js",
+              "line": 363,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Picks de jugador",
+          "file": "app.spec.js",
+          "line": 395,
+          "column": 6,
+          "specs": [
+            {
+              "title": "lee jugador, estadística y línea en los 4 deportes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1509,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:09.387Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Picks-de-jugador-lee-j-913df-a-y-línea-en-los-4-deportes-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-b35a64f3685f9e7fd850",
+              "file": "app.spec.js",
+              "line": 396,
+              "column": 3
+            },
+            {
+              "title": "lee jugador, estadística y línea en los 4 deportes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1696,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:57.534Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Picks-de-jugador-lee-j-913df-a-y-línea-en-los-4-deportes-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-fd931f0262ecf77ac81c",
+              "file": "app.spec.js",
+              "line": 396,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Dónde ganas más",
+          "file": "app.spec.js",
+          "line": 421,
+          "column": 6,
+          "specs": [
+            {
+              "title": "el admin la ve en Anual y cambia entre liga, tipo y momio",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 3836,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:10.907Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Dónde-ganas-más-el-adm-c72d5-bia-entre-liga-tipo-y-momio-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-7fcef05802bab6f5de15",
+              "file": "app.spec.js",
+              "line": 422,
+              "column": 3
+            },
+            {
+              "title": "a un amigo no le sale",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1820,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:14.756Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Dónde-ganas-más-a-un-amigo-no-le-sale-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-35212bcb31e59d30b362",
+              "file": "app.spec.js",
+              "line": 436,
+              "column": 3
+            },
+            {
+              "title": "el admin la ve en Anual y cambia entre liga, tipo y momio",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 3916,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:44:59.237Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Dónde-ganas-más-el-adm-c72d5-bia-entre-liga-tipo-y-momio-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-49ac96235c540f959a1f",
+              "file": "app.spec.js",
+              "line": 422,
+              "column": 3
+            },
+            {
+              "title": "a un amigo no le sale",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2137,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:03.164Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Dónde-ganas-más-a-un-amigo-no-le-sale-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-d394901970f459eb889c",
+              "file": "app.spec.js",
+              "line": 436,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Al tocar una notificación",
+          "file": "app.spec.js",
+          "line": 444,
+          "column": 6,
+          "specs": [
+            {
+              "title": "resultado ganado: hoja con ¡Ganaste! y Compartir pick (admin)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1726,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:16.582Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-13487-ste-y-Compartir-pick-admin--iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-c332e133a762b405b8cf",
+              "file": "app.spec.js",
+              "line": 451,
+              "column": 3
+            },
+            {
+              "title": "app ya abierta: la nota que deja el service worker abre la hoja",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 2224,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:18.322Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-f2167-service-worker-abre-la-hoja-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-67cf0887316300554fb6",
+              "file": "app.spec.js",
+              "line": 460,
+              "column": 3
+            },
+            {
+              "title": "pick de otro mes: se busca y se abre",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1635,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:20.560Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-9594f-otro-mes-se-busca-y-se-abre-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-2a1cb90f200d57b52918",
+              "file": "app.spec.js",
+              "line": 467,
+              "column": 3
+            },
+            {
+              "title": "pick nuevo pendiente: hoja \"Pick nuevo\" con sus selecciones",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1716,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:22.201Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-fa191-k-nuevo-con-sus-selecciones-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-2037c039f457ed11a9a4",
+              "file": "app.spec.js",
+              "line": 473,
+              "column": 3
+            },
+            {
+              "title": "resultado ganado: hoja con ¡Ganaste! y Compartir pick (admin)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2377,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:05.308Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-13487-ste-y-Compartir-pick-admin--Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-cba6998ce52801162c38",
+              "file": "app.spec.js",
+              "line": 451,
+              "column": 3
+            },
+            {
+              "title": "app ya abierta: la nota que deja el service worker abre la hoja",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2562,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:07.699Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-f2167-service-worker-abre-la-hoja-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-148cc089adb04e361a66",
+              "file": "app.spec.js",
+              "line": 460,
+              "column": 3
+            },
+            {
+              "title": "pick de otro mes: se busca y se abre",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 2192,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:10.274Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-9594f-otro-mes-se-busca-y-se-abre-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-17f585f4a08c1d03dd3c",
+              "file": "app.spec.js",
+              "line": 467,
+              "column": 3
+            },
+            {
+              "title": "pick nuevo pendiente: hoja \"Pick nuevo\" con sus selecciones",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1990,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:12.480Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Al-tocar-una-notificac-fa191-k-nuevo-con-sus-selecciones-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-0e16886c18118eeeb441",
+              "file": "app.spec.js",
+              "line": 473,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Foto del boleto",
+          "file": "app.spec.js",
+          "line": 483,
+          "column": 6,
+          "specs": [
+            {
+              "title": "admin sube la foto: sale la miniatura, la hora y se puede ver y quitar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "iPhone",
+                  "projectName": "iPhone",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "status": "passed",
+                      "duration": 1635,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:23.929Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Foto-del-boleto-admin--705d1-ora-y-se-puede-ver-y-quitar-iPhone/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-33bbe75cb89865a80cb6",
+              "file": "app.spec.js",
+              "line": 488,
+              "column": 3
+            },
+            {
+              "title": "admin sube la foto: sale la miniatura, la hora y se puede ver y quitar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "Android",
+                  "projectName": "Android",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "status": "passed",
+                      "duration": 1712,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-11-05T20:45:14.475Z",
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/runner/work/Registro-de-Apuestas-AMZ/Registro-de-Apuestas-AMZ/test-results/app-Foto-del-boleto-admin--705d1-ora-y-se-puede-ver-y-quitar-Android/test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a510cc93a867214a2ea0-8eb22cffb64dfde7a176",
+              "file": "app.spec.js",
+              "line": 488,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-05T20:43:57.721Z",
+    "duration": 87941.069,
+    "expected": 53,
+    "skipped": 1,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
