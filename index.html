@@ -1452,11 +1452,11 @@ function App() {
     const act = () => { try{ navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{}); }catch(_){} };
     act(); const iv = setInterval(()=>{ if(document.visibilityState==="visible") leer(); },1000);
     // Respaldo 2: en iPhone, con la app en segundo plano el toque a veces no llega al service worker. Se detecta así: llegó un aviso mientras
-    // la app estaba oculta y, al volver a verla, ese aviso ya no está en la pantalla de notificaciones (lo tocaron) → se abre su pick
+    // la app estaba oculta (o hasta 1 min antes de ocultarla: el aviso de tus propios cambios llega 1-2 s después de tocar) y, al volver a verla, ese aviso ya no está en la pantalla de notificaciones (lo tocaron) → se abre su pick
     let oculto = null;
     const leerPush = async () => { try{
       if(oculto===null) return; const c=await caches.open("abrir"), r=await c.match("push"); if(!r) return; const d=await r.json();
-      if(!d.url||!d.tag||d.t<oculto||Date.now()-d.t>120000) return;
+      if(!d.url||!d.tag||d.t<oculto-60000||Date.now()-d.t>120000) return;
       let visto=""; try{ visto=localStorage.getItem("pushVisto")||""; }catch(_){} if(visto===String(d.t)) return;
       const reg=await navigator.serviceWorker.ready; const ns=await reg.getNotifications({tag:d.tag}); if(ns.length) return;
       try{ localStorage.setItem("pushVisto",String(d.t)); }catch(_){}
