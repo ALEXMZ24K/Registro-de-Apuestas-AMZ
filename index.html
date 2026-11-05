@@ -1444,7 +1444,13 @@ function App() {
   const [notifPick,setNotifPick] = useState(null);
   useEffect(()=>{ if(!("serviceWorker" in navigator)) return;
     const h = e => { const d=e.data; if(d&&d.tipo==="abrir"){ try{ const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} } };
-    navigator.serviceWorker.addEventListener("message",h); return ()=>navigator.serviceWorker.removeEventListener("message",h); },[]);
+    navigator.serviceWorker.addEventListener("message",h);
+    // Respaldo: el service worker deja anotado el toque y la app lo lee cada vez que se vuelve a ver
+    const leer = async () => { try{ const c=await caches.open("abrir"), r=await c.match("abrir"); if(!r) return; const d=await r.json(); await c.delete("abrir");
+      if(Date.now()-d.t>120000) return; const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} };
+    const vis = () => { if(document.visibilityState==="visible") leer(); };
+    document.addEventListener("visibilitychange",vis); window.addEventListener("focus",leer); window.addEventListener("pageshow",leer); leer();
+    return ()=>{ navigator.serviceWorker.removeEventListener("message",h); document.removeEventListener("visibilitychange",vis); window.removeEventListener("focus",leer); window.removeEventListener("pageshow",leer); }; },[]);
   // Lista de "Picks del mes" escondida o visible (se recuerda en este celular)
   const [picksOcultos,setPicksOcultos] = useState(()=>{ try{ return localStorage.getItem("picksOcultos")==="1"; }catch(e){ return false; } });
   const togglePicks = () => setPicksOcultos(v=>{ const n=!v; try{ localStorage.setItem("picksOcultos",n?"1":"0"); }catch(e){} return n; });
