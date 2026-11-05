@@ -15,6 +15,15 @@ service cloud.firestore {
       allow create, update, delete: if esAdmin();
     }
 
+    // Fotos de boletos: todos las ven; solo los admins las suben. La hora la pone el servidor (no se puede inventar) y una foto no se puede editar:
+    // para cambiarla hay que quitarla y subir otra (queda con hora nueva)
+    match /boletos/{id} {
+      allow read: if true;
+      allow create: if esAdmin() && request.resource.data.subidaEn == request.time && request.resource.data.keys().hasOnly(['pickId','img','subidaEn']);
+      allow delete: if esAdmin();
+      allow update: if false;
+    }
+
     // Configuración (bank del admin): todos la ven; solo los admins la cambian
     match /config/{doc} {
       allow read: if true;
