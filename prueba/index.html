@@ -1449,8 +1449,8 @@ function App() {
     setAvisoPrueba("Mándala a segundo plano… llega en 8 s");
     setTimeout(()=>{ reg.showNotification("✅ GANASTE +$35",{body:"Aviso de prueba · "+(ap.descripcion||"").slice(0,40),icon:"icon2-192.png",badge:"icon2-badge-96.png",tag:"prueba-toque",data:{url:"./?pick="+ap.id+"&v=res"}}); setAvisoPrueba(""); },8000);
   }catch(e){ setAvisoPrueba("No se pudo: "+(e&&e.message||e)); } };
-  useEffect(()=>{ const f=async()=>{ try{ const c=await caches.open("abrir"), r=await c.match("log"); if(!r){ setLogToque("Sin toques registrados"); return; } const d=await r.json();
-      setLogToque(new Date(d.t).toLocaleTimeString("es-MX")+" · "+d.clientes.length+" ventana(s) · "+String(d.url||"").split("?").pop()); }catch(e){ setLogToque("No se pudo leer"); } };
+  useEffect(()=>{ const f=async()=>{ try{ const c=await caches.open("abrir"), r=await c.match("log"), rp=await c.match("push"), dp=rp?await rp.json():null, pTxt=dp?"Aviso "+new Date(dp.t).toLocaleTimeString("es-MX")+" ("+String(dp.url||"sin url").split("?").pop()+")":"Sin avisos"; if(!r){ setLogToque(pTxt+" · sin toques"); return; } const d=await r.json();
+      setLogToque(pTxt+" · Toque "+new Date(d.t).toLocaleTimeString("es-MX")+" · "+d.clientes.length+" ventana(s)"); }catch(e){ setLogToque("No se pudo leer"); } };
     f(); const t=setInterval(f,3000); return ()=>clearInterval(t); },[]);
   useEffect(()=>{ if(!("serviceWorker" in navigator)) return;
     const h = e => { const d=e.data; if(d&&d.tipo==="abrir"){ try{ const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} } };
