@@ -67,6 +67,7 @@
     Object.keys(src).forEach(function(k){
       var v = src[k];
       if(v && v.__borrar){ delete dest[k]; return; }
+      if(v && v.__ts){ dest[k] = Date.now(); return; }
       if(v && typeof v==="object" && !Array.isArray(v) && dest[k] && typeof dest[k]==="object" && !Array.isArray(dest[k])) mezclar(dest[k], v);
       else dest[k] = clon(v);
     });
@@ -87,7 +88,7 @@
           var partes = k.split("."), o = c[id];
           for(var i=0;i<partes.length-1;i++){ if(!o[partes[i]] || typeof o[partes[i]]!=="object") o[partes[i]] = {}; o = o[partes[i]]; }
           var u = partes[partes.length-1];
-          if(v[k] && v[k].__borrar) delete o[u]; else o[u] = clon(v[k]);
+          if(v[k] && v[k].__borrar) delete o[u]; else if(v[k] && v[k].__ts) o[u] = Date.now(); else o[u] = clon(v[k]);
         });
         avisar(); return Promise.resolve();
       },
@@ -146,7 +147,7 @@
   };
   function GoogleAuthProvider(){} GoogleAuthProvider.prototype.setCustomParameters = function(){};
   var authFn = function(){ return auth; }; authFn.GoogleAuthProvider = GoogleAuthProvider; authFn.Auth = {Persistence:{LOCAL:"local"}};
-  var fsFn = function(){ return db; }; fsFn.FieldValue = { delete: function(){ return BORRAR; } };
+  var fsFn = function(){ return db; }; fsFn.FieldValue = { delete: function(){ return BORRAR; }, serverTimestamp: function(){ return {__ts:true}; } };
 
   window.firebase = { initializeApp: function(){ return {}; }, firestore: fsFn, auth: authFn, apps: [], __falso: true };
   window.ES_PRUEBA = true;

@@ -605,6 +605,44 @@ function Desplegable({abierto, contenido}) {
   return html`<div ref=${ref}>${contenido()}</div>`;
 }
 
+
+// ── Foto del boleto ──
+// La foto se reduce y se guarda en Firestore (colección "boletos", 1 documento por pick) con la hora del SERVIDOR; en el pick queda solo una miniatura
+function reducirImagen(file, lado, calidad) {
+  return new Promise((ok,mal)=>{ const url=URL.createObjectURL(file), im=new Image();
+    im.onload=()=>{ try{ const k=Math.min(1,lado/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*k)); c.height=Math.max(1,Math.round(im.height*k));
+      c.getContext("2d").drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(url); ok(c.toDataURL("image/jpeg",calidad)); }catch(e){ mal(e); } };
+    im.onerror=()=>{ URL.revokeObjectURL(url); mal(new Error("imagen")); }; im.src=url; });
+}
+function FotoBoleto({a, admin}) {
+  const [ver,setVer] = useState(false), [datos,setDatos] = useState(null), [ocupado,setOcupado] = useState(false), [err,setErr] = useState("");
+  const hay = !!a.fotoMini;
+  useEffect(()=>{ if(!hay){ setDatos(null); return; } let vivo=true;
+    db.collection("boletos").doc(String(a.id)).get().then(d=>{ if(vivo && d.exists) setDatos(d.data()); }).catch(()=>{}); return ()=>{ vivo=false; }; },[a.id,hay]);
+  const subir = async e => { const f=e.target.files&&e.target.files[0]; e.target.value=""; if(!f) return; setErr(""); setOcupado(true);
+    try{ let img=await reducirImagen(f,1000,.72); if(img.length>700000) img=await reducirImagen(f,800,.6);
+      const mini=await reducirImagen(f,70,.6);
+      await db.collection("boletos").doc(String(a.id)).set({pickId:a.id,img,subidaEn:firebase.firestore.FieldValue.serverTimestamp()});
+      await db.collection("apuestas").doc(a._docId).update({fotoMini:mini});
+    }catch(x){ setErr("No se pudo subir la foto"); } setOcupado(false); };
+  const quitar = async () => { setOcupado(true); try{ await db.collection("boletos").doc(String(a.id)).delete(); await db.collection("apuestas").doc(a._docId).update({fotoMini:firebase.firestore.FieldValue.delete()}); setVer(false); setDatos(null); }catch(x){ setErr("No se pudo quitar"); } setOcupado(false); };
+  const ms = datos && datos.subidaEn ? (datos.subidaEn.toMillis ? datos.subidaEn.toMillis() : Number(datos.subidaEn)) : 0;
+  const hora = ms ? new Date(ms).toLocaleString("es-MX",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}) : "";
+  const caja = {display:"flex",alignItems:"center",gap:12,width:"100%",background:"color-mix(in srgb,var(--bg) 55%,transparent)",border:"1px solid var(--br2)",borderRadius:12,padding:"10px 12px",marginBottom:10,color:"#fff",textAlign:"left",cursor:"pointer"};
+  return html`<div onClick=${e=>e.stopPropagation()}>
+    ${hay
+      ? html`<button id=${"t-boleto-"+a.id} onClick=${()=>setVer(true)} style=${caja}><img src=${a.fotoMini} alt="" style=${{width:36,height:46,objectFit:"cover",borderRadius:6,border:"1px solid var(--br2)"}}/>
+          <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:14}}>Foto del boleto</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:2}}>${hora?"Subida "+hora:"Toca para verla"}</div></div><span style=${{color:"var(--mu)"}}>›</span></button>`
+      : admin && html`<label style=${{...caja,justifyContent:"center",borderStyle:"dashed",fontSize:14,color:"var(--mu2)"}}>${ocupado?"Subiendo…":"+ Agregar foto del boleto"}<input id=${"t-subir-"+a.id} type="file" accept="image/*" onChange=${subir} disabled=${ocupado} style=${{display:"none"}}/></label>`}
+    ${err && html`<div style=${{fontSize:12,color:"#ff5d7a",marginBottom:8}}>${err}</div>`}
+    ${ver && ReactDOM.createPortal(html`<div data-noswipe style=${{position:"fixed",inset:0,zIndex:400,background:"#000",display:"flex",flexDirection:"column",padding:"calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))"}} onClick=${e=>e.stopPropagation()}>
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",color:"#c9d0d9",fontSize:14,paddingBottom:12}}><button onClick=${()=>setVer(false)} style=${{background:"none",border:"none",color:"#fff",fontSize:15,padding:6,cursor:"pointer"}}>✕ Cerrar</button><span>${hora?"Subida "+hora:""}</span></div>
+      <div style=${{flex:1,minHeight:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"auto"}}>${datos?html`<img src=${datos.img} alt="Boleto" style=${{maxWidth:"100%",maxHeight:"100%",borderRadius:12}}/>`:html`<span style=${{color:"var(--mu)"}}>Cargando…</span>`}</div>
+      ${admin && html`<button onClick=${quitar} disabled=${ocupado} style=${{...S.actBtn,marginTop:12,minHeight:44,color:"#ff5d7a"}}>${ocupado?"Quitando…":"Quitar foto"}</button>`}
+    </div>`,document.body)}
+  </div>`;
+}
+
 function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=true,onMetida,g,expanded,editable,monto,sinFecha,vivo,vivoPatas,estadoVivo,admin}) {
   const [open,setOpen] = useState(false);
   useEffect(()=>{ const h=e=>{ if(e.detail===a.id) setOpen(true); }; window.addEventListener("abrir-pick",h); return ()=>window.removeEventListener("abrir-pick",h); },[a.id]);
@@ -649,7 +687,7 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
         </div>
         <div style=${{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,marginTop:5,fontSize:12,color:"var(--mu)"}}>
           <span style=${{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>${!metida && html`<b style=${{fontSize:10,color:"var(--mu)",background:"var(--br2)",borderRadius:6,padding:"1px 6px",marginRight:6}}>NO LA METÍ</b>`}${a.resultado==="Nula" && html`<b style=${{fontSize:10,color:cr,marginRight:6}}>NULA</b>`}${a.auto && !pend && html`<b title="Calificado automáticamente" style=${{fontSize:9,color:"var(--mu)",border:"1px solid var(--br2)",borderRadius:5,padding:"0 4px",marginRight:6}}>AUTO</b>`}${sinFecha?"":f.d+" "+MESES_CORTO[f.m]+(subLinea?" · ":"")}${marcar(subLinea,q)}</span>
-          <b style=${{whiteSpace:"nowrap",fontSize:13,color:"var(--mu2)",flexShrink:0}}>${fmtMomio(a.cuota)}</b>
+          <span style=${{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>${a.fotoMini && html`<img src=${a.fotoMini} alt="Boleto" style=${{width:20,height:26,objectFit:"cover",borderRadius:4,border:"1px solid var(--br2)"}}/>`}<b style=${{whiteSpace:"nowrap",fontSize:13,color:"var(--mu2)"}}>${fmtMomio(a.cuota)}</b></span>
         </div>
         ${enVivo && html`<${MarcadorVivo} ev=${ev} v=${vivo}/>`}
         ${enVivo && pista && html`<div style=${{fontSize:pista.listo?13:12,fontWeight:pista.listo||/^Perdiste/.test(pista.txt)?800:400,color:pista.listo?"#2fe0a0":/^Perdiste/.test(pista.txt)?"#ff5d7a":"var(--mu)",textAlign:"center",marginTop:7}}>${pista.txt}</div>`}
@@ -728,6 +766,7 @@ function ARbase({a,q,onShare,onEdit,onDelete,onToggle,onPata,puedeMeter,metida=t
           </div>
         </div>
       `}
+      ${(admin||a.fotoMini) && html`<${FotoBoleto} a=${a} admin=${admin}/>`}
       ${admin && html`<button onClick=${e=>{e.stopPropagation(); onShare&&onShare();}} style=${{...S.actBtn,width:"100%",minHeight:42,marginBottom:editable?10:0}}><${IcoT} k="share" s=${16}/>Compartir pick</button>`}
       ${editable && html`<div style=${{display:"flex",flexDirection:"column",gap:10}}>
         <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
@@ -2132,7 +2171,7 @@ function App() {
     const nueva = {deporte:esCrearF&&form.deporte?form.deporte:deporte,descripcion:desc,partido:esCrearF?(evC?nombrePartido(evC):String(form.partido||"").trim()):usaPatas?"":String(form.partido||"").trim(),monto:Number(form.monto),cuota:cuotaNum,resultado:form.resultado,fecha:form.fecha,tipo:form.tipo,patas:patasG,evento:esCrearF?evC:(!usaPatas&&form.evento)?form.evento:null};
     if(editId){
       const docId=apuestas.find(a=>a.id===editId)?._docId;
-      if(docId) db.collection("apuestas").doc(docId).set({...nueva,id:editId});
+      if(docId){ const mini=apuestas.find(a=>a.id===editId)?.fotoMini; db.collection("apuestas").doc(docId).set({...nueva,id:editId,...(mini?{fotoMini:mini}:{})}); }
       else db.collection("apuestas").add({...nueva,id:editId});
     } else {
       const idNuevo = Date.now();
