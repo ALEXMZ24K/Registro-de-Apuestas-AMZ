@@ -127,6 +127,28 @@ const tramoPick = (t, ev) => {
 };
 const pistaPick = (a,ev,v,sinTramo) => {
   if(!v||!ev) return null; const hs=Number(v.hs), as=Number(v.as); if(v.hs===""||v.as===""||isNaN(hs)||isNaN(as)) return null;
+  // "Crear apuesta: Lakers ML + Doncic más de 29.5 puntos": cada selección se lee por separado y luego se juntan
+  const mcr = String(a.descripcion||"").match(/^\s*crear apuesta\s*:\s*(.+)$/i);
+  if(mcr){
+    const crudos = mcr[1].split(/\s+\+\s+/), sels = [];
+    // Un trozo sin número ni ML ("puntos", "rebotes" de "puntos + rebotes más de 40") es parte de la siguiente selección
+    let resto = "";
+    crudos.forEach(c=>{ const s = resto ? resto+" + "+c : c;
+      if(/\d/.test(c) || /\s(ml|moneyline)\b|ambos|btts|gana/i.test(c)) { sels.push(s); resto=""; } else resto = s; });
+    if(resto) sels.push(resto);
+    if(sels.length>1){
+      const ps = sels.map(s=>pistaPick({descripcion:s}, ev, v));
+      const ok = ps.filter(Boolean), sinLeer = ps.length-ok.length;
+      if(!ok.length) return null;
+      const cuerpo = p => p.txt.replace(/^(¡Ganaste!|Perdiste)\s·\s/,"");
+      const stats = ok.some(p=>p.stats) ? 1 : 0;
+      const perdida = ok.filter(p=>p.ok===-1);
+      if(perdida.length) return {txt:"Perdiste · "+perdida.map(cuerpo).join(" · "), ok:-1, stats};
+      if(!sinLeer && ok.every(p=>p.ok===1&&p.listo)) return {txt:"¡Ganaste! · "+ok.map(cuerpo).join(" · "), ok:1, listo:1, stats};
+      // Todavía no se decide: las que ya salieron se marcan, las demás dicen cómo van
+      return {txt:ok.map(p=>p.ok===1&&p.listo?cuerpo(p)+" (ya salió)":p.txt).join(" · "), ok:0, stats};
+    }
+  }
   // "(incl. prórroga)" / "(tiempo regular)" no cambian cómo se lee el pick: se quitan para que no estorben
   const t=conApodos(" "+normTxt(a.descripcion||"")+" ", ev)
     .replace(/\(?\s*(incl\.?|incluye|incluyendo|con)\s+(la\s+)?(prorroga|tiempo extra|tiempos extras?|overtime|ot)\s*\)?/g," ")
