@@ -153,9 +153,9 @@ async function avisarTodos(env, body, desde = "", max = TANDA) {
     if (!(bank > 0)) return base;
     const monto = bank * (Number(apuesta.monto) || 0) / 100;
     const c = Number(apuesta.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
-    if (apuesta.resultado === "Ganada") return { title: "¡Ganaste! +" + pesos(monto * (dec - 1)), body: cuerpo };
-    if (apuesta.resultado === "Perdida") return { title: "Perdiste -" + pesos(monto), body: cuerpo };
-    if (apuesta.resultado === "Nula") return { title: "Nula · te devuelven " + pesos(monto), body: cuerpo };
+    if (apuesta.resultado === "Ganada") return { title: "✅ GANASTE +" + pesos(monto * (dec - 1)), body: cuerpo };
+    if (apuesta.resultado === "Perdida") return { title: "❌ PERDISTE -" + pesos(monto), body: cuerpo };
+    if (apuesta.resultado === "Nula") return { title: "➖ ANULADO · te devuelven " + pesos(monto), body: cuerpo };
     return base;
   };
   const v = await llavesVapid(env);

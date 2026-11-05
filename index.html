@@ -2186,7 +2186,7 @@ function App() {
       const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
       const pctRes = resultado==="Ganada" ? "+"+(Number(ap.monto||0)*(momioToDec(ap.cuota)-1)).toFixed(1)+"% del bank" : resultado==="Nula" ? "Se devuelve lo apostado" : "-"+Number(ap.monto||0)+"% del bank";
       const cortoR = cuerpoAviso(ap), marcR = esCombo(ap) ? "" : marcadorAviso({...ap, evento:cambios.evento||ap.evento});
-      const enviar = () => pushNotificar("resultados", (resultado==="Ganada"?"¡Ganaste!":resultado==="Perdida"?"Perdiste":"Nula"), cortoR+(marcR?" · "+marcR:"")+" · "+pctRes, "res-"+ap.id,
+      const enviar = () => pushNotificar("resultados", (resultado==="Ganada"?"✅ GANASTE":resultado==="Perdida"?"❌ PERDISTE":"➖ ANULADO"), cortoR+(marcR?" · "+marcR:"")+" · "+pctRes, "res-"+ap.id,
         {url:"./?pick="+ap.id+"&v=res", apuesta:{id:ap.id, monto:ap.monto, cuota:ap.cuota, fecha:ap.fecha, resultado, descripcion:ap.descripcion, corto:cortoR, marcador:marcR}, bankAdmin:bankrolls});
       // Si había otro aviso esperando de OTRO pick, sale ya; si era de este mismo pick, se reemplaza
       if(avisoPend.current && avisoPend.current.id!==ap.id) soltarAviso();
