@@ -267,4 +267,28 @@ const resultadoAuto = (a, vivoMap) => {
   return cambio ? {patas} : null;
 };
 
-if (typeof globalThis !== "undefined") globalThis.Calif = { normTxt, esFut, esCombo, tramoPick, pistaPick, finalLimpio, resultadoAuto, pareceJugador, pickJugador };
+// ── Textos cortos para las notificaciones (los usan la app y el Worker, para que digan lo mismo) ──
+// Quita "[Deporte]", "Crear apuesta:", "(incl. prórroga)", "(hándicap)", "(Total)" y la sigla de ciudad ("SA Spurs" → "Spurs")
+const limpiaDesc = d => String(d||"").replace(/\[[^\]]*\]\s*/g,"").replace(/^\s*crear apuesta\s*:\s*/i,"")
+  .replace(/\s*\((?:[^()]*(?:incl|pr[oó]rroga|tiempo regular|tiempo extra|resultado final|h[aá]ndicap|handicap|total)[^()]*)\)/gi,"")
+  .replace(/\b(?!ML\b|TT\b|TD\b|NBA\b|NFL\b|MLB\b|NHL\b|UFC\b|BTTS\b|PRA\b|F5\b)[A-Z]{2,3}\s+(?=[A-Z][a-záéíóúñ])/g,"")
+  .replace(/\s{2,}/g," ").replace(/\s+([·|,])/g,"$1").trim();
+// Cuerpo corto: un pick sencillo se limpia; un parlay lista sus picks (o "primero y N más" si son muchos)
+const cuerpoAviso = a => {
+  if(!a) return "";
+  if(esCombo(a)){
+    const ls = (Array.isArray(a.patas)?a.patas:[]).map(p=>typeof p==="object"&&p?p.desc:p).filter(d=>d&&String(d).trim()).map(limpiaDesc).filter(Boolean);
+    const pre = a.tipo==="Freebet" ? "Freebet" : a.tipo==="Crear apuesta" ? "Crear apuesta" : "Parlay";
+    if(!ls.length) return limpiaDesc(a.descripcion)||pre;
+    let t = ls.join(" + "); if(ls.length>3 || t.length>90) t = ls[0]+" y "+(ls.length-1)+" más";
+    return pre+" · "+t;
+  }
+  return limpiaDesc(a.descripcion);
+};
+// Marcador final de un pick sencillo ("Lakers 110 - Kings 94"); vacío si no se conoce
+const marcadorAviso = a => {
+  const ev = a && a.evento, f = ev && ev.fin; if(!f || !ev.h || !ev.a || f.hs===""||f.as===""||f.hs==null||f.as==null) return "";
+  return esFut(ev.k) ? ev.h.n+" "+f.hs+" - "+ev.a.n+" "+f.as : ev.a.n+" "+f.as+" - "+ev.h.n+" "+f.hs;
+};
+
+if (typeof globalThis !== "undefined") globalThis.Calif = { normTxt, esFut, esCombo, tramoPick, pistaPick, finalLimpio, resultadoAuto, pareceJugador, pickJugador, limpiaDesc, cuerpoAviso, marcadorAviso };

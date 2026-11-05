@@ -37,6 +37,10 @@ test.describe('Cuentas', () => {
         equipoOver: p('Tigres over 1.5 goles', ev, v(1, 3)),
         equipoGana: p('Tigres anotan más de 1.5 goles', ev, v(2, 0)),
         equipoUnder: p('Toluca under 1.5 goles', ev, v(0, 2)),
+        notifLimpia: limpiaDesc('[Basquetbol] SA Spurs ML (incl. prórroga)'),
+        notifParlay: cuerpoAviso({ tipo: 'Parlay/Combinada', patas: [{ desc: 'SA Spurs ML (incl. prórroga)' }, { desc: 'Crear apuesta: LA Lakers ML (incl. prórroga) + Luka Doncic más de 29.5 puntos (incl. prórroga)' }] }),
+        notifMuchos: cuerpoAviso({ tipo: 'Parlay/Combinada', patas: [{ desc: 'A ML' }, { desc: 'B ML' }, { desc: 'C ML' }, { desc: 'D ML' }] }),
+        notifMarcador: marcadorAviso({ evento: { k: 'basketball/nba', h: { n: 'Kings' }, a: { n: 'Lakers' }, fin: { hs: '94', as: '110' } } }),
         crearMlJug: p('Crear apuesta: Lakers ML (incl. prórroga) + Luka Doncic más de 29.5 puntos (incl. prórroga)', { k: 'basketball/nba', h: { n: 'Kings', full: 'Sacramento Kings', a: 'SAC' }, a: { n: 'Lakers', full: 'Los Angeles Lakers', a: 'LAL' } }, v(94, 110, 'in', { j: [{ n: 'Luka Doncic', s: { pts: 40 } }] })),
         crearMlJugFin: p('Crear apuesta: Lakers ML + Luka Doncic más de 29.5 puntos', { k: 'basketball/nba', h: { n: 'Kings', full: 'Sacramento Kings', a: 'SAC' }, a: { n: 'Lakers', full: 'Los Angeles Lakers', a: 'LAL' } }, v(94, 110, 'post', { j: [{ n: 'Luka Doncic', s: { pts: 40 } }] })),
         equipoNba: p('Lakers over 110.5 puntos', { k: 'basketball/nba', h: { n: 'Raptors', full: 'Toronto Raptors', a: 'TOR' }, a: { n: 'Lakers', full: 'Los Angeles Lakers', a: 'LAL' } }, v(100, 95)),
@@ -69,6 +73,10 @@ test.describe('Cuentas', () => {
     expect(r.equipoGana).toBe('¡Ganaste! · 2 goles');
     expect(r.equipoUnder).toBe('Perdiste · van 2 goles');
     expect(r.equipoNba).toBe('95 de 111 puntos · faltan 16');
+    expect(r.notifLimpia).toBe('Spurs ML');
+    expect(r.notifParlay).toBe('Parlay · Spurs ML + Lakers ML + Luka Doncic más de 29.5 puntos');
+    expect(r.notifMuchos).toBe('Parlay · A ML y 3 más');
+    expect(r.notifMarcador).toBe('Lakers 110 - Kings 94');
     expect(r.crearMlJug).toBe('Va ganando · Doncic 40 puntos (ya salió)');
     expect(r.crearMlJugFin).toBe('¡Ganaste! · 110-94 · Doncic 40 puntos');
     expect(r.jugador2).toBeNull();

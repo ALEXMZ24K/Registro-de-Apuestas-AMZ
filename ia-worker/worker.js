@@ -130,31 +130,33 @@ const PUSH_HOSTS = [/\.push\.apple\.com$/, /^fcm\.googleapis\.com$/, /^updates\.
 const TANDA = 40;
 async function avisarTodos(env, body, desde = "", max = TANDA) {
   const { tipo = "picks", title = "AlexPicks", body: texto = "", url = "./", tag, apuesta, bankAdmin } = body;
-  // Mensaje personalizado con el dinero de cada quien (solo resultados)
+  // Mensaje personalizado con el dinero de cada quien: resultados ("¡Ganaste! +$775") y picks nuevos ("Apuesta $1,000")
   const pesos = n => "$" + Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   const textoPara = reg => {
-    if (!apuesta || (tipo !== "resultados" && tipo !== "picks")) return texto;
+    const base = { title, body: texto };
+    if (!apuesta || (tipo !== "resultados" && tipo !== "picks")) return base;
     const pf = reg.perfil || {};
     const [yy, mm] = String(apuesta.fecha || "").split("-").map(Number);
     const clave = yy + "-" + (mm - 1);
-    // Pick nuevo: "· 3% del bank" → "· Apuesta $1,500 (3%)" con el bank de cada quien (si no tiene bank, se queda el %)
+    // Pick nuevo: "· 3% del bank" → "· Apuesta $1,500" con el bank de cada quien (si no tiene bank, se queda el %)
     if (tipo === "picks") {
       const bankP = Number((pf.admin ? (bankAdmin || {}) : (pf.bancos || {}))[clave]) || 0;
-      if (!(bankP > 0) || !/% del bank\s*$/.test(texto)) return texto;
-      return texto.replace(/([\d.]+)% del bank\s*$/, (_, pc) => "Apuesta " + pesos(bankP * (Number(apuesta.monto) || 0) / 100) + " (" + pc + "%)");
+      if (!(bankP > 0) || !/% del bank\s*$/.test(texto)) return base;
+      return { title, body: texto.replace(/([\d.]+)% del bank\s*$/, () => "Apuesta " + pesos(bankP * (Number(apuesta.monto) || 0) / 100)) };
     }
-    const desc = apuesta.descripcion || "";
-    if (pf.noMet && pf.noMet.includes(String(apuesta.id))) return desc + " · (no la metiste)";
+    // Cuerpo corto y limpio (la app y el Worker mandan "corto" y "marcador"; si faltan, la descripción tal cual)
+    const cuerpo = (apuesta.corto || apuesta.descripcion || "") + (apuesta.marcador ? " · " + apuesta.marcador : "");
+    if (pf.noMet && pf.noMet.includes(String(apuesta.id))) return { title, body: cuerpo + " · (no la metiste)" };
     const ini = pf.inicios && pf.inicios[clave];
-    if (ini && String(apuesta.fecha) < ini) return texto;
+    if (ini && String(apuesta.fecha) < ini) return base;
     const bank = Number((pf.admin ? (bankAdmin || {}) : (pf.bancos || {}))[clave]) || 0;
-    if (!(bank > 0)) return texto;
+    if (!(bank > 0)) return base;
     const monto = bank * (Number(apuesta.monto) || 0) / 100;
     const c = Number(apuesta.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
-    if (apuesta.resultado === "Ganada") return desc + " · Ganaste +" + pesos(monto * (dec - 1));
-    if (apuesta.resultado === "Perdida") return desc + " · Perdiste -" + pesos(monto);
-    if (apuesta.resultado === "Nula") return desc + " · Se te devuelven " + pesos(monto);
-    return texto;
+    if (apuesta.resultado === "Ganada") return { title: "¡Ganaste! +" + pesos(monto * (dec - 1)), body: cuerpo };
+    if (apuesta.resultado === "Perdida") return { title: "Perdiste -" + pesos(monto), body: cuerpo };
+    if (apuesta.resultado === "Nula") return { title: "Nula · te devuelven " + pesos(monto), body: cuerpo };
+    return base;
   };
   const v = await llavesVapid(env);
   let cursor, claves = [];
@@ -167,7 +169,8 @@ async function avisarTodos(env, body, desde = "", max = TANDA) {
   await Promise.all(parte.map(async k => {
     const reg = await env.PUSH.get(k, "json"); if (!reg || reg.tipos?.[tipo] === false) return;
     try {
-      const r = await enviarPush(v, reg.sub, { title, body: textoPara(reg), url, tag });
+      const t = textoPara(reg);
+      const r = await enviarPush(v, reg.sub, { title: t.title, body: t.body, url, tag });
       if (r.status === 404 || r.status === 410) { await env.PUSH.delete(k); borrados++; }
       else if (r.ok) enviados++; else fallidos++;
     } catch { fallidos++; }
