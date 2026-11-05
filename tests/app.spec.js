@@ -37,6 +37,10 @@ test.describe('Cuentas', () => {
         equipoOver: p('Tigres over 1.5 goles', ev, v(1, 3)),
         equipoGana: p('Tigres anotan más de 1.5 goles', ev, v(2, 0)),
         equipoUnder: p('Toluca under 1.5 goles', ev, v(0, 2)),
+        notifLimpia: limpiaDesc('[Basquetbol] SA Spurs ML (incl. prórroga)'),
+        notifParlay: cuerpoAviso({ tipo: 'Parlay/Combinada', patas: [{ desc: 'SA Spurs ML (incl. prórroga)' }, { desc: 'Crear apuesta: LA Lakers ML (incl. prórroga) + Luka Doncic más de 29.5 puntos (incl. prórroga)' }] }),
+        notifMuchos: cuerpoAviso({ tipo: 'Parlay/Combinada', patas: [{ desc: 'A ML' }, { desc: 'B ML' }, { desc: 'C ML' }, { desc: 'D ML' }] }),
+        notifMarcador: marcadorAviso({ evento: { k: 'basketball/nba', h: { n: 'Kings' }, a: { n: 'Lakers' }, fin: { hs: '94', as: '110' } } }),
         crearMlJug: p('Crear apuesta: Lakers ML (incl. prórroga) + Luka Doncic más de 29.5 puntos (incl. prórroga)', { k: 'basketball/nba', h: { n: 'Kings', full: 'Sacramento Kings', a: 'SAC' }, a: { n: 'Lakers', full: 'Los Angeles Lakers', a: 'LAL' } }, v(94, 110, 'in', { j: [{ n: 'Luka Doncic', s: { pts: 40 } }] })),
         crearMlJugFin: p('Crear apuesta: Lakers ML + Luka Doncic más de 29.5 puntos', { k: 'basketball/nba', h: { n: 'Kings', full: 'Sacramento Kings', a: 'SAC' }, a: { n: 'Lakers', full: 'Los Angeles Lakers', a: 'LAL' } }, v(94, 110, 'post', { j: [{ n: 'Luka Doncic', s: { pts: 40 } }] })),
         equipoNba: p('Lakers over 110.5 puntos', { k: 'basketball/nba', h: { n: 'Raptors', full: 'Toronto Raptors', a: 'TOR' }, a: { n: 'Lakers', full: 'Los Angeles Lakers', a: 'LAL' } }, v(100, 95)),
@@ -69,6 +73,10 @@ test.describe('Cuentas', () => {
     expect(r.equipoGana).toBe('¡Ganaste! · 2 goles');
     expect(r.equipoUnder).toBe('Perdiste · van 2 goles');
     expect(r.equipoNba).toBe('95 de 111 puntos · faltan 16');
+    expect(r.notifLimpia).toBe('Spurs ML');
+    expect(r.notifParlay).toBe('Parlay · Spurs ML + Lakers ML + Luka Doncic más de 29.5 puntos');
+    expect(r.notifMuchos).toBe('Parlay · A ML y 3 más');
+    expect(r.notifMarcador).toBe('Lakers 110 - Kings 94');
     expect(r.crearMlJug).toBe('Va ganando · Doncic 40 puntos (ya salió)');
     expect(r.crearMlJugFin).toBe('¡Ganaste! · 110-94 · Doncic 40 puntos');
     expect(r.jugador2).toBeNull();
@@ -430,5 +438,36 @@ test.describe('Dónde ganas más', () => {
     await tab(page, 'Anual').click();
     await expect(page.getByText(/BALANCE \d{4}/)).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Dónde ganas más' })).toHaveCount(0);
+  });
+});
+
+test.describe('Al tocar una notificación', () => {
+  // La notificación abre la app con ?pick=ID&v=res|nuevo y sale una hoja con ese pick
+  const ids = page => page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('alexpicks-prueba-db')), v = Object.values(d.apuestas), h = new Date();
+    const mes = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0');
+    return { gan: v.find(a => a.resultado === 'Ganada' && String(a.fecha).startsWith(mes)).id, perdVieja: v.find(a => a.resultado === 'Perdida' && !String(a.fecha).startsWith(mes)).id, par: v.find(a => a.tipo === 'Parlay/Combinada').id };
+  });
+  test('resultado ganado: hoja con ¡Ganaste! y Compartir pick (admin)', async ({ page }) => {
+    const errores = await abrir(page);
+    const x = await ids(page);
+    await page.goto(`/?prueba=1&pick=${x.gan}&v=res`);
+    await expect(page.getByText(/¡Ganaste!/).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('button', { name: 'Compartir pick' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ver en la lista' })).toBeVisible();
+    expect(errores).toEqual([]);
+  });
+  test('pick de otro mes: se busca y se abre', async ({ page }) => {
+    await abrir(page);
+    const x = await ids(page);
+    await page.goto(`/?prueba=1&pick=${x.perdVieja}&v=res`);
+    await expect(page.getByText(/Perdiste/).first()).toBeVisible({ timeout: 20000 });
+  });
+  test('pick nuevo pendiente: hoja "Pick nuevo" con sus selecciones', async ({ page }) => {
+    await abrir(page);
+    const x = await ids(page);
+    await page.goto(`/?prueba=1&pick=${x.par}&v=nuevo`);
+    await expect(page.getByText('Pick nuevo', { exact: true })).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Tigres ML').first()).toBeVisible();
   });
 });

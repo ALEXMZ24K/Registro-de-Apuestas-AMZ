@@ -82,12 +82,13 @@ export function cambiosDe(a, r, ev) {
   }
   return c;
 }
-// Texto de la notificación (igual que la app)
+// Texto de la notificación (igual que la app): título "¡Ganaste!" y cuerpo corto; cada celular lo personaliza con su dinero
 export function avisoDe(a, res, bankAdmin) {
   const c = Number(a.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
-  const pct = res === "Ganada" ? "+" + (Number(a.monto || 0) * (dec - 1)).toFixed(1) + "% del bank" : "-" + Number(a.monto || 0) + "% del bank";
-  return { tipo: "resultados", title: (res === "Ganada" ? "¡Ganada!" : "Perdida"), body: a.descripcion + " · " + pct, tag: "res-" + a.id, url: "./",
-    apuesta: { id: a.id, monto: a.monto, cuota: a.cuota, fecha: a.fecha, resultado: res, descripcion: a.descripcion }, bankAdmin: bankAdmin || {} };
+  const pct = res === "Ganada" ? "+" + (Number(a.monto || 0) * (dec - 1)).toFixed(1) + "% del bank" : res === "Nula" ? "Se devuelve lo apostado" : "-" + Number(a.monto || 0) + "% del bank";
+  const corto = C.cuerpoAviso(a), marcador = C.esCombo(a) ? "" : C.marcadorAviso(a);
+  return { tipo: "resultados", title: (res === "Ganada" ? "¡Ganaste!" : res === "Nula" ? "Nula" : "Perdiste"), body: corto + (marcador ? " · " + marcador : "") + " · " + pct, tag: "res-" + a.id, url: "./?pick=" + a.id + "&v=res",
+    apuesta: { id: a.id, monto: a.monto, cuota: a.cuota, fecha: a.fecha, resultado: res, descripcion: a.descripcion, corto, marcador }, bankAdmin: bankAdmin || {} };
 }
 
 // ── Estado visible en la app (Más → Admin) ──
@@ -171,7 +172,7 @@ export async function calificarTodo(env, { marcadores, avisarTodos }) {
           }
         } catch {}
         if (!bankAdmin) bankAdmin = (await leerDoc(token, "/config/bankrolls")) || {};
-        try { await avisarTodos(env, avisoDe(a, r.res, bankAdmin)); } catch {}
+        try { await avisarTodos(env, avisoDe({ ...a, evento: cambios.evento || a.evento, patas: cambios.patas || a.patas }, r.res, bankAdmin)); } catch {}
         hechos.push({ d: a.descripcion || "Parlay", res: r.res, t: Date.now() });
       }
     }
