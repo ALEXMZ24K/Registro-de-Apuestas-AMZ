@@ -440,3 +440,34 @@ test.describe('Dónde ganas más', () => {
     await expect(page.getByRole('heading', { name: 'Dónde ganas más' })).toHaveCount(0);
   });
 });
+
+test.describe('Al tocar una notificación', () => {
+  // La notificación abre la app con ?pick=ID&v=res|nuevo y sale una hoja con ese pick
+  const ids = page => page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('alexpicks-prueba-db')), v = Object.values(d.apuestas), h = new Date();
+    const mes = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0');
+    return { gan: v.find(a => a.resultado === 'Ganada' && String(a.fecha).startsWith(mes)).id, perdVieja: v.find(a => a.resultado === 'Perdida' && !String(a.fecha).startsWith(mes)).id, par: v.find(a => a.tipo === 'Parlay/Combinada').id };
+  });
+  test('resultado ganado: hoja con ¡Ganaste! y Compartir pick (admin)', async ({ page }) => {
+    const errores = await abrir(page);
+    const x = await ids(page);
+    await page.goto(`/?prueba=1&pick=${x.gan}&v=res`);
+    await expect(page.getByText(/¡Ganaste!/).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('button', { name: 'Compartir pick' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ver en la lista' })).toBeVisible();
+    expect(errores).toEqual([]);
+  });
+  test('pick de otro mes: se busca y se abre', async ({ page }) => {
+    await abrir(page);
+    const x = await ids(page);
+    await page.goto(`/?prueba=1&pick=${x.perdVieja}&v=res`);
+    await expect(page.getByText(/Perdiste/).first()).toBeVisible({ timeout: 20000 });
+  });
+  test('pick nuevo pendiente: hoja "Pick nuevo" con sus selecciones', async ({ page }) => {
+    await abrir(page);
+    const x = await ids(page);
+    await page.goto(`/?prueba=1&pick=${x.par}&v=nuevo`);
+    await expect(page.getByText('Pick nuevo', { exact: true })).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Tigres ML').first()).toBeVisible();
+  });
+});
