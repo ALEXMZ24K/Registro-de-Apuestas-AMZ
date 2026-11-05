@@ -1,4 +1,4 @@
-// v8 — siempre pide la versión más nueva de la página (sin caché) + notificaciones push
+// v9 — siempre pide la versión más nueva de la página (sin caché) + notificaciones push
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.filter(k => k !== 'abrir').map(k => caches.delete(k)))).then(() => clients.claim())
@@ -15,13 +15,15 @@ self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : '' }; }
   const title = d.title || 'AlexPicks';
-  e.waitUntil(self.registration.showNotification(title, {
+  // Diagnóstico: se anota el último aviso que llegó y la dirección que trae
+  const anotar = caches.open('abrir').then(c => c.put('push', new Response(JSON.stringify({ t: Date.now(), tag: d.tag || '', url: d.url || '' })))).catch(() => {});
+  e.waitUntil(anotar.then(() => self.registration.showNotification(title, {
     body: d.body || '',
     icon: 'icon2-192.png',
     badge: 'icon2-badge-96.png',
     tag: d.tag || undefined,
     data: { url: d.url || './' },
-  }));
+  })));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
