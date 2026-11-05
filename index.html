@@ -1442,24 +1442,12 @@ function App() {
   const [abrirNotif,setAbrirNotif] = useState(()=>{ try{ const q=new URLSearchParams(location.search), id=q.get("pick");
     if(id){ const v=q.get("v")==="nuevo"?"nuevo":"res"; q.delete("pick"); q.delete("v"); history.replaceState(null,"",location.pathname+(q.toString()?"?"+q.toString():"")+location.hash); return {id,v}; } }catch(e){} return null; });
   const [notifPick,setNotifPick] = useState(null);
-  const [logToque,setLogToque] = useState("");
-  const [logAviso,setLogAviso] = useState("");
-  const [dbgNota,setDbgNota] = useState("La app aún no leyó ninguna nota");
-  const [avisoPrueba,setAvisoPrueba] = useState("");
-  // Aviso de prueba SOLO para este celular (no pasa por el Worker): sirve para probar qué pasa al tocarlo
-  const probarToque = async () => { try{ const reg=await navigator.serviceWorker.ready; const ap=(apuestas||[])[0]; if(!ap){ setAvisoPrueba("No hay picks para probar"); return; }
-    setAvisoPrueba("Mándala a segundo plano… llega en 8 s");
-    setTimeout(()=>{ reg.showNotification("✅ GANASTE +$35",{body:"Aviso de prueba · "+(ap.descripcion||"").slice(0,40),icon:"icon2-192.png",badge:"icon2-badge-96.png",tag:"prueba-toque",data:{url:"./?pick="+ap.id+"&v=res"}}); setAvisoPrueba(""); },8000);
-  }catch(e){ setAvisoPrueba("No se pudo: "+(e&&e.message||e)); } };
-  useEffect(()=>{ const f=async()=>{ try{ const c=await caches.open("abrir"), r=await c.match("log"), rp=await c.match("push"), dp=rp?await rp.json():null, pTxt=dp?"Aviso "+new Date(dp.t).toLocaleTimeString("es-MX")+" ("+String(dp.url||"sin url").split("?").pop()+")":"Sin avisos"; setLogAviso(pTxt); if(!r){ setLogToque("Sin toques"); return; } const d=await r.json();
-      setLogToque("Toque "+new Date(d.t).toLocaleTimeString("es-MX")+" · "+d.clientes.length+" ventana(s)"); }catch(e){ setLogToque("No se pudo leer"); } };
-    f(); const t=setInterval(f,3000); return ()=>clearInterval(t); },[]);
   useEffect(()=>{ if(!("serviceWorker" in navigator)) return;
     const h = e => { const d=e.data; if(d&&d.tipo==="abrir"){ try{ const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} } };
     navigator.serviceWorker.addEventListener("message",h);
     // Respaldo: el service worker deja anotado el toque y la app lo lee cada vez que se vuelve a ver
     const leer = async () => { try{ const c=await caches.open("abrir"), r=await c.match("abrir"); if(!r) return; const d=await r.json(); await c.delete("abrir");
-      if(Date.now()-d.t>120000){ setDbgNota("Nota vieja ignorada"); return; } const q=new URL(d.url).searchParams, id=q.get("pick"); if(id){ setDbgNota("Nota leída "+new Date().toLocaleTimeString("es-MX")+" · pick "+id); } if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} };
+      if(Date.now()-d.t>120000){ return; } const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} };
     // Se fuerza la búsqueda de un service worker nuevo (en iPhone tarda en llegar) y se revisa la nota cada segundo mientras la app se ve
     const act = () => { try{ navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{}); }catch(_){} };
     act(); const iv = setInterval(()=>{ if(document.visibilityState==="visible") leer(); },1000);
@@ -1472,7 +1460,7 @@ function App() {
       let visto=""; try{ visto=localStorage.getItem("pushVisto")||""; }catch(_){} if(visto===String(d.t)) return;
       const reg=await navigator.serviceWorker.ready; const ns=await reg.getNotifications({tag:d.tag}); if(ns.length) return;
       try{ localStorage.setItem("pushVisto",String(d.t)); }catch(_){}
-      const q=new URL(d.url,location.href).searchParams, id=q.get("pick"); if(id){ setDbgNota("Aviso tocado (detectado al volver) "+new Date().toLocaleTimeString("es-MX")+" · pick "+id); setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }
+      const q=new URL(d.url,location.href).searchParams, id=q.get("pick"); if(id){ setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }
     }catch(_){} };
     const vis = () => { if(document.visibilityState==="hidden"){ oculto=Date.now(); } else { leer(); leerPush(); act(); } };
     document.addEventListener("visibilitychange",vis); const foco=()=>{ leer(); leerPush(); }; window.addEventListener("focus",foco); window.addEventListener("pageshow",foco); leer();
@@ -1492,8 +1480,6 @@ function App() {
       setTimeout(intento,2000); };
     intento();
     return ()=>{ vivoQ=false; }; },[abrirNotif]);
-  useEffect(()=>{ if(!abrirNotif) return; const en=apuestas.some(a=>String(a.id)===String(abrirNotif.id));
-    setDbgNota(x=>x.split(" · lista:")[0]+" · lista: "+(en?"sí":notifPick?"buscado":"no")+" · cargando: "+(cargando?"sí":"no")); },[abrirNotif,notifPick,apuestas.length,cargando]);
   const [docUserListo,setDocUserListo] = useState(false); // ya llegó el bank del usuario
   const [bankrolls,setBankrolls] = useState({});
   const [bankrollsUser,setBankrollsUser] = useState({});
@@ -2833,10 +2819,6 @@ function App() {
 
         ${isAdmin && grupoMas("Admin",[
           (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"auto",t:"Calificar solo",sub:autoTxt,onClick:()=>setHojaMas("auto")}),
-          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Probar toque de notificación",sub:avisoPrueba||"Aviso de prueba solo para ti, en 8 segundos",onClick:probarToque}),
-          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Último aviso",sub:logAviso}),
-          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Último toque",sub:logToque}),
-          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Lo que hizo la app",sub:dbgNota}),
           filaMas({e:"file",t:"Respaldo para Excel",sub:respaldo.csv||"Todos los picks en un archivo CSV",onClick:()=>descargarRespaldo("csv")}),
           filaMas({e:"save",t:"Copia completa",sub:respaldo.json||"Archivo JSON para poder restaurar todo",onClick:()=>descargarRespaldo("json")}),
         ])}
