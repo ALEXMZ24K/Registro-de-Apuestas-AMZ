@@ -1438,12 +1438,23 @@ function App() {
   const [anoSeleccionado,setAnoSeleccionado] = useState(new Date().getFullYear());
   const [deleteConfirm,setDeleteConfirm] = useState(null);
   const [pickCompartir,setPickCompartir] = useState(null);
+  // Al tocar una notificación: la app se abre con ?pick=ID&v=res|nuevo (o el service worker avisa si ya estaba abierta)
+  const [abrirNotif,setAbrirNotif] = useState(()=>{ try{ const q=new URLSearchParams(location.search), id=q.get("pick");
+    if(id){ const v=q.get("v")==="nuevo"?"nuevo":"res"; q.delete("pick"); q.delete("v"); history.replaceState(null,"",location.pathname+(q.toString()?"?"+q.toString():"")+location.hash); return {id,v}; } }catch(e){} return null; });
+  const [notifPick,setNotifPick] = useState(null);
+  useEffect(()=>{ if(!("serviceWorker" in navigator)) return;
+    const h = e => { const d=e.data; if(d&&d.tipo==="abrir"){ try{ const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} } };
+    navigator.serviceWorker.addEventListener("message",h); return ()=>navigator.serviceWorker.removeEventListener("message",h); },[]);
   // Lista de "Picks del mes" escondida o visible (se recuerda en este celular)
   const [picksOcultos,setPicksOcultos] = useState(()=>{ try{ return localStorage.getItem("picksOcultos")==="1"; }catch(e){ return false; } });
   const togglePicks = () => setPicksOcultos(v=>{ const n=!v; try{ localStorage.setItem("picksOcultos",n?"1":"0"); }catch(e){} return n; });
   const [deporteFiltro,setDeporteFiltro] = useState(null);
   const [user,setUser] = useState(null);
   const [authListo,setAuthListo] = useState(false);   // ya se sabe si hay sesión o no
+  useEffect(()=>{ if(!abrirNotif){ setNotifPick(null); return; }
+    if(apuestas.some(a=>String(a.id)===String(abrirNotif.id))) return;
+    let vivoQ=true; db.collection("apuestas").where("id","==",Number(abrirNotif.id)).limit(1).get().then(q=>{ if(vivoQ) q.forEach(d=>setNotifPick({...d.data(),_docId:d.id})); }).catch(()=>{});
+    return ()=>{ vivoQ=false; }; },[abrirNotif]);
   const [docUserListo,setDocUserListo] = useState(false); // ya llegó el bank del usuario
   const [bankrolls,setBankrolls] = useState({});
   const [bankrollsUser,setBankrollsUser] = useState({});
@@ -2099,19 +2110,22 @@ function App() {
       if(docId) db.collection("apuestas").doc(docId).set({...nueva,id:editId});
       else db.collection("apuestas").add({...nueva,id:editId});
     } else {
-      db.collection("apuestas").add({...nueva,id:Date.now()});
+      const idNuevo = Date.now();
+      db.collection("apuestas").add({...nueva,id:idNuevo});
       // Picks de días pasados (registrar meses anteriores) NO avisan a nadie
       if(nueva.fecha < isoLocal(new Date())) { setModal(false); return; }
       // Notificar a todos
       const momioStr = Number(nueva.cuota)>0?"+"+nueva.cuota:String(nueva.cuota);
       const esC = esCombo(nueva);
       const nP = (nueva.patas||[]).filter(p=>p.desc&&p.desc.trim()).length;
+      // Textos cortos y limpios: un parlay lleva el momio en el título y sus picks sin etiquetas ni relleno
+      const cortoN = cuerpoAviso(nueva), pesoN = " · "+nueva.monto+"% del bank";
       pushNotificar("picks",
-        esCrearF ? "Nuevo pick · Crear apuesta" : esC ? (nueva.tipo==="Freebet"?"Nueva freebet":"Nuevo parlay") : "Nuevo pick"+(nueva.deporte?" · "+nueva.deporte:""),
-        (esCrearF?(nueva.partido?nueva.partido+": ":"")+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):esC?nombreCombo(nueva)+" de "+nP+" picks: "+(nueva.patas||[]).filter(p=>p.desc).map(p=>p.desc).join(" · "):nueva.descripcion+(nueva.partido?" ("+nueva.partido+")":""))+" · Momio "+momioStr+" · "+nueva.monto+"% del bank",
-        "pick-"+Date.now(),
+        esCrearF ? "Nuevo pick · Crear apuesta · "+momioStr : esC ? (nueva.tipo==="Freebet"?"Nueva freebet":"Nuevo parlay")+" · "+momioStr : "Nuevo pick"+(nueva.deporte?" · "+nueva.deporte:""),
+        esC||esCrearF ? cortoN+pesoN : cortoN+(nueva.partido?" ("+nueva.partido+")":"")+" · Momio "+momioStr+pesoN,
+        "pick-"+idNuevo,
         // Para que el Worker ponga a cada quien cuánto apostar en PESOS con su bank (en lugar del %)
-        {apuesta:{monto:nueva.monto, cuota:nueva.cuota, fecha:nueva.fecha}, bankAdmin:bankrolls});
+        {url:"./?pick="+idNuevo+"&v=nuevo", apuesta:{monto:nueva.monto, cuota:nueva.cuota, fecha:nueva.fecha}, bankAdmin:bankrolls});
     }
     setModal(false);
   };
@@ -2171,8 +2185,9 @@ function App() {
         : -m;
       const ganStr = resultado==="Ganada"?"+$"+ganancia:resultado==="Nula"?"$0 (Nula)":"-$"+Math.abs(ganancia);
       const pctRes = resultado==="Ganada" ? "+"+(Number(ap.monto||0)*(momioToDec(ap.cuota)-1)).toFixed(1)+"% del bank" : resultado==="Nula" ? "Se devuelve lo apostado" : "-"+Number(ap.monto||0)+"% del bank";
-      const enviar = () => pushNotificar("resultados", (resultado==="Ganada"?"¡Ganada!":resultado==="Perdida"?"Perdida":"Nula"), ap.descripcion+" · "+pctRes, "res-"+ap.id,
-        {apuesta:{id:ap.id, monto:ap.monto, cuota:ap.cuota, fecha:ap.fecha, resultado, descripcion:ap.descripcion}, bankAdmin:bankrolls});
+      const cortoR = cuerpoAviso(ap), marcR = esCombo(ap) ? "" : marcadorAviso({...ap, evento:cambios.evento||ap.evento});
+      const enviar = () => pushNotificar("resultados", (resultado==="Ganada"?"¡Ganaste!":resultado==="Perdida"?"Perdiste":"Nula"), cortoR+(marcR?" · "+marcR:"")+" · "+pctRes, "res-"+ap.id,
+        {url:"./?pick="+ap.id+"&v=res", apuesta:{id:ap.id, monto:ap.monto, cuota:ap.cuota, fecha:ap.fecha, resultado, descripcion:ap.descripcion, corto:cortoR, marcador:marcR}, bankAdmin:bankrolls});
       // Si había otro aviso esperando de OTRO pick, sale ya; si era de este mismo pick, se reemplaza
       if(avisoPend.current && avisoPend.current.id!==ap.id) soltarAviso();
       else if(avisoPend.current) { clearTimeout(avisoPend.current.t); avisoPend.current=null; }
@@ -3074,6 +3089,37 @@ function App() {
     </${Hoja}>`}
 
     <!-- Modal eliminar -->
+    ${abrirNotif && (()=>{
+      const a = apuestas.find(x=>String(x.id)===String(abrirNotif.id)) || notifPick; if(!a) return null;
+      const cerrar = ()=>setAbrirNotif(null);
+      const res=a.resultado, combo=esCombo(a), dec=momioToDec(a.cuota), m=apMonto(a,bankDe), verPesos = m>0 && !OCULTAR;
+      const pend = res==="Pendiente", gan = res==="Ganada", per = res==="Perdida";
+      const gp = gan ? Number(a.monto||0)*(dec-1) : per ? -Number(a.monto||0) : 0, gm = gananciaAp(a);
+      const fmtG = verPesos ? (gm>=0?"+":"-")+fmtReal(Math.abs(gm)) : fmtPct(gp);
+      const posible = verPesos ? "+"+fmtReal(m*(dec-1)) : fmtPct(Number(a.monto||0)*(dec-1));
+      const col = gan?"#2fe0a0":per?"#ff5d7a":"#fff";
+      const ts = [a.evento,...(a.patas||[]).map(p=>p&&typeof p==="object"?p.evento:null)].filter(e=>e&&e.t&&!isNaN(Date.parse(e.t))).map(e=>Date.parse(e.t));
+      const tIni = ts.length?Math.min(...ts):null, falta = tIni?tIni-Date.now():null;
+      const cuenta = falta===null?"":falta>7200e3?"Empieza a las "+new Date(tIni).toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}):falta>60e3?"Empieza en "+Math.round(falta/60e3)+" min":falta>-3*3600e3?"En juego":"";
+      const filas = combo ? patasDe(a) : [{desc:limpiaDesc(a.descripcion),res:gan?"G":per?"P":null,evento:a.evento}];
+      const dato = (t,v,c)=>html`<div style=${{background:"var(--bg)",borderRadius:12,padding:"9px 2px",textAlign:"center"}}><div style=${{fontSize:10,color:"var(--mu)",letterSpacing:.6}}>${t}</div><b style=${{fontSize:15,color:c||"#fff"}}>${v}</b></div>`;
+      return html`<${Hoja} onClose=${cerrar} maxW=${480}>
+        <div style=${{fontSize:12,color:"var(--mu)",letterSpacing:1,fontWeight:700}}>${(combo?nombreCombo(a).toUpperCase()+" · "+filas.length+" PICKS":((a.evento&&a.evento.liga)||a.deporte||"PICK").toUpperCase())+" · "+fmtMomio(a.cuota)}</div>
+        <div style=${{fontSize:32,fontWeight:900,color:col,letterSpacing:-1,margin:"4px 0 6px"}}>${gan?"¡Ganaste! "+fmtG:per?"Perdiste "+fmtG:res==="Nula"?"Nula · se devuelve lo apostado":"Pick nuevo"}</div>
+        ${pend && cuenta && html`<div style=${{display:"inline-block",background:"#2a2a2d",borderRadius:8,padding:"4px 10px",fontSize:12,fontWeight:700,marginBottom:6}}>${cuenta}</div>`}
+        <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,margin:"10px 0 8px"}}>
+          ${dato("APOSTADO",verPesos?fmtReal(m):Number(a.monto||0)+"%")}
+          ${dato(pend?"COBRARÍAS":"COBRASTE",pend||gan?(verPesos?fmtReal(m*dec):"x"+dec.toFixed(2)):per?(verPesos?"$0":"x0"):"—")}
+          ${dato(pend?"GANARÍAS":"GANANCIA",pend?posible:fmtG,pend||gan?"#2fe0a0":per?"#ff5d7a":"#fff")}
+        </div>
+        ${filas.map((p,i)=>html`<div key=${i} style=${{display:"flex",gap:10,alignItems:"flex-start",padding:"9px 0",borderTop:"1px solid var(--br)"}}>
+          <span style=${{width:20,height:20,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:900,flexShrink:0,marginTop:1,
+            background:p.res==="G"?"#2fe0a0":p.res==="P"?"#ff5d7a":"transparent",color:"#06101f",border:p.res?"none":"1.5px dashed var(--mu3)"}}>${p.res==="G"?"✓":p.res==="P"?"✕":""}</span>
+          <div style=${{fontSize:14,minWidth:0,wordBreak:"break-word"}}>${p.desc}${p.evento&&p.evento.id&&html`<div style=${{fontSize:12,color:"var(--mu)",marginTop:2}}>${nombrePartido(p.evento)}${marcadorAviso({evento:p.evento})?" · "+marcadorAviso({evento:p.evento}):""}</div>`}</div>
+        </div>`)}
+        ${isAdmin && !pend && html`<button onClick=${()=>{ cerrar(); setPickCompartir(a); }} style=${{...S.btnPrimary,width:"100%",minHeight:48,marginTop:12}}>Compartir pick</button>`}
+        <button onClick=${()=>{ const {y,m:mm}=parseFecha(a.fecha); setAnoSeleccionado(y); setMesSeleccionado(mm); setVistaActual("inicio"); cerrar(); }} style=${{...S.btnSecondary,width:"100%",minHeight:46,marginTop:8}}>Ver en la lista</button>
+      </${Hoja}>`; })()}
     ${pickCompartir && html`<${CompartirPick} a=${pickCompartir} monto=${apMonto(pickCompartir,bankDe)} onClose=${()=>setPickCompartir(null)}/>`}
     ${deleteConfirm && html`<${Hoja} onClose=${()=>setDeleteConfirm(null)} maxW=${480}>
         <div style=${S.modalHeader}>
