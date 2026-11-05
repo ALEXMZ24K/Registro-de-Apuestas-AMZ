@@ -1,4 +1,4 @@
-// v7 — siempre pide la versión más nueva de la página (sin caché) + notificaciones push
+// v8 — siempre pide la versión más nueva de la página (sin caché) + notificaciones push
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.filter(k => k !== 'abrir').map(k => caches.delete(k)))).then(() => clients.claim())
@@ -30,6 +30,8 @@ self.addEventListener('notificationclick', e => {
     // Se deja anotado qué pick tocaron: la app lo lee al volver a verse (no depende de que el aviso llegue a tiempo a una página dormida)
     try { const c = await caches.open('abrir'); await c.put('abrir', new Response(JSON.stringify({ url, t: Date.now() }))); } catch (_) {}
     const cs = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // Diagnóstico: queda anotado qué vio el service worker al tocar (la app lo muestra en Más)
+    try { const c = await caches.open('abrir'); await c.put('log', new Response(JSON.stringify({ t: Date.now(), v: 8, clientes: cs.map(x => x.url.slice(-40) + '|' + x.visibilityState), url }))); } catch (_) {}
     for (const c of cs) if (c.url.startsWith(self.registration.scope) && 'focus' in c) {
       try { c.postMessage({ tipo: 'abrir', url }); } catch (_) {}
       return c.focus();

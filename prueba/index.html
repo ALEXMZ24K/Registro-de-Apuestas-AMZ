@@ -1442,6 +1442,10 @@ function App() {
   const [abrirNotif,setAbrirNotif] = useState(()=>{ try{ const q=new URLSearchParams(location.search), id=q.get("pick");
     if(id){ const v=q.get("v")==="nuevo"?"nuevo":"res"; q.delete("pick"); q.delete("v"); history.replaceState(null,"",location.pathname+(q.toString()?"?"+q.toString():"")+location.hash); return {id,v}; } }catch(e){} return null; });
   const [notifPick,setNotifPick] = useState(null);
+  const [logToque,setLogToque] = useState("");
+  useEffect(()=>{ const f=async()=>{ try{ const c=await caches.open("abrir"), r=await c.match("log"); if(!r){ setLogToque("Sin toques registrados"); return; } const d=await r.json();
+      setLogToque("SW v"+d.v+" · "+new Date(d.t).toLocaleTimeString("es-MX")+" · ventanas: "+(d.clientes.length?d.clientes.join(", "):"ninguna")); }catch(e){ setLogToque("No se pudo leer"); } };
+    f(); const t=setInterval(f,3000); return ()=>clearInterval(t); },[]);
   useEffect(()=>{ if(!("serviceWorker" in navigator)) return;
     const h = e => { const d=e.data; if(d&&d.tipo==="abrir"){ try{ const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} } };
     navigator.serviceWorker.addEventListener("message",h);
@@ -2803,6 +2807,7 @@ function App() {
 
         ${isAdmin && grupoMas("Admin",[
           (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"auto",t:"Calificar solo",sub:autoTxt,onClick:()=>setHojaMas("auto")}),
+          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Último toque de notificación",sub:logToque}),
           filaMas({e:"file",t:"Respaldo para Excel",sub:respaldo.csv||"Todos los picks en un archivo CSV",onClick:()=>descargarRespaldo("csv")}),
           filaMas({e:"save",t:"Copia completa",sub:respaldo.json||"Archivo JSON para poder restaurar todo",onClick:()=>descargarRespaldo("json")}),
         ])}
