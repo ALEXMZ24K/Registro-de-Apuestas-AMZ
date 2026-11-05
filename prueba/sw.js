@@ -1,4 +1,4 @@
-// v5 — siempre pide la versión más nueva de la página (sin caché) + notificaciones push
+// v6 — siempre pide la versión más nueva de la página (sin caché) + notificaciones push
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(
   caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).then(() => clients.claim())
@@ -28,7 +28,10 @@ self.addEventListener('notificationclick', e => {
   const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
   e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
     // Si la app ya está abierta, se le avisa para que abra el pick; si no, se abre con ?pick=ID en la dirección
-    for (const c of cs) if (c.url.startsWith(self.registration.scope) && 'focus' in c) { try { c.postMessage({ tipo: 'abrir', url }); } catch (_) {} return c.focus(); }
+    for (const c of cs) if (c.url.startsWith(self.registration.scope) && 'focus' in c) {
+      // App ya abierta: se enfoca y se recarga con ?pick=ID (igual que cuando estaba cerrada; también sirve si la página abierta era una versión vieja)
+      return c.focus().then(w => (w || c).navigate ? (w || c).navigate(url) : c.postMessage({ tipo: 'abrir', url })).catch(() => { try { c.postMessage({ tipo: 'abrir', url }); } catch (_) {} });
+    }
     return clients.openWindow(url);
   }));
 });
