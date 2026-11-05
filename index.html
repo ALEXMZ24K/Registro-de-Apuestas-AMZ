@@ -1450,7 +1450,7 @@ function App() {
     setTimeout(()=>{ reg.showNotification("✅ GANASTE +$35",{body:"Aviso de prueba · "+(ap.descripcion||"").slice(0,40),icon:"icon2-192.png",badge:"icon2-badge-96.png",tag:"prueba-toque",data:{url:"./?pick="+ap.id+"&v=res"}}); setAvisoPrueba(""); },8000);
   }catch(e){ setAvisoPrueba("No se pudo: "+(e&&e.message||e)); } };
   useEffect(()=>{ const f=async()=>{ try{ const c=await caches.open("abrir"), r=await c.match("log"); if(!r){ setLogToque("Sin toques registrados"); return; } const d=await r.json();
-      setLogToque("SW v"+d.v+" · "+new Date(d.t).toLocaleTimeString("es-MX")+" · ventanas: "+(d.clientes.length?d.clientes.join(", "):"ninguna")+" · url: "+String(d.url||"").split("/").pop()); }catch(e){ setLogToque("No se pudo leer"); } };
+      setLogToque(new Date(d.t).toLocaleTimeString("es-MX")+" · "+d.clientes.length+" ventana(s) · "+String(d.url||"").split("?").pop()); }catch(e){ setLogToque("No se pudo leer"); } };
     f(); const t=setInterval(f,3000); return ()=>clearInterval(t); },[]);
   useEffect(()=>{ if(!("serviceWorker" in navigator)) return;
     const h = e => { const d=e.data; if(d&&d.tipo==="abrir"){ try{ const q=new URL(d.url).searchParams, id=q.get("pick"); if(id) setAbrirNotif({id,v:q.get("v")==="nuevo"?"nuevo":"res"}); }catch(_){} } };
@@ -2813,7 +2813,8 @@ function App() {
 
         ${isAdmin && grupoMas("Admin",[
           (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"auto",t:"Calificar solo",sub:autoTxt,onClick:()=>setHojaMas("auto")}),
-          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Probar toque de notificación",sub:(avisoPrueba||"Toca aquí, manda la app a segundo plano y en 8 segundos te llega un aviso solo a ti")+" · "+logToque,onClick:probarToque}),
+          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Probar toque de notificación",sub:avisoPrueba||"Aviso de prueba solo para ti, en 8 segundos",onClick:probarToque}),
+          (user&&(user.email||"").toLowerCase()===ADMIN_EMAILS[0]) && filaMas({e:"bell",t:"Último toque",sub:logToque}),
           filaMas({e:"file",t:"Respaldo para Excel",sub:respaldo.csv||"Todos los picks en un archivo CSV",onClick:()=>descargarRespaldo("csv")}),
           filaMas({e:"save",t:"Copia completa",sub:respaldo.json||"Archivo JSON para poder restaurar todo",onClick:()=>descargarRespaldo("json")}),
         ])}
