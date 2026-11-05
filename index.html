@@ -1457,6 +1457,7 @@ function App() {
   useEffect(()=>{ if(!pushSoportado()) return; navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(sub=>{ setPushOn(!!sub && Notification.permission==="granted"); setPushChecado(true); }).catch(()=>{}); },[]);
   const [buscaTodo,setBuscaTodo] = useState(false);
   const [ia,setIa] = useState({estado:null,msg:""});
+  const [fotoNueva,setFotoNueva] = useState(null); // foto del boleto leído con IA: {img,mini,on} → se guarda con el pick nuevo
   const [menuNueva,setMenuNueva] = useState(false); // hoja del ＋: captura o a mano
   const inputFoto = useRef(null);
   const [respaldo,setRespaldo] = useState({});
@@ -2070,7 +2071,7 @@ function App() {
     } else {setForm(initialForm);setEditId(null);}
     setElegir(null);
     setFormError("");
-    setIa({estado:null,msg:""});
+    setIa({estado:null,msg:""}); setFotoNueva(null);
     setModal(true);
   };
 
@@ -2078,6 +2079,7 @@ function App() {
     if(!file) return;
     if(window.ES_PRUEBA){ setIa({estado:"error",msg:"En la app de prueba no se leen boletos con IA. Pruébalo en la app real, o llena el pick a mano aquí."}); return; }
     let prev=""; try{ prev=URL.createObjectURL(file); }catch(e){}
+    setFotoNueva(null);
     setIa({estado:"leyendo",msg:"",paso:0,prev});
     const timers=[setTimeout(()=>setIa(x=>x.estado==="leyendo"?{...x,paso:Math.max(x.paso,2)}:x),2600),setTimeout(()=>setIa(x=>x.estado==="leyendo"?{...x,paso:Math.max(x.paso,3)}:x),6500)];
     try{
@@ -2116,6 +2118,8 @@ function App() {
         ". Súbela"+(otras.length===1?"":"s")+" aparte"+(otras.some(o=>!o.seleccion)?", abierta"+(otras.length===1?"":"s")+" para que se vea la selección":"")+".");
       timers.forEach(clearTimeout);
       setIa({estado:"listo",msg:partes.join(" · ")});
+      // La foto se guarda aparte (reducida) para adjuntarla al pick cuando se guarde
+      (async()=>{ try{ let img=await reducirImagen(file,1000,.72); if(img.length>700000) img=await reducirImagen(file,800,.6); const mini=await reducirImagen(file,70,.6); setFotoNueva({img,mini,on:true}); }catch(e){} })();
       // Crear apuesta: todas las selecciones son del mismo partido → se busca una sola vez
       const partidoCrear = crearB ? (b.partido || ((b.patas||[]).find(pt=>pt&&pt.partido)||{}).partido) : null;
       if(partidoCrear) buscarPartidoAuto(partidoCrear, /^\d{4}-\d{2}-\d{2}$/.test(b.fecha||"")?b.fecha:null).then(h=>{ if(!h) return;
@@ -2175,7 +2179,10 @@ function App() {
       else db.collection("apuestas").add({...nueva,id:editId});
     } else {
       const idNuevo = Date.now();
-      db.collection("apuestas").add({...nueva,id:idNuevo});
+      // Con foto: primero se sube (hora del servidor) y después se guarda el pick con su miniatura; si la foto falla o tarda, el pick se guarda igual sin ella
+      const conFoto = fotoNueva && fotoNueva.on ? fotoNueva : null;
+      const subida = conFoto ? Promise.race([db.collection("boletos").doc(String(idNuevo)).set({pickId:idNuevo,img:conFoto.img,subidaEn:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>true), new Promise(ok=>setTimeout(()=>ok(false),8000))]).catch(()=>false) : Promise.resolve(false);
+      subida.then(ok=>db.collection("apuestas").add({...nueva,id:idNuevo,...(ok?{fotoMini:conFoto.mini}:{})}));
       // Picks de días pasados (registrar meses anteriores) NO avisan a nadie
       if(nueva.fecha < isoLocal(new Date())) { setModal(false); return; }
       // Notificar a todos
@@ -3036,6 +3043,10 @@ function App() {
           </label>
           ${ia.estado==="listo" && html`<div style=${{marginTop:8,fontSize:13,lineHeight:1.4,color:"#dfe5ff",background:"color-mix(in srgb,#2fe0a0 12%,transparent)",border:"1px solid color-mix(in srgb,#2fe0a0 40%,transparent)",borderRadius:12,padding:"10px 12px"}}>
             ✓ Listo. <b>Revisa los datos antes de guardar.</b>${ia.msg?html`<br/>${ia.msg}`:""}</div>`}
+          ${ia.estado==="listo" && fotoNueva && html`<button type="button" id="t-guardar-foto" onClick=${()=>setFotoNueva(x=>x&&({...x,on:!x.on}))} style=${{display:"flex",alignItems:"center",gap:12,width:"100%",marginTop:8,background:"var(--card)",border:"1px solid var(--br2)",borderRadius:12,padding:"10px 12px",color:"#fff",textAlign:"left",cursor:"pointer"}}>
+            <img src=${fotoNueva.mini} alt="" style=${{width:30,height:38,objectFit:"cover",borderRadius:5,opacity:fotoNueva.on?1:.35}}/>
+            <div style=${{flex:1,minWidth:0}}><b style=${{fontSize:14}}>Guardar la foto con el pick</b><div style=${{fontSize:11,color:"var(--mu)",marginTop:2}}>Se ve la hora en que la subes. Si trae tu saldo o cuenta, apágalo</div></div>
+            <span style=${{width:48,height:28,borderRadius:14,background:fotoNueva.on?"var(--ac)":"var(--br2)",position:"relative",flexShrink:0,transition:"background .15s"}}><span style=${{position:"absolute",top:3,left:fotoNueva.on?23:3,width:22,height:22,borderRadius:"50%",background:"#fff",transition:"left .15s"}}></span></span></button>`}
           ${ia.estado==="error" && html`<div style=${{marginTop:8,fontSize:13,color:"#ff5d7a",background:"#ff5d7a15",border:"1px solid #ff5d7a40",borderRadius:12,padding:"10px 12px"}}>${ia.msg}</div>`}
           ${!ia.estado && html`<div style=${{marginTop:6,fontSize:12,color:"var(--mu)",textAlign:"center"}}>Sube la captura de tu boleto y se llena solo</div>`}
         </div>`}
