@@ -1472,7 +1472,12 @@ function App() {
   const [authListo,setAuthListo] = useState(false);   // ya se sabe si hay sesión o no
   useEffect(()=>{ if(!abrirNotif){ setNotifPick(null); return; }
     if(apuestas.some(a=>String(a.id)===String(abrirNotif.id))) return;
-    let vivoQ=true; db.collection("apuestas").where("id","==",Number(abrirNotif.id)).limit(1).get().then(q=>{ if(vivoQ) q.forEach(d=>setNotifPick({...d.data(),_docId:d.id})); }).catch(()=>{});
+    // Si la app estaba dormida, la conexión tarda en despertar: se vuelve a buscar el pick cada 2 s hasta encontrarlo (máx. 10 veces)
+    let vivoQ=true, hallado=false, n=0;
+    const intento = ()=>{ if(!vivoQ||hallado||n++>=10) return;
+      db.collection("apuestas").where("id","==",Number(abrirNotif.id)).limit(1).get().then(q=>{ q.forEach(d=>{ hallado=true; if(vivoQ) setNotifPick({...d.data(),_docId:d.id}); }); }).catch(()=>{});
+      setTimeout(intento,2000); };
+    intento();
     return ()=>{ vivoQ=false; }; },[abrirNotif]);
   const [docUserListo,setDocUserListo] = useState(false); // ya llegó el bank del usuario
   const [bankrolls,setBankrolls] = useState({});
