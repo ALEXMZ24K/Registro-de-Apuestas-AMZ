@@ -87,7 +87,7 @@ export function avisoDe(a, res, bankAdmin) {
   const c = Number(a.cuota) || 0, dec = c > 0 ? c / 100 + 1 : c < 0 ? 100 / Math.abs(c) + 1 : 1;
   const pct = res === "Ganada" ? "+" + (Number(a.monto || 0) * (dec - 1)).toFixed(1) + "% del bank" : res === "Nula" ? "Se devuelve lo apostado" : "-" + Number(a.monto || 0) + "% del bank";
   const corto = C.cuerpoAviso(a), marcador = C.esCombo(a) ? "" : C.marcadorAviso(a);
-  return { tipo: "resultados", title: (res === "Ganada" ? "¡Ganaste!" : res === "Nula" ? "Nula" : "Perdiste"), body: corto + (marcador ? " · " + marcador : "") + " · " + pct, tag: "res-" + a.id, url: "./?pick=" + a.id + "&v=res",
+  return { tipo: "resultados", title: (res === "Ganada" ? "✅ GANASTE" : res === "Nula" ? "➖ ANULADO" : "❌ PERDISTE"), body: corto + (marcador ? " · " + marcador : "") + " · " + pct, tag: "res-" + a.id, url: "./?pick=" + a.id + "&v=res",
     apuesta: { id: a.id, monto: a.monto, cuota: a.cuota, fecha: a.fecha, resultado: res, descripcion: a.descripcion, corto, marcador }, bankAdmin: bankAdmin || {} };
 }
 
