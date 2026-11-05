@@ -478,3 +478,24 @@ test.describe('Al tocar una notificación', () => {
     await expect(page.getByText('Tigres ML').first()).toBeVisible();
   });
 });
+
+
+test.describe('Foto del boleto', () => {
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC', 'base64');
+  const unPick = page => page.evaluate(() => { const d = JSON.parse(localStorage.getItem('alexpicks-prueba-db')), h = new Date();
+    const mes = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0');
+    return Object.values(d.apuestas).find(a => String(a.fecha).startsWith(mes) && a.tipo !== 'Parlay/Combinada' && a.tipo !== 'Crear apuesta').id; });
+  test('admin sube la foto: sale la miniatura, la hora y se puede ver y quitar', async ({ page }) => {
+    const errores = await abrir(page);
+    const id = await unPick(page);
+    await page.evaluate(i => window.dispatchEvent(new CustomEvent('abrir-pick', { detail: i })), id);
+    await page.locator('#t-subir-' + id).setInputFiles({ name: 'boleto.png', mimeType: 'image/png', buffer: PNG });
+    await expect(page.locator('#t-boleto-' + id)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Subida/).first()).toBeVisible({ timeout: 10000 });
+    await page.locator('#t-boleto-' + id).click();
+    await expect(page.getByRole('button', { name: 'Quitar foto' })).toBeVisible();
+    await page.getByRole('button', { name: 'Quitar foto' }).click();
+    await expect(page.locator('#t-boleto-' + id)).toHaveCount(0, { timeout: 10000 });
+    expect(errores).toEqual([]);
+  });
+});
