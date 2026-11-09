@@ -499,3 +499,26 @@ test.describe('Foto del boleto', () => {
     expect(errores).toEqual([]);
   });
 });
+
+test.describe('Compartir el día', () => {
+  test('desde el calendario: sticker con y sin lista', async ({ page }, info) => {
+    const errores = await abrir(page);
+    await page.evaluate(async () => {
+      const h = new Date(); const f = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0');
+      await firebase.firestore().collection('apuestas').add({ id: 999101, fecha: f, deporte: 'Béisbol', tipo: 'Moneyline', descripcion: 'Dodgers ML', partido: 'Brewers @ Dodgers', monto: 2, cuota: -150, resultado: 'Ganada' });
+      await firebase.firestore().collection('apuestas').add({ id: 999102, fecha: f, deporte: 'Fútbol', tipo: 'Moneyline', descripcion: 'Pumas ML', partido: 'Pumas vs América', monto: 2, cuota: 200, resultado: 'Perdida' });
+    });
+    const n = info.project.name;
+    await tab(page, 'Calendario').click();
+    await page.getByRole('button', { name: new RegExp('^' + new Date().getDate() + '\\b') }).first().click();
+    await page.getByRole('button', { name: 'Compartir día' }).click();
+    const img = page.locator('img[alt="Vista previa del día"]');
+    await expect(img).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: 'Compartir', exact: true })).toBeEnabled({ timeout: 10000 });
+    await img.screenshot({ path: `capturas/${n}-dia-lista.png` });
+    await page.getByRole('button', { name: 'Lista de picks' }).click();
+    await expect(page.getByRole('button', { name: 'Compartir', exact: true })).toBeEnabled({ timeout: 10000 });
+    await img.screenshot({ path: `capturas/${n}-dia-resumen.png` });
+    expect(errores).toEqual([]);
+  });
+});
