@@ -907,7 +907,7 @@ function dibujarDia(o){
   const col = o.neto>0?G:o.neto<0?R:"#d5d8de";
   const c=document.createElement("canvas"); c.width=W; c.height=2600; const x=c.getContext("2d"); x.textBaseline="alphabetic";
   const corta=(t,max)=>{ let s=String(t); if(x.measureText(s).width<=max) return s; while(s.length>4&&x.measureText(s+"…").width>max) s=s.slice(0,-1); return s.trim()+"…"; };
-  const pasos=[]; let y=M+78;
+  const pasos=[]; let y=M+100;
   // Fecha (sin etiqueta de "día ganado": la franja de color ya lo dice)
   { const yy=y; pasos.push(()=>{ x.textAlign="center"; x.font=F(700,38); x.fillStyle=GR; try{ x.letterSpacing="5px"; }catch(e){} x.fillText(o.fecha,W/2,yy); try{ x.letterSpacing="0px"; }catch(e){} }); y+=34; }
   // Total
