@@ -792,12 +792,13 @@ const AR = React.memo(ARbase, (p,n)=>{
     if(p[k]!==n[k]) return false; }
   return true; });
 
-function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR, onIr, resMes, pedirAno, cargandoMes}) {
+function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, renderAR, onIr, resMes, pedirAno, cargandoMes, admin}) {
   const vistas = todas||apuestas;
   const [sel, setSel] = useState(null);
+  const [compDia, setCompDia] = useState(false);
   const [selector, setSelector] = useState(null); // año que se ve en el selector de mes
   useEffect(()=>{ if(selector!==null && pedirAno) pedirAno(selector); },[selector]);
-  useEffect(()=>{ setSel(null); },[mes,ano]);
+  useEffect(()=>{ setSel(null); setCompDia(false); },[mes,ano]);
 
   const offset = (new Date(ano, mes, 1).getDay()+6)%7; // semana empieza en lunes
   const diasEnMes = new Date(ano, mes+1, 0).getDate();
@@ -892,9 +893,97 @@ function CalendarioMes({apuestas, todas, mes, ano, bank, onPrev, onNext, onHoy, 
           <b style=${{fontSize:16,color:netoSel>=0?"#2fe0a0":"#ff5d7a",whiteSpace:"nowrap"}}>${OCULTAR?fmtPct(netoSel):(netoSel>=0?"+":"")+fmt(netoSel)}</b>
         </div>
         ${apsSel.slice().reverse().map(a=>renderAR(a,false,undefined,true))}
+        ${admin && delMes(apuestas,sel).some(a=>a.resultado!=="Pendiente") && html`<button onClick=${()=>setCompDia(true)} style=${{...S.btnPrimary,width:"100%",marginTop:12,minHeight:48}}>Compartir día</button>`}
         <button onClick=${()=>setSel(null)} style=${{...S.btnSecondary,width:"100%",marginTop:12,minHeight:46}}>Cerrar</button>
     </${Hoja}>`}
+    ${sel && compDia && html`<${CompartirDia} fecha=${{y:ano,m:mes,d:sel}} nombre=${diaNombre} aps=${delMes(apuestas,sel)} bank=${bank} onClose=${()=>setCompDia(false)}/>`}
   </div>`;
+}
+
+// ── Sticker del día: fecha arriba, lo que se ganó o perdió y, si quieres, la lista de picks ──
+function dibujarDia(o){
+  const W=1080, M=46, CW=W-2*M, F=(w,s)=>`${w} ${s}px 'DM Sans','Helvetica Neue',Arial,sans-serif`;
+  const G="#2fe0a0", R="#ff5d7a", Y="#f5c842", GR="#8e8e93";
+  const col = o.neto>0?G:o.neto<0?R:"#d5d8de";
+  const c=document.createElement("canvas"); c.width=W; c.height=2600; const x=c.getContext("2d"); x.textBaseline="alphabetic";
+  const corta=(t,max)=>{ let s=String(t); if(x.measureText(s).width<=max) return s; while(s.length>4&&x.measureText(s+"…").width>max) s=s.slice(0,-1); return s.trim()+"…"; };
+  const pasos=[]; let y=M+78;
+  // Fecha (sin etiqueta de "día ganado": la franja de color ya lo dice)
+  { const yy=y; pasos.push(()=>{ x.textAlign="center"; x.font=F(700,38); x.fillStyle=GR; try{ x.letterSpacing="5px"; }catch(e){} x.fillText(o.fecha,W/2,yy); try{ x.letterSpacing="0px"; }catch(e){} }); y+=34; }
+  // Total
+  { const yy=y; let tam=190; x.font=F(900,tam); while(x.measureText(o.grande).width>CW-100&&tam>70){ x.font=F(900,tam-=8); }
+    pasos.push(()=>{ x.textAlign="center"; x.font=F(900,tam); x.fillStyle=col; x.fillText(o.grande,W/2,yy+tam*0.92); }); y+=tam*1.0+30; }
+  // Cuántos ganados y perdidos
+  { const yy=y; pasos.push(()=>{ x.textAlign="center"; x.font=F(600,42); x.fillStyle="#d5d8de"; x.fillText(o.cuenta,W/2,yy+36); }); y+=76; }
+  if(o.lista){
+    const filas=o.lista.slice(0,8), extra=o.lista.length-filas.length;
+    y+=10;
+    filas.forEach(f=>{ const Y=y; pasos.push(()=>{ x.fillStyle="#232326"; x.fillRect(M+50,Y,CW-100,2);
+        const ok=f.res==="Ganada", mal=f.res==="Perdida", nul=f.res==="Nula";
+        x.textAlign="left"; x.font=F(900,42); x.fillStyle=ok?G:mal?R:nul?Y:"#8b8f99"; x.fillText(ok?"✓":mal?"✕":nul?"–":"•",M+64,Y+60);
+        x.textAlign="right"; x.font=F(800,42); x.fillStyle=ok?G:mal?R:nul?Y:GR; const vtxt=f.val; x.fillText(vtxt,M+CW-64,Y+60);
+        const vw=x.measureText(vtxt).width;
+        x.textAlign="left"; x.font=F(600,40); x.fillStyle="#fff"; x.fillText(corta(f.desc,CW-124-64-vw-30),M+124,Y+60); }); y+=84; });
+    if(extra>0){ const Y=y; pasos.push(()=>{ x.textAlign="center"; x.font=F(600,34); x.fillStyle=GR; x.fillText("+"+extra+" más",W/2,Y+50); }); y+=70; }
+    y+=14;
+  } else {
+    const yy=y+4, gap=20, cs=o.cajas, bw=(CW-90-gap*(cs.length-1))/cs.length;
+    pasos.push(()=>{ cs.forEach(([l,v,cc],i)=>{ const X=M+45+i*(bw+gap);
+      x.fillStyle="#151517"; rr(x,X,yy,bw,140,28); x.fill(); x.lineWidth=2; x.strokeStyle="#232326"; x.stroke();
+      x.textAlign="center"; x.fillStyle=GR; x.font=F(500,30); x.fillText(l,X+bw/2,yy+48);
+      x.fillStyle=cc||"#fff"; x.font=F(800,52); x.fillText(v,X+bw/2,yy+108); }); });
+    y=yy+140+44;
+  }
+  const H=y+M;
+  // Tarjeta negra con una franja del color del resultado arriba; afuera queda transparente
+  x.save(); x.shadowColor="rgba(0,0,0,.6)"; x.shadowBlur=30; x.fillStyle="#0a0a0b"; rr(x,M,M,CW,H-2*M,64); x.fill(); x.restore();
+  x.save(); rr(x,M,M,CW,H-2*M,64); x.clip(); x.fillStyle=o.neto>0?G:o.neto<0?R:"#3a3a3d"; x.fillRect(M,M,CW,22); x.restore();
+  x.lineWidth=4; x.strokeStyle="#2a2a2d"; rr(x,M,M,CW,H-2*M,64); x.stroke();
+  pasos.forEach(f=>f());
+  const out=document.createElement("canvas"); out.width=W; out.height=H; out.getContext("2d").drawImage(c,0,0); return out;
+}
+// Hoja para compartir el día: elige si va la lista de picks y si va en pesos o en %
+function CompartirDia({fecha, nombre, aps, bank, onClose}) {
+  const lee = (k,d) => { try{ const v=localStorage.getItem(k); return v===null?d:v==="1"; }catch(e){ return d; } };
+  const [conLista,setConLista] = useState(()=>lee("diaLista",true));
+  const [pesos,setPesos] = useState(()=>lee("diaPesos",true));
+  const hayBank = aps.some(a=>apMonto(a,bank)>0);
+  const enPesos = pesos && !OCULTAR && hayBank;
+  const [img,setImg] = useState(null), [listo,setListo] = useState(false); const archivo = useRef(null);
+  useEffect(()=>{ let vivo=true; setImg(null); setListo(false); archivo.current=null;
+    const gp = a => { const m=apMonto(a,bank); return a.resultado==="Ganada"?m*momioToDec(a.cuota)-m:a.resultado==="Perdida"?-m:0; };
+    const val = a => enPesos ? gp(a) : gPct(a);
+    const txt = n => { const z=Math.abs(n); return enPesos ? (n<0?"-":"+")+fmtReal(z).replace("-","") : fmtPct(n); };
+    const hechas = aps.filter(a=>a.resultado!=="Pendiente"), g = hechas.filter(a=>a.resultado==="Ganada").length, p = hechas.filter(a=>a.resultado==="Perdida").length;
+    const n = hechas.filter(a=>a.resultado==="Nula").length, pend = aps.length-hechas.length;
+    const neto = hechas.reduce((t,a)=>t+val(a),0);
+    const parte = (k,u,pl) => k+" "+(k===1?u:pl);
+    const cuenta = [g?parte(g,"ganado","ganados"):"", p?parte(p,"perdido","perdidos"):"", n?parte(n,"anulado","anulados"):"", pend?parte(pend,"pendiente","pendientes"):""].filter(Boolean).join(" · ");
+    const f = new Date(fecha.y,fecha.m,fecha.d);
+    const o = { fecha: (nombre+" "+fecha.d+" "+MESES_CORTO[fecha.m]).toUpperCase(), neto, grande: txt(neto), cuenta, lista: conLista ? aps.slice().sort((a,b)=>(a.id||0)-(b.id||0)).map(a=>({res:a.resultado, desc: esCombo(a)?nombreCombo(a):separarPick(a).pick, val: a.resultado==="Pendiente"?"":a.resultado==="Nula"?"0":txt(val(a))})) : null,
+      cajas: [["Picks",String(aps.length)],["Acierto", (g+p)?Math.round(g/(g+p)*100)+"%":"—"]] };
+    const cv = dibujarDia(o);
+    setImg(cv.toDataURL("image/png"));
+    cv.toBlob(b=>{ if(b&&vivo){ archivo.current=new File([b],"alexpicks-dia.png",{type:"image/png"}); setListo(true); } },"image/png");
+    return ()=>{ vivo=false; };
+  },[aps.map(a=>a.id+":"+a.resultado+":"+a.monto).join("|"),conLista,enPesos]);
+  const guarda = (k,set) => v => { set(v); try{ localStorage.setItem(k,v?"1":"0"); }catch(e){} };
+  const mandar = () => { const f=archivo.current;
+    if(f && navigator.canShare && navigator.canShare({files:[f]})) navigator.share({files:[f],title:"Mi día en AlexPicks"}).catch(()=>{});
+    else if(img){ const l=document.createElement("a"); l.href=img; l.download="alexpicks-dia.png"; document.body.appendChild(l); l.click(); l.remove(); } };
+  const fila = (t,v,set) => html`<button onClick=${()=>guarda(t[1],set)(!v)} aria-pressed=${v} style=${{flex:1,minHeight:42,borderRadius:12,border:"1px solid "+(v?"var(--ac)":"var(--br)"),background:v?"var(--card)":"transparent",color:v?"#fff":"var(--mu)",fontWeight:700,fontSize:14,fontFamily:"inherit",cursor:"pointer"}}>${t[0]}</button>`;
+  return html`<${Hoja} onClose=${onClose} maxW=${480}>
+    <b style=${{fontSize:19,color:"#fff",display:"block",marginBottom:12}}>Compartir día</b>
+    <div style=${{display:"flex",gap:8,marginBottom:10}}>
+      ${fila(["Lista de picks","diaLista"],conLista,setConLista)}
+      ${!OCULTAR && hayBank && fila(["En pesos","diaPesos"],pesos,setPesos)}
+    </div>
+    <div style=${{fontSize:12,color:"var(--mu)",textAlign:"center",marginBottom:10}}>Fondo transparente: pégalo encima de tu foto en la historia</div>
+    <div style=${{display:"flex",justifyContent:"center",alignItems:"center",minHeight:240,marginBottom:12}}>
+      ${img ? html`<img src=${img} alt="Vista previa del día" style=${{maxWidth:"78%",maxHeight:"52vh"}}/>` : html`<span className="sk" style=${{width:200,height:240,borderRadius:14}}/>`}
+    </div>
+    <button onClick=${mandar} disabled=${!listo} style=${{...S.btnPrimary,width:"100%",minHeight:52,fontSize:16,borderRadius:14,opacity:listo?1:.5}}><${IcoT} k="share" s=${18}/>${listo?"Compartir":"Preparando…"}</button>
+  </${Hoja}>`;
 }
 
 // ── Imagen para compartir el resumen del mes ──
@@ -2613,7 +2702,7 @@ function App() {
 
       <!-- CALENDARIO -->
       ${vista==="calendario" && html`<div>
-        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${()=>mesAnimado(false)} onNext=${()=>mesAnimado(true)} onHoy=${irHoy} renderAR=${renderAR} onIr=${(m,y)=>{ setMesSeleccionado(m); setAnoSeleccionado(y); }} resMes=${resMes} pedirAno=${pedirAno} cargandoMes=${mesCargando}/>
+        <${CalendarioMes} apuestas=${apuestasMes} todas=${apuestasMesTodas} mes=${mesSeleccionado} ano=${anoSeleccionado} bank=${bankDe} onPrev=${()=>mesAnimado(false)} onNext=${()=>mesAnimado(true)} onHoy=${irHoy} renderAR=${renderAR} onIr=${(m,y)=>{ setMesSeleccionado(m); setAnoSeleccionado(y); }} resMes=${resMes} pedirAno=${pedirAno} cargandoMes=${mesCargando} admin=${isAdmin}/>
         ${porDeporteMes.length>0 && html`<div style=${{marginTop:22}}>
           <${DeportesGrid} data=${porDeporteMes} onSelect=${d=>setDeporteFiltro(p=>p===d?null:d)} selected=${deporteFiltro}/>
           ${deporteFiltro && html`<div style=${{marginTop:-16,marginBottom:20}}>
