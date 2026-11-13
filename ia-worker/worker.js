@@ -261,7 +261,7 @@ const MAPA_JUG = {
   batting: { hits: "h", runs: "r", RBIs: "rbi", homeRuns: "hr", walks: "bb", strikeouts: "so" },
   pitching: { strikeouts: "k", hits: "ha", earnedRuns: "er" },
   passing: { passingYards: "pay", passingTouchdowns: "patd", interceptions: "int", "completions/passingAttempts": "cmp" },
-  rushing: { rushingYards: "ruy", rushingTouchdowns: "rutd", rushingAttempts: "rua" },
+  rushing: { rushingYards: "ruy", rushingTouchdowns: "rutd", rushingAttempts: "rua", carries: "rua" },
   receiving: { receptions: "rec", receivingYards: "rey", receivingTouchdowns: "retd" },
   nba: { points: "pts", rebounds: "reb", assists: "ast", "threePointFieldGoalsMade-threePointFieldGoalsAttempted": "tres", steals: "stl", blocks: "blk" },
 };
