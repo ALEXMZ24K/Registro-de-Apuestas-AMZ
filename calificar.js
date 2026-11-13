@@ -35,6 +35,9 @@ const STATS_JUG = {
     [/yardas? (por|de) pase|yardas? aereas|passing yards|pass yds/, sumaJ("pay"), "yardas por pase"],
     [/yardas? (por|de) tierra|yardas? terrestres|yardas? por carrera|rushing yards|rush yds/, sumaJ("ruy"), "yardas por tierra"],
     [/yardas? (por|de) recepcion|receiving yards|rec yds/, sumaJ("rey"), "yardas por recepción"],
+    [/intentos? (de|por) (carrera|tierra|acarreo)s?|acarreos?|carries|rushing attempts?|rush att|corridas/, sumaJ("rua"), "intentos de carrera"],
+    [/pases? completos?|pases? completados?|completions?|completados/, sumaJ("cmp"), "pases completados"],
+    [/intercepciones|intercepcion|interceptions?/, sumaJ("int"), "intercepciones"],
     [/recepciones?|receptions?/, sumaJ("rec"), "recepciones"],
     [/pases? (de )?(td|touchdown)|passing (td|touchdowns?)|(td|touchdown)s? (pass|de pase)/, sumaJ("patd"), "pases de TD"],
     [/touchdowns?|\stds?\s|anota|anytime/, sumaJ("rutd","retd"), "touchdowns"],
@@ -101,7 +104,7 @@ const pickJugador = (t, ev, v, fin) => {
   else return null;
   const SING = {hits:"hit",jonrones:"jonrón",impulsadas:"impulsada",carreras:"carrera",strikeouts:"strikeout","bases por bola":"base por bola",puntos:"punto",rebotes:"rebote",
     asistencias:"asistencia",triples:"triple",robos:"robo",tapones:"tapón",recepciones:"recepción","pases de TD":"pase de TD",touchdowns:"touchdown","remates a puerta":"remate a puerta",atajadas:"atajada",goles:"gol",
-    "yardas por pase":"yarda por pase","yardas por tierra":"yarda por tierra","yardas por recepción":"yarda por recepción",yardas:"yarda"};
+    "yardas por pase":"yarda por pase","yardas por tierra":"yarda por tierra","yardas por recepción":"yarda por recepción",yardas:"yarda","intentos de carrera":"intento de carrera","pases completados":"pase completado",intercepciones:"intercepción"};
   const val = st[1](jug.s||{}), nombre = jug.n.split(" ").filter(w=>!/^(jr|sr|ii|iii|iv)\.?$/i.test(w)).slice(-1)[0] || jug.n;
   const uu = n => n===1 ? (SING[st[2]]||st[2]) : st[2], u = uu(val);
   if(!under) return val>=nec ? {txt:"¡Ganaste! · "+nombre+" "+val+" "+u, ok:1, listo:1, prog:[val,nec], stats:1, jug:1}

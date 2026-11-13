@@ -39,6 +39,7 @@ test.describe('Cuentas', () => {
         equipoUnder: p('Toluca under 1.5 goles', ev, v(0, 2)),
         enEspanol: p('Inglaterra más de 1.5 goles', { k: 'soccer/fifa.friendly', h: { n: 'England', full: 'England', a: 'ENG' }, a: { n: 'Croatia', full: 'Croatia', a: 'CRO' } }, v(2, 1)),
         enEspanolFalta: p('Croacia más de 1.5 goles', { k: 'soccer/fifa.friendly', h: { n: 'England', full: 'England', a: 'ENG' }, a: { n: 'Croatia', full: 'Croatia', a: 'CRO' } }, v(2, 1)),
+        intentosCarrera: p('Cameron Skattebo Más de 16.5 intentos de carrera (Commanders @ Giants)', { k: 'football/nfl', h: { n: 'Giants', full: 'New York Giants', a: 'NYG' }, a: { n: 'Commanders', full: 'Washington Commanders', a: 'WSH' } }, { hs: '7', as: '10', st: 'in', j: [{ n: 'Cameron Skattebo', s: { rua: 9 } }] }),
         notifLimpia: limpiaDesc('[Basquetbol] SA Spurs ML (incl. prórroga)'),
         notifParlay: cuerpoAviso({ tipo: 'Parlay/Combinada', patas: [{ desc: 'SA Spurs ML (incl. prórroga)' }, { desc: 'Crear apuesta: LA Lakers ML (incl. prórroga) + Luka Doncic más de 29.5 puntos (incl. prórroga)' }] }),
         notifMuchos: cuerpoAviso({ tipo: 'Parlay/Combinada', patas: [{ desc: 'A ML' }, { desc: 'B ML' }, { desc: 'C ML' }, { desc: 'D ML' }] }),
@@ -76,6 +77,7 @@ test.describe('Cuentas', () => {
     expect(r.equipoUnder).toBe('Perdiste · van 2 goles');
     expect(r.enEspanol).toBe('¡Ganaste! · 2 goles');
     expect(r.enEspanolFalta).toBe('1 de 2 goles');
+    expect(r.intentosCarrera).toBe('Skattebo · 9 de 17 intentos de carrera');
     expect(r.equipoNba).toBe('95 de 111 puntos · faltan 16');
     expect(r.notifLimpia).toBe('Spurs ML');
     expect(r.notifParlay).toBe('Parlay · Spurs ML + Lakers ML + Luka Doncic más de 29.5 puntos');
