@@ -170,7 +170,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <script src="calificar.js?v=20261113"></script>
+  <script src="calificar.js?v=20261114"></script>
   <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
   document.addEventListener("touchstart",()=>{},{passive:true}); // para que :active funcione en iPhone
   // Sin zoom: ni pellizcando ni con doble toque
@@ -1972,17 +1972,21 @@ function App() {
   // Después de leer el boleto con IA: busca solo el partido en ESPN y lo liga si lo encuentra
   const buscarPartidoAuto = async (texto, fechaIso) => {
     const pal = x => normTxt(x).split(/[^a-z0-9]+/).filter(w=>w.length>=4&&!["club","deportivo","united","city","real","atletico","sporting","racing","fc","cf"].includes(w));
-    const tw = new Set(pal(texto)); if(!tw.size) return null;
-    const pega = e => [e.n,e.full].some(x=>pal(x).some(w=>tw.has(w))) || (e.a&&e.a.length>=3&&new RegExp("(^|[^a-z])"+normTxt(e.a)+"([^a-z]|$)").test(normTxt(texto)));
+    const tn = normTxt(texto), tw = new Set(pal(texto)); if(!tw.size) return null;
+    // Cuántas pistas del texto coinciden con ese equipo: palabras en inglés, el nombre en español ("Dinamarca" = Denmark) o las siglas
+    const puntos = e => { let n=0; new Set(pal([e.n,e.full].join(" "))).forEach(w=>{ if(tw.has(w)) n++; });
+      nombresAlt(e).forEach(x=>{ if(new RegExp("(^|[^a-z])"+x+"([^a-z]|$)").test(tn)) n+=3; });
+      if(e.a&&e.a.length>=3&&new RegExp("(^|[^a-z])"+normTxt(e.a)+"([^a-z]|$)").test(tn)) n++;
+      return n; };
     const [y,m,d] = (fechaIso||isoLocal(new Date())).split("-").map(Number);
     const base = new Date(y,m-1,d,12);
     for(const off of [0,1,-1]){
       const dt = new Date(base); dt.setDate(dt.getDate()+off);
       const clave = fechaESPN(dt);
       const ligas = await cargarPartidos(clave);
-      const hits = []; (ligas||[]).forEach(lg=>lg.ev.forEach(e=>{ if(pega(e.h)&&pega(e.a)) hits.push({lg,e,clave}); }));
-      if(hits.length===1) return hits[0];
-      if(hits.length>1) return null;
+      const hits = []; (ligas||[]).forEach(lg=>lg.ev.forEach(e=>{ const ph=puntos(e.h), pa=puntos(e.a); if(ph&&pa) hits.push({lg,e,clave,pts:ph+pa}); }));
+      // Si varios partidos parecen, gana el que más coincide ("Ohio State" + "Wildcats" no es lo mismo que cualquier "State"); si empatan, no adivina
+      if(hits.length){ const mx=Math.max(...hits.map(h=>h.pts)), mejores=hits.filter(h=>h.pts===mx); return mejores.length===1 ? mejores[0] : null; }
     }
     return null;
   };
