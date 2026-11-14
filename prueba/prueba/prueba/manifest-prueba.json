@@ -1,0 +1,21 @@
+{
+  "name": "AlexPicks Prueba",
+  "short_name": "Prueba",
+  "start_url": "/Registro-de-Apuestas-AMZ/prueba/",
+  "scope": "/Registro-de-Apuestas-AMZ/prueba/",
+  "display": "standalone",
+  "background_color": "#0d0d0f",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/Registro-de-Apuestas-AMZ/prueba/icon-prueba-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/Registro-de-Apuestas-AMZ/prueba/icon-prueba-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
