@@ -1012,7 +1012,9 @@ function dibujarResumen(o){
   x.font=F(600,36); x.fillStyle="rgba(255,255,255,.8)"; x.fillText("RESULTADO DEL MES",P,y);
   const pos = o.neto>=0;
   let grande, chico="";
-  if(o.pct!==null){ grande=(o.pct>=0?"+":"-")+Math.abs(o.pct).toFixed(1)+"%"; if(o.pesos) chico=(pos?"+":"-")+fmtReal(Math.abs(o.neto)).replace("-","")+" MXN"; }
+  // El dinero va grande y el porcentaje chico; si los montos están ocultos solo sale el porcentaje
+  if(o.pct!==null){ const pctTxt=(o.pct>=0?"+":"-")+Math.abs(o.pct).toFixed(1)+"%";
+    if(o.pesos){ grande=(pos?"+":"-")+fmtReal(Math.abs(o.neto)).replace("-",""); chico=pctTxt; } else grande=pctTxt; }
   else if(o.pesos){ grande=(pos?"+":"-")+fmtReal(Math.abs(o.neto)).replace("-",""); }
   else { grande=o.record; }
   const tg = cal ? (hist?170:120) : (hist?190:160);
